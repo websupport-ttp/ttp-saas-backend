@@ -1,0 +1,80 @@
+// v1/routes/index.js
+const express = require('express');
+const authRoutes = require('./authRoutes');
+const userRoutes = require('./userRoutes');
+const productRoutes = require('./productRoutes');
+const messageRoutes = require('./messageRoutes');
+const postRoutes = require('./postRoutes');
+const categoryRoutes = require('./categoryRoutes');
+const analyticsRoutes = require('./analyticsRoutes');
+const affiliateRoutes = require('./affiliateRoutes');
+const affiliateNotificationRoutes = require('./affiliateNotificationRoutes');
+const walletRoutes = require('./walletRoutes');
+const qrCodeRoutes = require('./qrCodeRoutes');
+
+// Import security middleware
+const { 
+  apiLimiter, 
+  authLimiter, 
+  strictAuthLimiter, 
+  paymentLimiter,
+  uploadLimiter,
+  affiliateLimiter,
+  affiliateNotificationLimiter,
+  suspiciousActivityLimiter,
+  createAdvancedRateLimiter 
+} = require('../middleware/rateLimitMiddleware');
+const { 
+  sanitizeInput, 
+  validateCommonInputs, 
+  preventParameterPollution,
+  detectBruteForce,
+  logFailedAttempt 
+} = require('../middleware/securityMiddleware');
+
+const router = express.Router();
+
+// Create QR code specific rate limiter
+const qrCodeLimiter = createAdvancedRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxPerIP: 30,
+  maxPerUser: 60,
+  keyPrefix: 'qr_code',
+  message: 'Too many QR code requests, please try again after 15 minutes',
+});
+
+// Apply global security middleware to all routes
+router.use(suspiciousActivityLimiter);
+router.use(detectBruteForce);
+router.use(logFailedAttempt);
+router.use(sanitizeInput);
+router.use(validateCommonInputs);
+router.use(preventParameterPollution);
+
+// Apply rate limiting based on route sensitivity
+router.use('/auth', authLimiter);
+router.use('/users', apiLimiter);
+router.use('/products', paymentLimiter); // Products involve payments
+router.use('/messages', apiLimiter);
+router.use('/posts', apiLimiter);
+router.use('/categories', apiLimiter);
+router.use('/analytics', apiLimiter);
+router.use('/affiliates', affiliateLimiter); // Affiliate-specific rate limiting
+router.use('/affiliate-notifications', affiliateNotificationLimiter); // Notification-specific rate limiting
+router.use('/wallets', paymentLimiter); // Wallets involve financial operations
+router.use('/qr-codes', qrCodeLimiter); // QR code specific rate limiting
+
+// Define base routes for each module
+router.use('/auth', authRoutes);
+router.use('/users', userRoutes);
+router.use('/products', productRoutes);
+router.use('/messages', messageRoutes);
+router.use('/posts', postRoutes);
+router.use('/categories', categoryRoutes);
+router.use('/analytics', analyticsRoutes);
+router.use('/affiliates', affiliateRoutes);
+router.use('/affiliate-notifications', affiliateNotificationRoutes);
+router.use('/wallets', walletRoutes);
+router.use('/qr-codes', qrCodeRoutes);
+
+module.exports = router;

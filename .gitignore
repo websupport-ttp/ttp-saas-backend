@@ -1,0 +1,84 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-store/
+.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS generated files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Uploads (user-generated content)
+uploads/
+
+# Test reports and coverage
+coverage/
+.nyc_output/
+
+# Development and testing files
+tests/
+scripts/
+tools/
+docs/api-validation-report-*.json
+docs/api-documentation-*.json
+docs/api-documentation-*.md
+
+# Kiro IDE configuration
+.kiro/
+
+# Development tools
+jest.resultProcessor.js
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.temp/
+
+# Environment-specific files
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Build artifacts
+dist/
+build/
+out/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-*
+.atom/
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~

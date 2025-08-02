@@ -1,0 +1,281 @@
+name: API Documentation Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'v1/routes/**'
+      - 'docs/**'
+      - 'v1/controllers/**'
+      - 'v1/utils/documentationValidator.js'
+      - 'scripts/validate-docs.js'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'v1/routes/**'
+      - 'docs/**'
+      - 'v1/controllers/**'
+      - 'v1/utils/documentationValidator.js'
+      - 'scripts/validate-docs.js'
+  schedule:
+    # Run daily at 2 AM UTC to catch documentation drift
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      save_report:
+        description: 'Save validation report as artifact'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  validate-documentation:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Setup test environment
+      run: |
+        cp .env.example .env
+        echo "NODE_ENV=test" >> .env
+        echo "MONGODB_URI=mongodb://localhost:27017/ttp_test" >> .env
+        
+    - name: Start MongoDB
+      uses: supercharge/mongodb-github-action@1.10.0
+      with:
+        mongodb-version: '6.0'
+        mongodb-replica-set: test-rs
+        
+    - name: Run documentation validation
+      id: validation
+      run: |
+        echo "Running API documentation validation..."
+        node scripts/validate-docs.js --save-report --format json > validation-results.json
+        
+        # Extract key metrics for GitHub Actions summary
+        TOTAL_ENDPOINTS=$(cat validation-results.json | jq '.summary.totalEndpoints')
+        VALIDATED_ENDPOINTS=$(cat validation-results.json | jq '.summary.validatedEndpoints')
+        MISSING_DOCS=$(cat validation-results.json | jq '.summary.missingDocumentation')
+        ERRORS=$(cat validation-results.json | jq '.errors | length')
+        WARNINGS=$(cat validation-results.json | jq '.warnings | length')
+        
+        echo "total_endpoints=$TOTAL_ENDPOINTS" >> $GITHUB_OUTPUT
+        echo "validated_endpoints=$VALIDATED_ENDPOINTS" >> $GITHUB_OUTPUT
+        echo "missing_docs=$MISSING_DOCS" >> $GITHUB_OUTPUT
+        echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+        echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
+        
+        # Calculate coverage percentage
+        if [ "$TOTAL_ENDPOINTS" -gt 0 ]; then
+          COVERAGE=$(echo "scale=2; $VALIDATED_ENDPOINTS * 100 / $TOTAL_ENDPOINTS" | bc)
+        else
+          COVERAGE=0
+        fi
+        echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+        
+    - name: Run documentation integration tests
+      run: |
+        npm test -- --testPathPattern=documentationIntegration.test.js --verbose
+        
+    - name: Generate validation summary
+      run: |
+        echo "# 📊 API Documentation Validation Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Total Endpoints:** ${{ steps.validation.outputs.total_endpoints }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Documented Endpoints:** ${{ steps.validation.outputs.validated_endpoints }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Documentation Coverage:** ${{ steps.validation.outputs.coverage }}%" >> $GITHUB_STEP_SUMMARY
+        echo "- **Missing Documentation:** ${{ steps.validation.outputs.missing_docs }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Errors:** ${{ steps.validation.outputs.errors }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Warnings:** ${{ steps.validation.outputs.warnings }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Add status badge
+        if [ "${{ steps.validation.outputs.errors }}" -eq 0 ]; then
+          if [ "${{ steps.validation.outputs.warnings }}" -eq 0 ]; then
+            echo "## Status: ✅ All checks passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Status: ⚠️ Warnings found" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "## Status: ❌ Errors found" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Add coverage badge
+        COVERAGE=${{ steps.validation.outputs.coverage }}
+        if (( $(echo "$COVERAGE >= 90" | bc -l) )); then
+          echo "## Coverage: 🟢 Excellent ($COVERAGE%)" >> $GITHUB_STEP_SUMMARY
+        elif (( $(echo "$COVERAGE >= 80" | bc -l) )); then
+          echo "## Coverage: 🟡 Good ($COVERAGE%)" >> $GITHUB_STEP_SUMMARY
+        elif (( $(echo "$COVERAGE >= 60" | bc -l) )); then
+          echo "## Coverage: 🟠 Fair ($COVERAGE%)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "## Coverage: 🔴 Poor ($COVERAGE%)" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+    - name: Upload validation report
+      if: always() && (github.event.inputs.save_report == 'true' || github.event_name == 'schedule')
+      uses: actions/upload-artifact@v4
+      with:
+        name: api-documentation-validation-report-node-${{ matrix.node-version }}
+        path: |
+          validation-results.json
+          api-validation-report-*.json
+        retention-days: 30
+        
+    - name: Comment PR with validation results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const results = JSON.parse(fs.readFileSync('validation-results.json', 'utf8'));
+          
+          const coverage = ${{ steps.validation.outputs.coverage }};
+          const coverageEmoji = coverage >= 90 ? '🟢' : coverage >= 80 ? '🟡' : coverage >= 60 ? '🟠' : '🔴';
+          const statusEmoji = results.errors.length === 0 ? (results.warnings.length === 0 ? '✅' : '⚠️') : '❌';
+          
+          let comment = `## ${statusEmoji} API Documentation Validation Report\n\n`;
+          comment += `| Metric | Value |\n`;
+          comment += `|--------|-------|\n`;
+          comment += `| Total Endpoints | ${{ steps.validation.outputs.total_endpoints }} |\n`;
+          comment += `| Documented | ${{ steps.validation.outputs.validated_endpoints }} |\n`;
+          comment += `| Coverage | ${coverageEmoji} ${coverage}% |\n`;
+          comment += `| Errors | ${{ steps.validation.outputs.errors }} |\n`;
+          comment += `| Warnings | ${{ steps.validation.outputs.warnings }} |\n\n`;
+          
+          if (results.errors.length > 0) {
+            comment += `### ❌ Errors Found\n`;
+            results.errors.slice(0, 5).forEach((error, index) => {
+              comment += `${index + 1}. **${error.type}**: ${error.message}\n`;
+            });
+            if (results.errors.length > 5) {
+              comment += `... and ${results.errors.length - 5} more errors\n`;
+            }
+            comment += `\n`;
+          }
+          
+          if (results.warnings.length > 0) {
+            comment += `### ⚠️ Warnings Found\n`;
+            results.warnings.slice(0, 5).forEach((warning, index) => {
+              comment += `${index + 1}. **${warning.type}**: ${warning.message}\n`;
+            });
+            if (results.warnings.length > 5) {
+              comment += `... and ${results.warnings.length - 5} more warnings\n`;
+            }
+            comment += `\n`;
+          }
+          
+          comment += `<details>\n<summary>View detailed validation results</summary>\n\n`;
+          comment += `\`\`\`json\n${JSON.stringify(results.summary, null, 2)}\n\`\`\`\n\n`;
+          comment += `</details>\n`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+          
+    - name: Fail job if critical errors found
+      if: steps.validation.outputs.errors > 0
+      run: |
+        echo "❌ Critical documentation errors found. Please fix before merging."
+        exit 1
+        
+    - name: Warn if coverage is low
+      if: steps.validation.outputs.coverage < 80
+      run: |
+        echo "⚠️ Documentation coverage is below 80%. Current: ${{ steps.validation.outputs.coverage }}%"
+        echo "Consider adding documentation for missing endpoints."
+
+  validate-specific-endpoints:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Validate critical endpoints
+      run: |
+        echo "Validating critical API endpoints..."
+        
+        # List of critical endpoints to validate
+        CRITICAL_ENDPOINTS=(
+          "GET /api/v1/health"
+          "POST /api/v1/auth/register"
+          "POST /api/v1/auth/login"
+          "GET /api/v1/users/profile"
+          "POST /api/v1/posts"
+          "GET /api/v1/analytics/summary"
+        )
+        
+        for endpoint in "${CRITICAL_ENDPOINTS[@]}"; do
+          echo "Validating: $endpoint"
+          node scripts/validate-docs.js --endpoint "$endpoint" --format json || echo "⚠️ Validation failed for $endpoint"
+        done
+        
+  documentation-drift-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Check for documentation drift
+      run: |
+        echo "Checking for documentation drift..."
+        node scripts/validate-docs.js --save-report --format json > drift-check.json
+        
+        MISSING_DOCS=$(cat drift-check.json | jq '.summary.missingDocumentation')
+        WARNINGS=$(cat drift-check.json | jq '.warnings | length')
+        
+        if [ "$MISSING_DOCS" -gt 5 ] || [ "$WARNINGS" -gt 10 ]; then
+          echo "⚠️ Significant documentation drift detected!"
+          echo "Missing documentation: $MISSING_DOCS"
+          echo "Total warnings: $WARNINGS"
+          
+          # Create an issue for documentation drift
+          gh issue create \
+            --title "📚 Documentation Drift Detected - $(date +%Y-%m-%d)" \
+            --body "Automated check detected significant documentation drift. Please review and update API documentation." \
+            --label "documentation,maintenance" \
+            --assignee "@me"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

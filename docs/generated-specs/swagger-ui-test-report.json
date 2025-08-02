@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-07-29T23:07:03.532Z",
+  "testResults": {
+    "specGeneration": true,
+    "uiRendering": true,
+    "endpointCount": 117,
+    "schemaCount": 92,
+    "errors": [],
+    "warnings": []
+  },
+  "summary": {
+    "allTestsPassed": true,
+    "totalErrors": 0,
+    "totalWarnings": 0
+  }
+}

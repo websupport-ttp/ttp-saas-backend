@@ -2,7 +2,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { UserRoles } = require('../utils/constants');
+const { UserRoles, StaffClearanceLevel } = require('../utils/constants');
 
 /**
  * @description Mongoose schema for the User model.
@@ -55,6 +55,40 @@ const UserSchema = new mongoose.Schema({
     type: String,
     enum: Object.values(UserRoles),
     default: UserRoles.USER,
+  },
+  // Staff clearance level (only applicable when role is 'Staff')
+  staffClearanceLevel: {
+    type: Number,
+    enum: Object.values(StaffClearanceLevel),
+    default: null,
+    validate: {
+      validator: function(value) {
+        // If role is Staff, clearance level is required
+        if (this.role === UserRoles.STAFF && !value) {
+          return false;
+        }
+        // If role is not Staff, clearance level should be null
+        if (this.role !== UserRoles.STAFF && value !== null) {
+          return false;
+        }
+        return true;
+      },
+      message: 'Staff clearance level is required for staff members and should be null for non-staff users'
+    }
+  },
+  // Staff department/position (optional, for additional context)
+  staffDepartment: {
+    type: String,
+    trim: true,
+    default: null,
+  },
+  // Staff employee ID (optional)
+  staffEmployeeId: {
+    type: String,
+    trim: true,
+    unique: true,
+    sparse: true,
+    default: null,
   },
   isEmailVerified: {
     type: Boolean,
@@ -207,10 +241,13 @@ UserSchema.index({ lastLoginAt: -1 });
 UserSchema.index({ createdAt: -1 });
 UserSchema.index({ firstPurchaseAt: -1 });
 UserSchema.index({ lastPurchaseAt: -1 });
+UserSchema.index({ staffClearanceLevel: 1 });
+UserSchema.index({ staffEmployeeId: 1 });
 
 // Compound indexes for analytics
 UserSchema.index({ customerSegment: 1, totalSpent: -1 });
 UserSchema.index({ role: 1, createdAt: -1 });
+UserSchema.index({ role: 1, staffClearanceLevel: 1 });
 
 // Method to update customer behavior after login
 UserSchema.methods.updateLoginActivity = function() {
@@ -245,6 +282,28 @@ UserSchema.methods.updatePreferredItemTypes = function(itemType) {
     }
   }
   return this.save();
+};
+
+// Method to check if user has minimum clearance level
+UserSchema.methods.hasMinimumClearance = function(requiredLevel) {
+  if (this.role !== UserRoles.STAFF) {
+    return false;
+  }
+  return this.staffClearanceLevel >= requiredLevel;
+};
+
+// Method to check if user is staff
+UserSchema.methods.isStaff = function() {
+  return this.role === UserRoles.STAFF;
+};
+
+// Method to get clearance level description
+UserSchema.methods.getClearanceDescription = function() {
+  if (this.role !== UserRoles.STAFF || !this.staffClearanceLevel) {
+    return null;
+  }
+  const { StaffClearanceDescription } = require('../utils/constants');
+  return StaffClearanceDescription[this.staffClearanceLevel];
 };
 
 // Static method to get customer analytics

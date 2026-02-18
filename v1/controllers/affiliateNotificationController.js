@@ -17,7 +17,7 @@ class AffiliateNotificationController {
   static async getNotificationPreferences(req, res) {
     try {
       const { affiliateId } = req.params;
-      
+
       if (!affiliateId) {
         throw new ApiError('Affiliate ID is required', StatusCodes.BAD_REQUEST);
       }
@@ -31,7 +31,7 @@ class AffiliateNotificationController {
       });
     } catch (error) {
       logger.error('Error getting notification preferences:', error);
-      
+
       if (error instanceof ApiError) {
         return res.status(error.statusCode).json({
           success: false,
@@ -55,7 +55,7 @@ class AffiliateNotificationController {
     try {
       const { affiliateId } = req.params;
       const preferences = req.body;
-      
+
       if (!affiliateId) {
         throw new ApiError('Affiliate ID is required', StatusCodes.BAD_REQUEST);
       }
@@ -63,7 +63,7 @@ class AffiliateNotificationController {
       // Validate preferences structure
       const validPreferences = ['email', 'sms', 'monthlyStatements'];
       const invalidKeys = Object.keys(preferences).filter(key => !validPreferences.includes(key));
-      
+
       if (invalidKeys.length > 0) {
         throw new ApiError(`Invalid preference keys: ${invalidKeys.join(', ')}`, StatusCodes.BAD_REQUEST);
       }
@@ -76,7 +76,7 @@ class AffiliateNotificationController {
       });
 
       const updatedPreferences = await AffiliateNotificationService.updateNotificationPreferences(
-        affiliateId, 
+        affiliateId,
         preferences
       );
 
@@ -87,7 +87,7 @@ class AffiliateNotificationController {
       });
     } catch (error) {
       logger.error('Error updating notification preferences:', error);
-      
+
       if (error instanceof ApiError) {
         return res.status(error.statusCode).json({
           success: false,
@@ -111,7 +111,7 @@ class AffiliateNotificationController {
     try {
       const { affiliateId } = req.params;
       const { year, month } = req.query;
-      
+
       if (!affiliateId) {
         throw new ApiError('Affiliate ID is required', StatusCodes.BAD_REQUEST);
       }
@@ -136,7 +136,7 @@ class AffiliateNotificationController {
       });
     } catch (error) {
       logger.error('Error getting monthly statement:', error);
-      
+
       if (error instanceof ApiError) {
         return res.status(error.statusCode).json({
           success: false,
@@ -159,7 +159,7 @@ class AffiliateNotificationController {
   static async getAvailableStatementMonths(req, res) {
     try {
       const { affiliateId } = req.params;
-      
+
       if (!affiliateId) {
         throw new ApiError('Affiliate ID is required', StatusCodes.BAD_REQUEST);
       }
@@ -173,7 +173,7 @@ class AffiliateNotificationController {
       });
     } catch (error) {
       logger.error('Error getting available statement months:', error);
-      
+
       if (error instanceof ApiError) {
         return res.status(error.statusCode).json({
           success: false,
@@ -197,7 +197,7 @@ class AffiliateNotificationController {
     try {
       const { affiliateId } = req.params;
       const { year, month } = req.body;
-      
+
       if (!affiliateId) {
         throw new ApiError('Affiliate ID is required', StatusCodes.BAD_REQUEST);
       }
@@ -222,7 +222,7 @@ class AffiliateNotificationController {
       });
     } catch (error) {
       logger.error('Error sending monthly statement:', error);
-      
+
       if (error instanceof ApiError) {
         return res.status(error.statusCode).json({
           success: false,
@@ -245,7 +245,7 @@ class AffiliateNotificationController {
   static async sendAllMonthlyStatements(req, res) {
     try {
       const { year, month } = req.body;
-      
+
       if (!year || !month) {
         throw new ApiError('Year and month are required', StatusCodes.BAD_REQUEST);
       }
@@ -266,7 +266,7 @@ class AffiliateNotificationController {
       });
     } catch (error) {
       logger.error('Error sending all monthly statements:', error);
-      
+
       if (error instanceof ApiError) {
         return res.status(error.statusCode).json({
           success: false,

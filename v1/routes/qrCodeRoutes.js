@@ -9,7 +9,7 @@ const {
 } = require('../controllers/qrCodeController');
 
 const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
-const validate = require('../middleware/validationMiddleware');
+const { validate } = require('../middleware/validationMiddleware');
 const { createAuditMiddleware } = require('../middleware/auditMiddleware');
 const { 
   qrCodeGenerationLimiter,

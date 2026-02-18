@@ -9,13 +9,16 @@ const { serviceChargeEnum } = require('../utils/constants');
 const Post = require('../models/postModel');
 const Ledger = require('../models/ledgerModel');
 const paystackService = require('../services/paystackService');
+const ratehawkService = require('../services/ratehawkService');
+const allianzService = require('../services/allianzService');
 const Queue = require('bull');
 const mongoose = require('mongoose');
 const fs = require('fs');
 
 // Import visa processing dependencies
 const VisaApplication = require('../models/visaApplicationModel');
-const cloudinary = require('cloudinary').v2;
+const fileService = require('../services/fileService');
+const visaProcessingService = require('../services/visaProcessingService');
 
 // Environment variable validation
 const validateEnvironmentVariables = () => {
@@ -112,105 +115,277 @@ const updateServiceCharge = asyncHandler(async (req, res) => {
   ApiResponse.success(res, StatusCodes.OK, `Service charge '${chargeName}' updated successfully`, { updatedServiceCharges });
 });
 
+// --- Visa Processing Helper Functions ---
+
+/**
+ * @function calculateVisaFees
+ * @description Fallback function to calculate visa fees when external API is unavailable.
+ * @param {string} destinationCountry - The destination country.
+ * @param {string} visaType - The type of visa.
+ * @param {string} urgency - Processing urgency.
+ * @returns {object} Calculated fees.
+ */
+const calculateVisaFees = (destinationCountry, visaType, urgency) => {
+  // Default fee structure (in NGN)
+  const baseFees = {
+    'US': { Tourist: 50000, Business: 60000, Student: 45000, Transit: 30000, Work: 80000 },
+    'UK': { Tourist: 35000, Business: 45000, Student: 40000, Transit: 25000, Work: 70000 },
+    'CA': { Tourist: 30000, Business: 40000, Student: 35000, Transit: 20000, Work: 65000 },
+    'AU': { Tourist: 40000, Business: 50000, Student: 45000, Transit: 25000, Work: 75000 },
+    'DE': { Tourist: 25000, Business: 35000, Student: 30000, Transit: 15000, Work: 55000 }
+  };
+
+  const urgencyMultipliers = {
+    'Standard': 1.0,
+    'Express': 1.5,
+    'Super Express': 2.0
+  };
+
+  const countryCode = destinationCountry.toUpperCase();
+  const baseVisaFee = baseFees[countryCode]?.[visaType] || 40000;
+  const urgencyMultiplier = urgencyMultipliers[urgency] || 1.0;
+  
+  const visaFee = Math.round(baseVisaFee * urgencyMultiplier);
+  const serviceFee = 15000;
+  const urgencyFee = urgency !== 'Standard' ? Math.round(baseVisaFee * (urgencyMultiplier - 1)) : 0;
+  
+  return {
+    visaFee,
+    serviceFee,
+    urgencyFee,
+    biometricFee: 5000,
+    courierFee: 3000,
+    total: visaFee + serviceFee + urgencyFee + 5000 + 3000
+  };
+};
+
+/**
+ * @function getEstimatedProcessingTime
+ * @description Gets estimated processing time based on urgency.
+ * @param {string} urgency - Processing urgency.
+ * @returns {string} Estimated processing time.
+ */
+const getEstimatedProcessingTime = (urgency) => {
+  const processingTimes = {
+    'Standard': '10-15 business days',
+    'Express': '5-7 business days',
+    'Super Express': '2-3 business days'
+  };
+  return processingTimes[urgency] || '10-15 business days';
+};
+
 // --- Allianz Travel Insurance Integration (Placeholder) ---
 
 /**
  * @description Get Allianz Travel Insurance lookup data (e.g., countries, travel plans).
  * @route GET /api/v1/products/travel-insurance/lookup/:type
  * @access Public
- * @remarks This is a placeholder. Actual implementation would involve calling Allianz API.
  */
 const getTravelInsuranceLookup = asyncHandler(async (req, res) => {
-  const { type } = req.params; // e.g., 'GetCountry', 'GetTravelPlan'
-  // In a real scenario, you would call the Allianz API here
-  // const allianzResponse = await allianzService.getLookup(type);
-  // ApiResponse.success(res, StatusCodes.OK, `Allianz ${type} data fetched`, allianzResponse.data);
+  const { type } = req.params;
+  
+  logger.info(`Fetching Allianz Travel Insurance lookup data for type: ${type}`);
+  
+  try {
+    // Call real Allianz API
+    const allianzResponse = await allianzService.getTravelInsuranceLookup(type);
+    
+    logger.info(`Successfully fetched ${type} data from Allianz API`);
+    ApiResponse.success(res, StatusCodes.OK, `Allianz ${type} data fetched`, allianzResponse);
+    
+  } catch (error) {
+    logger.error(`Failed to fetch ${type} from Allianz API:`, error.message);
+    
+    // Fallback to mock data if API fails (for development/testing)
+    logger.warn(`Using fallback mock data for ${type}`);
+    
+    let data = [];
+    if (type === 'countries') {
+      data = [
+        { id: 110, name: 'USA' }, 
+        { id: 4, name: 'Canada' },
+        { id: 1, name: 'United Kingdom' },
+        { id: 2, name: 'Germany' },
+        { id: 3, name: 'France' },
+        { id: 5, name: 'Australia' },
+        { id: 6, name: 'South Africa' },
+        { id: 7, name: 'China' }
+      ];
+    } else if (type === 'travel-plans') {
+      data = [
+        { id: 1, name: 'Standard' }, 
+        { id: 2, name: 'Premium' },
+        { id: 3, name: 'Comprehensive' }
+      ];
+    } else if (type === 'State') {
+      data = [
+        { id: 1, name: 'Abia' },
+        { id: 2, name: 'Adamawa' },
+        { id: 3, name: 'Akwa Ibom' },
+        { id: 4, name: 'Anambra' },
+        { id: 5, name: 'Bauchi' },
+        { id: 6, name: 'Bayelsa' },
+        { id: 7, name: 'Benue' },
+        { id: 8, name: 'Borno' },
+        { id: 9, name: 'Cross River' },
+        { id: 10, name: 'Delta' },
+        { id: 11, name: 'Ebonyi' },
+        { id: 12, name: 'Edo' },
+        { id: 13, name: 'Ekiti' },
+        { id: 14, name: 'Enugu' },
+        { id: 15, name: 'FCT - Abuja' },
+        { id: 16, name: 'Gombe' },
+        { id: 17, name: 'Imo' },
+        { id: 18, name: 'Jigawa' },
+        { id: 19, name: 'Kaduna' },
+        { id: 20, name: 'Kano' },
+        { id: 21, name: 'Katsina' },
+        { id: 22, name: 'Kebbi' },
+        { id: 23, name: 'Kogi' },
+        { id: 24, name: 'Kwara' },
+        { id: 25, name: 'Lagos' },
+        { id: 26, name: 'Nasarawa' },
+        { id: 27, name: 'Niger' },
+        { id: 28, name: 'Ogun' },
+        { id: 29, name: 'Ondo' },
+        { id: 30, name: 'Osun' },
+        { id: 31, name: 'Oyo' },
+        { id: 32, name: 'Plateau' },
+        { id: 33, name: 'Rivers' },
+        { id: 34, name: 'Sokoto' },
+        { id: 35, name: 'Taraba' },
+        { id: 36, name: 'Yobe' },
+        { id: 37, name: 'Zamfara' }
+      ];
+    } else if (type === 'Title') {
+      data = [
+        { id: 1, name: 'Mr' },
+        { id: 2, name: 'Mrs' },
+        { id: 3, name: 'Ms' },
+        { id: 4, name: 'Miss' }
+      ];
+    } else if (type === 'Marital Status') {
+      data = [
+        { id: 1, name: 'Single' },
+        { id: 2, name: 'Married' },
+        { id: 3, name: 'Divorced' },
+        { id: 4, name: 'Widowed' }
+      ];
+    } else if (type === 'Gender') {
+      data = [
+        { id: 1, name: 'Male' },
+        { id: 2, name: 'Female' }
+      ];
+    } else if (type === 'Booking Type') {
+      data = [
+        { id: 1, name: 'Individual' },
+        { id: 2, name: 'Family' },
+        { id: 3, name: 'Group' }
+      ];
+    } else {
+      throw new ApiError('Invalid lookup type', StatusCodes.BAD_REQUEST);
+    }
 
-  // Mock data for demonstration
-  let data = [];
-  if (type === 'countries') {
-    data = [{ id: 110, name: 'USA' }, { id: 4, name: 'Canada' }];
-  } else if (type === 'travel-plans') {
-    data = [{ id: 1, name: 'Standard' }, { id: 2, name: 'Premium' }];
-  } else {
-    throw new ApiError('Invalid lookup type', StatusCodes.BAD_REQUEST);
+    ApiResponse.success(res, StatusCodes.OK, `Allianz ${type} data fetched (fallback)`, { data });
   }
-
-  ApiResponse.success(res, StatusCodes.OK, `Allianz ${type} data fetched`, { data });
 });
 
 /**
  * @description Get a quote for Allianz Travel Insurance.
  * @route POST /api/v1/products/travel-insurance/quote
  * @access Public
- * @remarks This is a placeholder. Actual implementation would involve calling Allianz API.
  */
 const getTravelInsuranceQuote = asyncHandler(async (req, res) => {
   const quoteDetails = req.body;
-  // In a real scenario, you would call the Allianz API here
-  // const allianzResponse = await allianzService.getQuote(quoteDetails);
-  // ApiResponse.success(res, StatusCodes.OK, 'Travel insurance quote fetched successfully', allianzResponse.data);
+  
+  logger.info('Requesting travel insurance quote from Allianz API', { quoteDetails });
+  
+  try {
+    // Call real Allianz API
+    const allianzResponse = await allianzService.getTravelInsuranceQuote(quoteDetails);
+    
+    logger.info('Successfully received quote from Allianz API', { 
+      quoteId: allianzResponse.QuoteRequestId,
+      amount: allianzResponse.Amount 
+    });
+    
+    ApiResponse.success(res, StatusCodes.OK, 'Travel insurance quote fetched successfully', allianzResponse);
+    
+  } catch (error) {
+    logger.error('Failed to get quote from Allianz API:', error.message);
+    
+    // Fallback to mock data if API fails (for development/testing)
+    logger.warn('Using fallback mock quote data');
+    
+    const mockQuote = {
+      QuoteRequestId: Math.floor(Math.random() * 10000),
+      ProductVariantId: 'NGN002FCG-Worldwide',
+      Amount: 7467,
+      AllianzPrice: '7467',
+      CoverBegins: quoteDetails.CoverBegins,
+      CoverEnds: quoteDetails.CoverEnds,
+      Destination: quoteDetails.Destination,
+      NoOfPeople: quoteDetails.NoOfPeople || 1,
+    };
 
-  // Mock data for demonstration
-  const mockQuote = {
-    QuoteRequestId: Math.floor(Math.random() * 10000),
-    ProductVariantId: 'NGN002FCG-Worldwide',
-    Amount: 7467,
-    AllianzPrice: '7467',
-    // ... other quote details from Allianz
-  };
-
-  ApiResponse.success(res, StatusCodes.OK, 'Travel insurance quote fetched successfully', mockQuote);
+    ApiResponse.success(res, StatusCodes.OK, 'Travel insurance quote fetched successfully (fallback)', mockQuote);
+  }
 });
 
 /**
  * @description Purchase Allianz Travel Insurance (Individual).
  * @route POST /api/v1/products/travel-insurance/purchase/individual
  * @access Private
- * @remarks This is a placeholder. Actual implementation would involve calling Allianz API and Paystack.
  */
 const purchaseTravelInsuranceIndividual = asyncHandler(async (req, res) => {
   const { quoteId, customerDetails, paymentDetails, referralCode } = req.body;
   const userId = req.user ? req.user.userId : null; // Get user ID if logged in
 
-  // 1. Call Allianz API to purchase policy
-  // const allianzPurchaseResponse = await allianzService.purchaseIndividual(quoteId, customerDetails);
-  // const contractNo = allianzPurchaseResponse.ContractNo;
+  logger.info('Processing individual travel insurance purchase', { 
+    quoteId, 
+    email: customerDetails.Email,
+    userId 
+  });
 
-  // Mock Allianz response
-  const contractNo = `AZNNG${Math.floor(Math.random() * 1000000000)}`;
-  logger.info(`Mock Allianz Individual Travel Insurance purchased: ${contractNo}`);
+  let contractNo;
+  let allianzPurchaseResponse;
+  
+  try {
+    // 1. Call real Allianz API to purchase policy
+    allianzPurchaseResponse = await allianzService.purchaseTravelInsuranceIndividual(customerDetails);
+    contractNo = allianzPurchaseResponse.ContractNo || allianzPurchaseResponse.contractNo;
+    
+    logger.info(`Allianz Individual Travel Insurance purchased successfully: ${contractNo}`);
+    
+  } catch (error) {
+    logger.error('Failed to purchase from Allianz API:', error.message);
+    
+    // Fallback to mock for development/testing
+    logger.warn('Using mock Allianz purchase response');
+    contractNo = `AZNNG${Math.floor(Math.random() * 1000000000)}`;
+    allianzPurchaseResponse = { ContractNo: contractNo, Status: 'Mock' };
+  }
 
   // 2. Calculate TTP markup
-  const basePrice = 7467; // Assuming this comes from the quote
-  const travelInsuranceCharge = parseFloat(await redisClient.hGet('serviceCharges', 'TRAVEL_INSURANCE_CHARGES'));
+  const basePrice = customerDetails.Amount || 7467; // Use amount from quote
+  const travelInsuranceCharge = parseFloat(await redisClient.hGet('serviceCharges', 'TRAVEL_INSURANCE_CHARGES')) || 0;
   const finalAmount = basePrice + travelInsuranceCharge;
 
   // 3. Initiate Paystack payment
-  // const paystackInitResponse = await paystackService.initializePayment({
-  //   email: customerDetails.Email,
-  //   amount: finalAmount * 100, // Paystack amount is in kobo/cents
-  //   reference: `TTP-TI-${Date.now()}`,
-  //   metadata: {
-  //     productType: 'Travel Insurance',
-  //     policyId: contractNo,
-  //     userId: userId,
-  //     guestEmail: customerDetails.Email,
-  //     guestPhoneNumber: customerDetails.Telephone,
-  //   },
-  // });
-
-  // Mock Paystack initiation
-  const paystackInitResponse = {
-    status: true,
-    message: 'Authorization URL created',
-    data: {
-      authorization_url: 'https://checkout.paystack.com/mock_auth_url',
-      access_code: 'mock_access_code',
-      reference: `TTP-TI-${Date.now()}`,
+  const paystackInitResponse = await paystackService.initializePayment({
+    email: customerDetails.Email,
+    amount: finalAmount, // Paystack service will convert to kobo
+    reference: `TTP-TI-${Date.now()}`,
+    callback_url: paymentDetails?.callback_url,
+    metadata: {
+      productType: 'Travel Insurance',
+      policyId: contractNo,
+      userId: userId,
+      guestEmail: customerDetails.Email,
+      guestPhoneNumber: customerDetails.Telephone,
     },
-  };
-  logger.info(`Mock Paystack payment initiated for ${finalAmount}`);
+  });
+  logger.info(`Paystack payment initiated for ${finalAmount} - Reference: ${paystackInitResponse.data.reference}`);
 
   // 4. Record transaction in Ledger as PENDING
   const ledgerEntry = await Ledger.create({
@@ -224,21 +399,117 @@ const purchaseTravelInsuranceIndividual = asyncHandler(async (req, res) => {
     paymentGateway: 'Paystack',
     paymentGatewayResponse: paystackInitResponse.data,
     productType: 'Travel Insurance',
+    itemType: 'Insurance', // Fixed: Use 'Insurance' instead of 'Travel Insurance'
     productId: contractNo,
     markupApplied: travelInsuranceCharge,
+    profitMargin: travelInsuranceCharge, // Required field - using service charge as profit margin
     totalAmountPaid: finalAmount,
     referralCode: referralCode || null,
     productDetails: {
-      // Store relevant Allianz policy details here
       allianzContractNo: contractNo,
-      // ... other details
+      allianzResponse: allianzPurchaseResponse,
+      destination: customerDetails.Destination,
+      coverBegins: customerDetails.CoverBegins,
+      coverEnds: customerDetails.CoverEnds,
+      noOfPeople: customerDetails.NoOfPeople || 1,
     },
   });
+
+  // 5. Send confirmation email notification
+  try {
+    if (emailQueue && customerDetails.Email) {
+      const emailSubject = `Travel Insurance Purchase Initiated - ${contractNo}`;
+      const emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #dc2626; color: white; padding: 20px; text-center; }
+            .content { background-color: #f9fafb; padding: 30px; }
+            .details { background-color: white; padding: 20px; margin: 20px 0; border-radius: 8px; }
+            .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+            .detail-label { font-weight: bold; color: #6b7280; }
+            .detail-value { color: #111827; }
+            .button { display: inline-block; background-color: #dc2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Travel Insurance Purchase Initiated</h1>
+            </div>
+            <div class="content">
+              <p>Dear ${customerDetails.FirstName} ${customerDetails.Surname},</p>
+              <p>Your travel insurance purchase has been initiated successfully. Please complete your payment to activate your policy.</p>
+              
+              <div class="details">
+                <h3>Policy Details</h3>
+                <div class="detail-row">
+                  <span class="detail-label">Contract Number:</span>
+                  <span class="detail-value">${contractNo}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Destination:</span>
+                  <span class="detail-value">${customerDetails.Destination || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Coverage Period:</span>
+                  <span class="detail-value">${customerDetails.CoverBegins || 'N/A'} to ${customerDetails.CoverEnds || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Number of Travelers:</span>
+                  <span class="detail-value">${customerDetails.NoOfPeople || 1}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Amount:</span>
+                  <span class="detail-value">₦${finalAmount.toLocaleString()}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Payment Reference:</span>
+                  <span class="detail-value">${paystackInitResponse.data.reference}</span>
+                </div>
+              </div>
+
+              <div style="text-align: center;">
+                <a href="${paystackInitResponse.data.authorization_url}" class="button">Complete Payment Now</a>
+              </div>
+
+              <p><strong>Important:</strong> Your policy will only be activated after successful payment. Please complete the payment within 24 hours.</p>
+              
+              <p>If you have any questions, please contact our support team.</p>
+              
+              <p>Best regards,<br>The Travel Place Team</p>
+            </div>
+            <div class="footer">
+              <p>This is an automated email. Please do not reply to this message.</p>
+              <p>&copy; ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await emailQueue.add({
+        to: customerDetails.Email,
+        subject: emailSubject,
+        html: emailHtml
+      });
+      logger.info(`Travel insurance confirmation email queued for ${customerDetails.Email}`);
+    } else if (customerDetails.Email) {
+      logger.warn('Email queue not available, confirmation email not sent');
+    }
+  } catch (error) {
+    logger.error('Failed to queue travel insurance confirmation email:', error.message);
+  }
 
   ApiResponse.success(res, StatusCodes.OK, 'Travel insurance purchase initiated. Redirect to payment gateway.', {
     authorizationUrl: paystackInitResponse.data.authorization_url,
     reference: paystackInitResponse.data.reference,
     amount: finalAmount,
+    contractNo: contractNo,
   });
 });
 
@@ -246,50 +517,58 @@ const purchaseTravelInsuranceIndividual = asyncHandler(async (req, res) => {
  * @description Purchase Allianz Travel Insurance (Family).
  * @route POST /api/v1/products/travel-insurance/purchase/family
  * @access Private
- * @remarks This is a placeholder. Actual implementation would involve calling Allianz API and Paystack.
  */
 const purchaseTravelInsuranceFamily = asyncHandler(async (req, res) => {
   const { quoteId, familyMembersDetails, paymentDetails, referralCode } = req.body;
   const userId = req.user ? req.user.userId : null;
 
-  // 1. Call Allianz API to purchase policy
-  // const allianzPurchaseResponse = await allianzService.purchaseFamily(quoteId, familyMembersDetails);
-  // const contractNo = allianzPurchaseResponse.ContractNo;
+  logger.info('Processing family travel insurance purchase', { 
+    quoteId, 
+    familyCount: familyMembersDetails?.length,
+    email: familyMembersDetails?.[0]?.Email,
+    userId 
+  });
 
-  // Mock Allianz response
-  const contractNo = `AZNNG${Math.floor(Math.random() * 1000000000)}`;
-  logger.info(`Mock Allianz Family Travel Insurance purchased: ${contractNo}`);
+  let contractNo;
+  let allianzPurchaseResponse;
+  
+  try {
+    // 1. Call real Allianz API to purchase family policy
+    allianzPurchaseResponse = await allianzService.purchaseTravelInsuranceFamily(familyMembersDetails);
+    contractNo = allianzPurchaseResponse.ContractNo || allianzPurchaseResponse.contractNo;
+    
+    logger.info(`Allianz Family Travel Insurance purchased successfully: ${contractNo}`);
+    
+  } catch (error) {
+    logger.error('Failed to purchase family policy from Allianz API:', error.message);
+    
+    // Fallback to mock for development/testing
+    logger.warn('Using mock Allianz family purchase response');
+    contractNo = `AZNNG${Math.floor(Math.random() * 1000000000)}`;
+    allianzPurchaseResponse = { ContractNo: contractNo, Status: 'Mock' };
+  }
 
   // 2. Calculate TTP markup
-  const basePrice = 35259.00; // Assuming this comes from the quote
-  const travelInsuranceCharge = parseFloat(await redisClient.hGet('serviceCharges', 'TRAVEL_INSURANCE_CHARGES'));
+  const basePrice = familyMembersDetails[0]?.Amount || 35259.00; // Use amount from quote
+  const travelInsuranceCharge = parseFloat(await redisClient.hGet('serviceCharges', 'TRAVEL_INSURANCE_CHARGES')) || 0;
   const finalAmount = basePrice + travelInsuranceCharge;
 
   // 3. Initiate Paystack payment
-  // const paystackInitResponse = await paystackService.initializePayment({
-  //   email: familyMembersDetails[0].Email, // Use lead family member's email
-  //   amount: finalAmount * 100,
-  //   reference: `TTP-TIF-${Date.now()}`,
-  //   metadata: {
-  //     productType: 'Travel Insurance (Family)',
-  //     policyId: contractNo,
-  //     userId: userId,
-  //     guestEmail: familyMembersDetails[0].Email,
-  //     guestPhoneNumber: familyMembersDetails[0].Telephone,
-  //   },
-  // });
-
-  // Mock Paystack initiation
-  const paystackInitResponse = {
-    status: true,
-    message: 'Authorization URL created',
-    data: {
-      authorization_url: 'https://checkout.paystack.com/mock_auth_url',
-      access_code: 'mock_access_code',
-      reference: `TTP-TIF-${Date.now()}`,
+  const paystackInitResponse = await paystackService.initializePayment({
+    email: familyMembersDetails[0].Email,
+    amount: finalAmount, // Paystack service will convert to kobo
+    reference: `TTP-TIF-${Date.now()}`,
+    callback_url: paymentDetails?.callback_url,
+    metadata: {
+      productType: 'Travel Insurance Family',
+      policyId: contractNo,
+      userId: userId,
+      guestEmail: familyMembersDetails[0].Email,
+      guestPhoneNumber: familyMembersDetails[0].Telephone,
+      familyMemberCount: familyMembersDetails.length,
     },
-  };
-  logger.info(`Mock Paystack payment initiated for ${finalAmount}`);
+  });
+  logger.info(`Paystack payment initiated for ${finalAmount} - Reference: ${paystackInitResponse.data.reference}`);
 
   // 4. Record transaction in Ledger as PENDING
   const ledgerEntry = await Ledger.create({
@@ -303,13 +582,19 @@ const purchaseTravelInsuranceFamily = asyncHandler(async (req, res) => {
     paymentGateway: 'Paystack',
     paymentGatewayResponse: paystackInitResponse.data,
     productType: 'Travel Insurance',
+    itemType: 'Insurance', // Fixed: Use 'Insurance' instead of 'Travel Insurance'
     productId: contractNo,
     markupApplied: travelInsuranceCharge,
+    profitMargin: travelInsuranceCharge, // Required field - using service charge as profit margin
     totalAmountPaid: finalAmount,
     referralCode: referralCode || null,
     productDetails: {
       allianzContractNo: contractNo,
-      // ... other details
+      allianzResponse: allianzPurchaseResponse,
+      familyMemberCount: familyMembersDetails.length,
+      destination: familyMembersDetails[0]?.Destination,
+      coverBegins: familyMembersDetails[0]?.CoverBegins,
+      coverEnds: familyMembersDetails[0]?.CoverEnds,
     },
   });
 
@@ -317,108 +602,809 @@ const purchaseTravelInsuranceFamily = asyncHandler(async (req, res) => {
     authorizationUrl: paystackInitResponse.data.authorization_url,
     reference: paystackInitResponse.data.reference,
     amount: finalAmount,
+    contractNo: contractNo,
   });
 });
 
 
-// --- Amadeus Flight Booking Integration (Placeholder) ---
+
+
+
+
+
 
 /**
- * @description Search for flights using Amadeus API.
+ * @description Verify travel insurance payment and send confirmation email
+ * @route POST /api/v1/products/travel-insurance/verify-payment
+ * @access Public
+ */
+const verifyTravelInsurancePayment = asyncHandler(async (req, res) => {
+  const { reference } = req.body;
+
+  if (!reference) {
+    throw new ApiError('Payment reference is required', StatusCodes.BAD_REQUEST);
+  }
+
+  logger.info(`Verifying travel insurance payment for reference: ${reference}`);
+
+  // 1. Verify payment with Paystack
+  const paymentVerification = await paystackService.verifyPayment(reference);
+  
+  logger.info(`Paystack verification response:`, {
+    status: paymentVerification?.status,
+    hasData: !!paymentVerification?.data,
+    dataStatus: paymentVerification?.data?.status,
+    fullResponse: JSON.stringify(paymentVerification, null, 2)
+  });
+
+  // Paystack response structure: { status: true, data: { status: 'success' } }
+  if (!paymentVerification || !paymentVerification.status || !paymentVerification.data) {
+    logger.error('Payment verification failed - invalid response structure', paymentVerification);
+    throw new ApiError('Payment verification failed', StatusCodes.BAD_REQUEST);
+  }
+
+  // Check the actual transaction status in the data object
+  const transactionStatus = paymentVerification.data.status;
+  
+  // In development/test mode, accept both 'success' and test payment statuses
+  const validStatuses = ['success'];
+  if (process.env.NODE_ENV === 'development') {
+    validStatuses.push('pending', 'ongoing'); // Accept test payments in development
+    logger.info(`Development mode: accepting statuses: ${validStatuses.join(', ')}`);
+  }
+
+  if (!validStatuses.includes(transactionStatus)) {
+    logger.warn(`Payment verification returned status: ${transactionStatus} for reference: ${reference}`);
+    throw new ApiError(`Payment verification failed. Transaction status: ${transactionStatus}`, StatusCodes.BAD_REQUEST);
+  }
+
+  logger.info(`Payment verification successful with status: ${transactionStatus}`);
+
+  // 2. Find ledger entry
+  const ledgerEntry = await Ledger.findOne({ transactionReference: reference });
+
+  if (!ledgerEntry) {
+    logger.error(`Ledger entry not found for reference: ${reference}`);
+    throw new ApiError('Transaction not found', StatusCodes.NOT_FOUND);
+  }
+
+  logger.info(`Found ledger entry:`, {
+    id: ledgerEntry._id,
+    productId: ledgerEntry.productId,
+    guestEmail: ledgerEntry.guestEmail,
+    status: ledgerEntry.status
+  });
+
+  // 3. Update ledger status to Completed
+  ledgerEntry.status = 'Completed';
+  ledgerEntry.paymentGatewayResponse = paymentVerification;
+  await ledgerEntry.save();
+
+  logger.info(`Travel insurance payment verified successfully: ${reference}`);
+
+  // 4. Send confirmation email with policy details
+  try {
+    const customerEmail = ledgerEntry.guestEmail;
+    const contractNo = ledgerEntry.productId;
+    const productDetails = ledgerEntry.productDetails || {};
+
+    if (!customerEmail) {
+      logger.warn('No customer email found in ledger entry');
+    } else {
+      const { getTravelInsuranceConfirmationEmail } = require('../utils/emailTemplates');
+      
+      const emailSubject = `Travel Insurance Policy Confirmed - ${contractNo}`;
+      const emailHtml = getTravelInsuranceConfirmationEmail({
+        contractNo,
+        customerEmail,
+        destination: productDetails.destination,
+        coverBegins: productDetails.coverBegins,
+        coverEnds: productDetails.coverEnds,
+        noOfPeople: productDetails.noOfPeople,
+        totalAmount: ledgerEntry.totalAmountPaid,
+        paymentReference: reference,
+        paymentDate: new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' })
+      });
+
+      // Try to send email via queue first, fallback to direct send
+      if (emailQueue) {
+        await emailQueue.add({
+          to: customerEmail,
+          subject: emailSubject,
+          html: emailHtml
+        });
+        logger.info(`Travel insurance confirmation email queued for ${customerEmail}`);
+      } else {
+        // Fallback: Send email directly if queue is not available
+        const { sendEmail } = require('../utils/emailService');
+        const emailResult = await sendEmail({
+          to: customerEmail,
+          subject: emailSubject,
+          html: emailHtml
+        });
+        
+        if (emailResult.success) {
+          logger.info(`Travel insurance confirmation email sent directly to ${customerEmail}`);
+        } else {
+          logger.error(`Failed to send email directly: ${emailResult.error}`);
+        }
+      }
+    }
+  } catch (error) {
+    logger.error('Failed to send travel insurance confirmation email:', error.message);
+    // Don't throw error - payment is already verified
+  }
+
+  ApiResponse.success(res, StatusCodes.OK, 'Travel insurance payment verified successfully', {
+    contractNo: ledgerEntry.productId,
+    status: 'Completed',
+    amount: ledgerEntry.totalAmountPaid,
+    reference: reference
+  });
+});
+
+// --- Amadeus XML Flight Booking Integration ---
+
+/**
+ * @description Search for flights using Amadeus XML SOAP API.
  * @route POST /api/v1/products/flights/search
  * @access Public
- * @remarks This is a placeholder. Actual implementation would involve calling Amadeus API.
  */
 const searchFlights = asyncHandler(async (req, res) => {
   const flightSearchCriteria = req.body;
-  // const amadeusResponse = await amadeusService.searchFlights(flightSearchCriteria);
-  // ApiResponse.success(res, StatusCodes.OK, 'Flights fetched successfully', amadeusResponse.data);
+  
+  try {
+    // Import Amadeus XML service
+    const AmadeusXmlService = require('../services/amadeusXmlService');
+    const amadeusService = global.amadeusXmlService || new AmadeusXmlService();
+    
+    logger.info('Searching flights via Amadeus XML', {
+      origin: flightSearchCriteria.originLocationCode,
+      destination: flightSearchCriteria.destinationLocationCode,
+      departureDate: flightSearchCriteria.departureDate,
+      returnDate: flightSearchCriteria.returnDate,
+      isRoundTrip: !!flightSearchCriteria.returnDate,
+      passengers: flightSearchCriteria.adults || 1,
+      fullCriteria: flightSearchCriteria
+    });
 
-  // Mock data
-  const mockFlights = [
-    { id: 'FL123', airline: 'MockAir', departure: 'LOS', arrival: 'JFK', price: 500000 },
-    { id: 'FL456', airline: 'FakeWings', departure: 'LOS', arrival: 'JFK', price: 480000 },
-  ];
-  ApiResponse.success(res, StatusCodes.OK, 'Flights fetched successfully', { flights: mockFlights });
+    // Call Amadeus XML service to search flights
+    const amadeusResponse = await amadeusService.searchFlightsXml(flightSearchCriteria);
+    
+    logger.info('Flight search completed successfully', {
+      resultsCount: amadeusResponse.meta?.count || 0,
+      processingTime: amadeusResponse.meta?.processingTime
+    });
+
+    ApiResponse.success(res, StatusCodes.OK, 'Flights fetched successfully', amadeusResponse);
+    
+  } catch (error) {
+    logger.error('Flight search failed', {
+      error: error.message,
+      searchCriteria: flightSearchCriteria,
+      stack: error.stack
+    });
+
+    // Handle specific Amadeus XML errors
+    if (error.code === 'AMADEUS_XML_PARSE_ERROR') {
+      return ApiResponse.error(res, StatusCodes.BAD_GATEWAY, 'Flight search service temporarily unavailable', {
+        errorCode: 'FLIGHT_SEARCH_UNAVAILABLE',
+        details: 'Unable to process flight search request at this time'
+      });
+    }
+
+    if (error.code === 'AMADEUS_SOAP_FAULT') {
+      return ApiResponse.error(res, StatusCodes.BAD_REQUEST, 'Invalid flight search parameters', {
+        errorCode: 'INVALID_SEARCH_CRITERIA',
+        details: error.message
+      });
+    }
+
+    // Log detailed error information for debugging
+    logger.error('Detailed Amadeus error information', {
+      errorMessage: error.message,
+      errorCode: error.code,
+      errorStack: error.stack,
+      amadeusConfig: {
+        endpoint: process.env.AMADEUS_XML_ENDPOINT ? 'SET' : 'NOT SET',
+        username: process.env.AMADEUS_XML_USERNAME ? 'SET' : 'NOT SET',
+        password: process.env.AMADEUS_XML_PASSWORD ? 'SET' : 'NOT SET',
+        officeId: process.env.AMADEUS_XML_OFFICE_ID ? 'SET' : 'NOT SET'
+      }
+    });
+
+    // Fallback to mock data if Amadeus service is unavailable
+    logger.warn('Falling back to mock flight data due to service error');
+    
+    const itineraries = [{
+      duration: 'PT15H30M',
+      segments: [{
+        departure: {
+          iataCode: flightSearchCriteria.originLocationCode,
+          at: `${flightSearchCriteria.departureDate}T10:30:00`
+        },
+        arrival: {
+          iataCode: flightSearchCriteria.destinationLocationCode,
+          at: `${flightSearchCriteria.departureDate}T18:00:00`
+        },
+        carrierCode: 'MOCK',
+        number: '123'
+      }]
+    }];
+
+    // Add return itinerary for round-trip flights
+    if (flightSearchCriteria.returnDate) {
+      itineraries.push({
+        duration: 'PT16H45M',
+        segments: [{
+          departure: {
+            iataCode: flightSearchCriteria.destinationLocationCode,
+            at: `${flightSearchCriteria.returnDate}T11:15:00`
+          },
+          arrival: {
+            iataCode: flightSearchCriteria.originLocationCode,
+            at: `${flightSearchCriteria.returnDate}T20:00:00`
+          },
+          carrierCode: 'MOCK',
+          number: '456'
+        }]
+      });
+    }
+
+    logger.info('Generated mock flight data with round-trip support', {
+      isRoundTrip: !!flightSearchCriteria.returnDate,
+      itinerariesCount: itineraries.length,
+      departureDate: flightSearchCriteria.departureDate,
+      returnDate: flightSearchCriteria.returnDate
+    });
+
+    const mockFlights = {
+      meta: {
+        count: 2,
+        currency: flightSearchCriteria.currencyCode || 'NGN',
+        processingTime: 150
+      },
+      data: [
+        {
+          type: 'flight-offer',
+          id: 'MOCK-FL-001',
+          source: 'MOCK',
+          validatingAirlineCodes: ['MOCK'],
+          price: {
+            currency: flightSearchCriteria.currencyCode || 'NGN',
+            total: '850000.00',
+            base: '750000.00',
+            grandTotal: '855000.00'
+          },
+          itineraries: itineraries
+        }
+      ],
+      dictionaries: {
+        carriers: {
+          'MOCK': 'Mock Airlines (Service Unavailable)'
+        }
+      }
+    };
+    
+    ApiResponse.success(res, StatusCodes.OK, 'Flights fetched successfully (mock data)', mockFlights);
+  }
 });
 
 /**
- * @description Book a flight using Amadeus API.
+ * @description Book a flight using Amadeus XML SOAP API.
  * @route POST /api/v1/products/flights/book
  * @access Private
- * @remarks This is a placeholder. Actual implementation would involve calling Amadeus API and Paystack.
  */
 const bookFlight = asyncHandler(async (req, res) => {
-  const { flightDetails, passengerDetails, paymentDetails, referralCode } = req.body;
+  const { flightDetails, passengerDetails, paymentDetails, referralCode, isGuestBooking, guestContactInfo } = req.body;
   const userId = req.user ? req.user.userId : null;
+  const isGuest = isGuestBooking || !userId;
 
-  // 1. Call Amadeus API to book flight
-  // const amadeusBookingResponse = await amadeusService.bookFlight(flightDetails, passengerDetails);
-  // const bookingReference = amadeusBookingResponse.bookingReference;
+  // Extract contact information (prioritize guestContactInfo for guest bookings)
+  const contactEmail = isGuest && guestContactInfo?.email 
+    ? guestContactInfo.email 
+    : passengerDetails[0]?.contact?.emailAddress;
+  
+  // Format phone number to E.164 format
+  let contactPhone = null;
+  if (isGuest && guestContactInfo?.phone) {
+    // For guest bookings, ensure phone is in E.164 format
+    let phone = guestContactInfo.phone.replace(/\D/g, ''); // Remove non-digits
+    if (phone.startsWith('0')) {
+      phone = phone.substring(1); // Remove leading 0
+    }
+    // Add country code if not present
+    if (!phone.startsWith('234') && guestContactInfo.dialCode === '+234') {
+      phone = '234' + phone;
+    }
+    contactPhone = '+' + phone;
+  } else if (passengerDetails[0]?.contact?.phones?.[0]) {
+    // For registered users, combine country code and number
+    const countryCode = passengerDetails[0].contact.phones[0].countryCallingCode;
+    let number = passengerDetails[0].contact.phones[0].number.replace(/\D/g, '');
+    if (number.startsWith('0')) {
+      number = number.substring(1); // Remove leading 0
+    }
+    contactPhone = `+${countryCode}${number}`;
+  }
 
-  // Mock Amadeus response
-  const bookingReference = `AMADEUS-${Date.now()}`;
-  logger.info(`Mock Amadeus flight booked: ${bookingReference}`);
-
-  // 2. Calculate TTP markup
-  const basePrice = flightDetails.price; // Price from the selected flight
-  const flightBookingCharge = parseFloat(await redisClient.hGet('serviceCharges', 'FLIGHT_BOOKING_CHARGES'));
-  const finalAmount = basePrice + flightBookingCharge;
-
-  // 3. Initiate Paystack payment
-  // const paystackInitResponse = await paystackService.initializePayment({
-  //   email: passengerDetails.email,
-  //   amount: finalAmount * 100,
-  //   reference: `TTP-FL-${Date.now()}`,
-  //   metadata: {
-  //     productType: 'Flight Booking',
-  //     bookingRef: bookingReference,
-  //     userId: userId,
-  //     guestEmail: passengerDetails.email,
-  //     guestPhoneNumber: passengerDetails.phoneNumber,
-  //   },
-  // });
-
-  // Mock Paystack initiation
-  const paystackInitResponse = {
-    status: true,
-    message: 'Authorization URL created',
-    data: {
-      authorization_url: 'https://checkout.paystack.com/mock_auth_url',
-      access_code: 'mock_access_code',
-      reference: `TTP-FL-${Date.now()}`,
-    },
-  };
-  logger.info(`Mock Paystack payment initiated for ${finalAmount}`);
-
-  // 4. Record transaction in Ledger as PENDING
-  const ledgerEntry = await Ledger.create({
-    userId,
-    guestEmail: passengerDetails.email,
-    guestPhoneNumber: passengerDetails.phoneNumber,
-    transactionReference: paystackInitResponse.data.reference,
-    amount: basePrice,
-    currency: 'NGN',
-    status: 'Pending',
-    paymentGateway: 'Paystack',
-    paymentGatewayResponse: paystackInitResponse.data,
-    productType: 'Flight Booking',
-    productId: bookingReference,
-    markupApplied: flightBookingCharge,
-    totalAmountPaid: finalAmount,
-    referralCode: referralCode || null,
-    productDetails: {
-      amadeusBookingRef: bookingReference,
-      // ... other flight details
-    },
+  // Debug logging for phone number validation
+  logger.info('Phone number debug info', {
+    isGuest: isGuest,
+    guestContactInfo: guestContactInfo,
+    formattedContactPhone: contactPhone,
+    contactEmail: contactEmail,
+    passengerPhones: passengerDetails[0]?.contact?.phones,
+    phoneValidation: {
+      regex: '/^\\+?[1-9]\\d{1,14}$/',
+      isValid: contactPhone ? /^\+?[1-9]\d{1,14}$/.test(contactPhone) : false
+    }
   });
 
-  ApiResponse.success(res, StatusCodes.OK, 'Flight booking initiated. Redirect to payment gateway.', {
-    authorizationUrl: paystackInitResponse.data.authorization_url,
-    reference: paystackInitResponse.data.reference,
-    amount: finalAmount,
-  });
+  try {
+    // Import required services
+    const AmadeusXmlService = require('../services/amadeusXmlService');
+    const paystackService = require('../services/paystackService');
+    const amadeusService = global.amadeusXmlService || new AmadeusXmlService();
+
+    logger.info('Initiating flight booking via Amadeus XML', {
+      flightId: flightDetails.id,
+      passengerEmail: contactEmail,
+      userId: userId,
+      isGuest: isGuest,
+      passengerCount: passengerDetails.length
+    });
+
+    // 1. Prepare traveler data for Amadeus XML (use the array structure from frontend)
+    const travelers = passengerDetails.map((passenger, index) => ({
+      id: passenger.id || `${index + 1}`,
+      dateOfBirth: passenger.dateOfBirth || "1990-01-01",
+      name: {
+        firstName: passenger.name.firstName,
+        lastName: passenger.name.lastName
+      },
+      gender: passenger.gender,
+      contact: {
+        emailAddress: passenger.contact.emailAddress,
+        phones: passenger.contact.phones || [{
+          deviceType: "MOBILE",
+          countryCallingCode: "234",
+          number: "8012345678"
+        }]
+      },
+      documents: passenger.documents || [{
+        documentType: "PASSPORT",
+        number: "TEMP123456",
+        expiryDate: "2030-12-31",
+        issuanceCountry: "NG",
+        nationality: "NG",
+        holder: true
+      }]
+    }));
+
+    // 2. Calculate TTP markup and final amount
+    const basePrice = parseFloat(flightDetails.price?.total || flightDetails.price?.base || flightDetails.price || 0);
+    const flightBookingCharge = parseFloat(await redisClient.hGet('serviceCharges', 'FLIGHT_BOOKING_CHARGES')) || 5000;
+    const finalAmount = basePrice + flightBookingCharge;
+
+    // 3. Create payment reference
+    const paymentReference = `TTP-FL-${Date.now()}`;
+
+    // 4. Initiate Paystack payment first (before Amadeus booking)
+    const paystackInitResponse = await paystackService.initializePayment({
+      email: contactEmail,
+      amount: finalAmount, // Amount in Naira, Paystack service will convert to kobo
+      reference: paymentReference,
+      currency: paymentDetails?.currency || 'NGN',
+      callback_url: paymentDetails?.callback_url,
+      metadata: {
+        productType: 'Flight Booking',
+        flightId: flightDetails.id,
+        userId: userId,
+        guestEmail: contactEmail,
+        guestPhoneNumber: contactPhone,
+        basePrice: basePrice,
+        serviceCharge: flightBookingCharge,
+        referralCode: referralCode || null,
+        isGuestBooking: isGuest
+      },
+    });
+
+    if (!paystackInitResponse.status) {
+      throw new Error(`Paystack initialization failed: ${paystackInitResponse.message}`);
+    }
+
+    logger.info('Paystack payment initialized successfully', {
+      reference: paymentReference,
+      amount: finalAmount,
+      authUrl: paystackInitResponse.data.authorization_url
+    });
+
+    // 5. Create a temporary booking hold (will be confirmed after payment)
+    // Note: For now, we'll create the booking after payment verification
+    // This is safer as we don't want to hold seats without confirmed payment
+    
+    // 6. Record transaction in Ledger as PENDING
+    const ledgerEntry = await Ledger.create({
+      userId: isGuest ? null : userId, // Set userId to null for guest bookings
+      usertype: isGuest ? 'guest' : 'registered', // Add usertype field
+      guestEmail: contactEmail,
+      guestPhoneNumber: contactPhone,
+      transactionReference: paymentReference,
+      amount: basePrice,
+      currency: paymentDetails?.currency || 'NGN',
+      status: 'Pending',
+      paymentGateway: 'Paystack',
+      paymentGatewayResponse: paystackInitResponse.data,
+      productType: 'Flight Booking',
+      itemType: 'Flight', // Required field
+      productId: flightDetails.id,
+      markupApplied: flightBookingCharge,
+      profitMargin: flightBookingCharge, // Required field - using service charge as profit margin
+      totalAmountPaid: finalAmount,
+      referralCode: referralCode || null,
+      productDetails: {
+        flightDetails: flightDetails,
+        passengerDetails: passengerDetails.map(p => ({
+          firstName: p.name.firstName,
+          lastName: p.name.lastName,
+          email: p.contact.emailAddress,
+          phone: p.contact.phones?.[0]?.number,
+          gender: p.gender,
+          dateOfBirth: p.dateOfBirth
+        })),
+        guestContactInfo: isGuest ? guestContactInfo : null,
+        travelers: travelers,
+        bookingStatus: 'Payment Pending'
+      },
+    });
+
+    logger.info('Flight booking transaction recorded', {
+      ledgerId: ledgerEntry._id,
+      reference: paymentReference,
+      status: 'Pending'
+    });
+
+    // 7. Return payment details to frontend
+    ApiResponse.success(res, StatusCodes.OK, 'Flight booking initiated. Complete payment to confirm booking.', {
+      bookingReference: paymentReference,
+      authorizationUrl: paystackInitResponse.data.authorization_url,
+      paymentReference: paymentReference,
+      amount: finalAmount,
+      currency: paymentDetails?.currency || 'NGN',
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes
+      passengers: travelers.map(t => ({
+        id: t.id,
+        name: t.name
+      })),
+      flightDetails: {
+        id: flightDetails.id,
+        price: {
+          total: basePrice.toString(),
+          currency: paymentDetails?.currency || 'NGN'
+        }
+      },
+      serviceCharges: {
+        flightBookingCharges: flightBookingCharge
+      },
+      instructions: {
+        payment: "Complete payment within 30 minutes to confirm booking",
+        documents: "Ensure passport is valid for at least 6 months from travel date"
+      }
+    });
+
+  } catch (error) {
+    logger.error('Flight booking failed', {
+      error: error.message,
+      flightId: flightDetails?.id,
+      contactEmail: contactEmail,
+      isGuest: isGuest,
+      stack: error.stack
+    });
+
+    // Handle specific errors
+    if (error.message.includes('Paystack')) {
+      return ApiResponse.error(res, StatusCodes.BAD_GATEWAY, 'Payment service temporarily unavailable', {
+        errorCode: 'PAYMENT_SERVICE_ERROR',
+        details: 'Unable to initialize payment at this time'
+      });
+    }
+
+    if (error.code === 'AMADEUS_XML_PARSE_ERROR') {
+      return ApiResponse.error(res, StatusCodes.BAD_GATEWAY, 'Flight booking service temporarily unavailable', {
+        errorCode: 'BOOKING_SERVICE_ERROR',
+        details: 'Unable to process flight booking request at this time'
+      });
+    }
+
+    return ApiResponse.error(res, StatusCodes.INTERNAL_SERVER_ERROR, 'Flight booking failed', {
+      errorCode: 'BOOKING_FAILED',
+      details: error.message
+    });
+  }
 });
+
+/**
+ * @description Verify flight payment and complete Amadeus booking.
+ * @route POST /api/v1/products/flights/verify-payment
+ * @access Public (webhook-style endpoint)
+ */
+const verifyFlightPayment = asyncHandler(async (req, res) => {
+  const { reference } = req.body;
+
+  if (!reference) {
+    throw new ApiError('Payment reference is required', StatusCodes.BAD_REQUEST);
+  }
+
+  try {
+    // Find the ledger entry
+    const ledgerEntry = await Ledger.findOne({ transactionReference: reference });
+    if (!ledgerEntry) {
+      throw new ApiError('Transaction not found', StatusCodes.NOT_FOUND);
+    }
+
+    // Check if already processed
+    if (ledgerEntry.status === 'Completed') {
+      logger.info('Payment already verified, skipping duplicate processing', {
+        reference: reference,
+        bookingReference: ledgerEntry.productDetails?.amadeusBookingRef
+      });
+      return ApiResponse.success(res, StatusCodes.OK, 'Payment already verified', {
+        transactionReference: reference,
+        status: 'Completed',
+        bookingReference: ledgerEntry.productDetails?.amadeusBookingRef,
+        amountPaid: ledgerEntry.totalAmountPaid,
+        currency: ledgerEntry.currency
+      });
+    }
+
+    // Import required services
+    const paystackService = require('../services/paystackService');
+    const AmadeusXmlService = require('../services/amadeusXmlService');
+    const amadeusService = global.amadeusXmlService || new AmadeusXmlService();
+
+    // Verify payment with Paystack
+    const paystackVerification = await paystackService.verifyPayment(reference);
+
+    if (paystackVerification.data.status === 'success') {
+      logger.info('Payment verified successfully, proceeding with Amadeus booking', {
+        reference: reference,
+        amount: paystackVerification.data.amount / 100
+      });
+
+      let amadeusBookingRef = null;
+      let bookingStatus = 'Payment Confirmed';
+
+      try {
+        // Extract flight and passenger details from ledger
+        const { flightDetails, travelers } = ledgerEntry.productDetails;
+
+        // Create Amadeus booking options
+        const bookingOptions = {
+          contactEmail: ledgerEntry.guestEmail,
+          contactPhone: ledgerEntry.guestPhoneNumber
+        };
+
+        // Attempt to book with Amadeus XML
+        const amadeusBookingResponse = await amadeusService.bookFlightXml(
+          flightDetails,
+          travelers,
+          bookingOptions
+        );
+
+        amadeusBookingRef = amadeusBookingResponse.data?.id || `AMADEUS-${Date.now()}`;
+        bookingStatus = 'Booking Confirmed';
+
+        logger.info('Amadeus booking completed successfully', {
+          reference: reference,
+          amadeusRef: amadeusBookingRef
+        });
+
+      } catch (amadeusError) {
+        logger.error('Amadeus booking failed after payment confirmation', {
+          reference: reference,
+          error: amadeusError.message,
+          stack: amadeusError.stack
+        });
+
+        // Even if Amadeus booking fails, we still mark payment as successful
+        // and will handle the booking manually
+        amadeusBookingRef = `MANUAL-${Date.now()}`;
+        bookingStatus = 'Payment Confirmed - Manual Booking Required';
+      }
+
+      // Check if notification was already sent (before updating)
+      const notificationAlreadySent = ledgerEntry.productDetails?.notificationSent === true;
+
+      // Update ledger entry
+      ledgerEntry.status = 'Completed';
+      ledgerEntry.paymentGatewayResponse = paystackVerification.data;
+      ledgerEntry.productDetails = {
+        ...ledgerEntry.productDetails,
+        amadeusBookingRef: amadeusBookingRef,
+        bookingStatus: bookingStatus,
+        paymentConfirmedAt: new Date(),
+        amadeusBookingCompletedAt: bookingStatus === 'Booking Confirmed' ? new Date() : null
+      };
+      await ledgerEntry.save();
+
+      // Send confirmation notifications only if not already sent
+      if (!notificationAlreadySent) {
+        try {
+          await sendFlightBookingNotifications({
+            customerEmail: ledgerEntry.guestEmail,
+            customerPhone: ledgerEntry.guestPhoneNumber,
+            bookingReference: amadeusBookingRef,
+            paymentReference: reference,
+            flightDetails: ledgerEntry.productDetails.flightDetails,
+            passengerDetails: ledgerEntry.productDetails.passengerDetails,
+            totalAmount: ledgerEntry.totalAmountPaid,
+            currency: ledgerEntry.currency,
+            bookingStatus: bookingStatus
+          });
+          
+          // Mark notification as sent
+          ledgerEntry.productDetails.notificationSent = true;
+          ledgerEntry.productDetails.notificationSentAt = new Date();
+          await ledgerEntry.save();
+          
+          logger.info('Flight booking notifications sent successfully', { reference });
+        } catch (notificationError) {
+          logger.error('Failed to send flight booking notifications', {
+            reference: reference,
+            error: notificationError.message
+          });
+          // Don't fail the entire process if notifications fail
+        }
+      } else {
+        logger.info('Notification already sent, skipping duplicate send', { reference });
+      }
+
+      logger.info(`Flight booking completed: ${reference} with Amadeus ref: ${amadeusBookingRef}`);
+
+      ApiResponse.success(res, StatusCodes.OK, 'Flight payment verified and booking confirmed', {
+        paymentStatus: 'success',
+        transactionReference: reference,
+        amountPaid: paystackVerification.data.amount / 100,
+        currency: ledgerEntry.currency,
+        paidAt: new Date(paystackVerification.data.paid_at).toISOString(),
+        applicationStatus: bookingStatus,
+        bookingReference: amadeusBookingRef,
+        nextSteps: bookingStatus === 'Booking Confirmed' 
+          ? "Your flight has been successfully booked. You will receive your e-ticket via email shortly."
+          : "Your payment has been confirmed. Our team will complete your booking manually and send you the confirmation within 24 hours."
+      });
+
+    } else {
+      // Update ledger entry as failed
+      ledgerEntry.status = 'Failed';
+      ledgerEntry.paymentGatewayResponse = paystackVerification.data;
+      await ledgerEntry.save();
+
+      logger.warn('Flight payment verification failed', {
+        reference: reference,
+        paystackStatus: paystackVerification.data.status
+      });
+
+      throw new ApiError('Payment verification failed', StatusCodes.BAD_REQUEST);
+    }
+
+  } catch (error) {
+    logger.error('Flight payment verification error', {
+      reference: reference,
+      error: error.message,
+      stack: error.stack
+    });
+
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError('Failed to verify flight payment. Please contact support.', StatusCodes.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * @description Send flight booking confirmation notifications.
+ * @param {object} notificationData - Data for notifications
+ */
+const sendFlightBookingNotifications = async (notificationData) => {
+  const {
+    customerEmail,
+    customerPhone,
+    bookingReference,
+    paymentReference,
+    flightDetails,
+    passengerDetails,
+    totalAmount,
+    currency,
+    bookingStatus
+  } = notificationData;
+
+  try {
+    // Import notification services
+    const { sendEmail } = require('../utils/emailService');
+    const { getFlightConfirmationEmail } = require('../utils/emailTemplates');
+    const smsService = require('../utils/smsService');
+
+    // Prepare passenger data
+    const firstPassenger = Array.isArray(passengerDetails) ? passengerDetails[0] : passengerDetails;
+    const passengerName = firstPassenger?.firstName && firstPassenger?.lastName 
+      ? `${firstPassenger.firstName} ${firstPassenger.lastName}`
+      : 'Valued Customer';
+    
+    const passengerCount = Array.isArray(passengerDetails) ? passengerDetails.length : 1;
+    
+    // Extract flight information
+    const firstItinerary = flightDetails?.itineraries?.[0];
+    const firstSegment = firstItinerary?.segments?.[0];
+    const lastSegment = firstItinerary?.segments?.[firstItinerary.segments.length - 1];
+    
+    const airline = flightDetails?.validatingAirlineCodes?.[0] || 'Airline';
+    const flightNumber = firstSegment ? `${firstSegment.carrierCode}${firstSegment.number}` : 'N/A';
+    const departure = firstSegment?.departure?.iataCode || 'DEP';
+    const arrival = lastSegment?.arrival?.iataCode || 'ARR';
+    const departureTime = firstSegment?.departure?.at ? new Date(firstSegment.departure.at).toLocaleString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }) : 'N/A';
+    const arrivalTime = lastSegment?.arrival?.at ? new Date(lastSegment.arrival.at).toLocaleString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }) : 'N/A';
+    
+    const emailSubject = `✈️ Flight Booking Confirmed - ${bookingReference}`;
+    const emailHtml = getFlightConfirmationEmail({
+      bookingReference,
+      pnr: bookingReference,
+      airline,
+      flightNumber,
+      departure,
+      arrival,
+      departureTime,
+      arrivalTime,
+      passengers: passengerCount,
+      totalAmount,
+      passengerName
+    });
+
+    // Send email notification
+    if (customerEmail) {
+      await sendEmail({
+        to: customerEmail,
+        subject: emailSubject,
+        html: emailHtml
+      });
+      logger.info('Flight booking confirmation email sent', { email: customerEmail, reference: bookingReference });
+    }
+
+    // Send SMS notification
+    if (customerPhone) {
+      const smsMessage = `Flight booking confirmed! Reference: ${bookingReference}. Amount: ${currency} ${totalAmount.toLocaleString()}. Status: ${bookingStatus}. Thank you for choosing The Travel Place!`;
+      
+      await smsService.sendSMS({
+        to: customerPhone,
+        message: smsMessage
+      });
+      logger.info('Flight booking confirmation SMS sent', { phone: customerPhone, reference: bookingReference });
+    }
+
+  } catch (error) {
+    logger.error('Failed to send flight booking notifications', {
+      error: error.message,
+      bookingReference: bookingReference
+    });
+    throw error;
+  }
+};
 
 
 // --- Ratehawk Hotel Booking Integration (Placeholder) ---
@@ -427,98 +1413,415 @@ const bookFlight = asyncHandler(async (req, res) => {
  * @description Search for hotels using Ratehawk API.
  * @route POST /api/v1/products/hotels/search
  * @access Public
- * @remarks This is a placeholder. Actual implementation would involve calling Ratehawk API.
  */
 const searchHotels = asyncHandler(async (req, res) => {
   const hotelSearchCriteria = req.body;
-  // const ratehawkResponse = await ratehawkService.searchHotels(hotelSearchCriteria);
-  // ApiResponse.success(res, StatusCodes.OK, 'Hotels fetched successfully', ratehawkResponse.data);
-
-  // Mock data
-  const mockHotels = [
-    { id: 'HTL001', name: 'Mock Hotel Lagos', price: 150000, currency: 'NGN' },
-    { id: 'HTL002', name: 'Fake Inn Abuja', price: 120000, currency: 'NGN' },
-  ];
-  ApiResponse.success(res, StatusCodes.OK, 'Hotels fetched successfully', { hotels: mockHotels });
+  
+  try {
+    logger.info('Hotel search request received:', hotelSearchCriteria);
+    
+    // Call Ratehawk API for hotel search
+    const ratehawkResponse = await ratehawkService.searchHotels(hotelSearchCriteria);
+    
+    logger.info(`Found ${ratehawkResponse.totalResults} hotels`);
+    
+    ApiResponse.success(res, StatusCodes.OK, 'Hotels fetched successfully', {
+      searchId: ratehawkResponse.searchId,
+      hotels: ratehawkResponse.hotels,
+      totalResults: ratehawkResponse.totalResults,
+      searchCriteria: hotelSearchCriteria
+    });
+  } catch (error) {
+    logger.error('Hotel search failed:', error.message);
+    
+    // Fallback to mock data if API fails (for development)
+    if (process.env.NODE_ENV === 'development') {
+      logger.warn('Falling back to mock hotel data due to API error');
+      const mockHotels = [
+        { 
+          id: 'HTL001', 
+          name: 'Mock Hotel Lagos', 
+          price: 150000, 
+          currency: 'NGN',
+          address: 'Victoria Island, Lagos',
+          stars: 4,
+          rating: 4.2,
+          reviewCount: 156
+        },
+        { 
+          id: 'HTL002', 
+          name: 'Fake Inn Abuja', 
+          price: 120000, 
+          currency: 'NGN',
+          address: 'Maitama, Abuja',
+          stars: 3,
+          rating: 3.8,
+          reviewCount: 89
+        },
+      ];
+      ApiResponse.success(res, StatusCodes.OK, 'Hotels fetched successfully (mock data)', { 
+        hotels: mockHotels,
+        totalResults: mockHotels.length,
+        searchCriteria: hotelSearchCriteria,
+        isMockData: true
+      });
+    } else {
+      throw error;
+    }
+  }
 });
 
 /**
  * @description Book a hotel using Ratehawk API.
  * @route POST /api/v1/products/hotels/book
  * @access Private
- * @remarks This is a placeholder. Actual implementation would involve calling Ratehawk API and Paystack.
  */
 const bookHotel = asyncHandler(async (req, res) => {
-  const { hotelDetails, guestDetails, paymentDetails, referralCode } = req.body;
+  const { hotelDetails, guestDetails, paymentDetails, referralCode, searchId, roomId } = req.body;
   const userId = req.user ? req.user.userId : null;
 
-  // 1. Call Ratehawk API to book hotel
-  // const ratehawkBookingResponse = await ratehawkService.bookHotel(hotelDetails, guestDetails);
-  // const bookingReference = ratehawkBookingResponse.bookingReference;
+  try {
+    logger.info('Hotel booking request received:', { hotelDetails, guestDetails });
 
-  // Mock Ratehawk response
-  const bookingReference = `RATEHAWK-${Date.now()}`;
-  logger.info(`Mock Ratehawk hotel booked: ${bookingReference}`);
+    // 1. Get service charges
+    const hotelReservationCharge = parseFloat(await redisClient.hGet('serviceCharges', 'HOTEL_RESERVATION_CHARGES')) || 3000;
+    
+    // 2. Calculate pricing
+    const basePrice = parseFloat(hotelDetails.price);
+    const finalAmount = basePrice + hotelReservationCharge;
 
-  // 2. Calculate TTP markup
-  const basePrice = hotelDetails.price; // Price from the selected hotel
-  const hotelReservationCharge = parseFloat(await redisClient.hGet('serviceCharges', 'HOTEL_RESERVATION_CHARGES'));
-  const finalAmount = basePrice + hotelReservationCharge;
+    // 3. Create booking reference
+    const bookingReference = `TTP-HTL-${Date.now()}`;
+    const paystackReference = `TTP-HTL-PAY-${Date.now()}`;
 
-  // 3. Initiate Paystack payment
-  // const paystackInitResponse = await paystackService.initializePayment({
-  //   email: guestDetails.email,
-  //   amount: finalAmount * 100,
-  //   reference: `TTP-HTL-${Date.now()}`,
-  //   metadata: {
-  //     productType: 'Hotel Reservation',
-  //     bookingRef: bookingReference,
-  //     userId: userId,
-  //     guestEmail: guestDetails.email,
-  //     guestPhoneNumber: guestDetails.phoneNumber,
-  //   },
-  // });
+    // 4. Initiate Paystack payment
+    const paystackInitResponse = await paystackService.initializePayment({
+      email: guestDetails.email,
+      amount: finalAmount, // Amount in Naira, Paystack service will convert to kobo
+      reference: paystackReference,
+      callback_url: paymentDetails.callback_url,
+      metadata: {
+        productType: 'Hotel Reservation',
+        bookingRef: bookingReference,
+        userId: userId,
+        guestEmail: guestDetails.email,
+        guestPhoneNumber: guestDetails.phoneNumber,
+        hotelId: hotelDetails.id,
+        hotelName: hotelDetails.name,
+        searchId: searchId,
+        roomId: roomId,
+        checkIn: hotelDetails.checkInDate,
+        checkOut: hotelDetails.checkOutDate,
+        referralCode: referralCode || null
+      },
+    });
 
-  // Mock Paystack initiation
-  const paystackInitResponse = {
-    status: true,
-    message: 'Authorization URL created',
-    data: {
-      authorization_url: 'https://checkout.paystack.com/mock_auth_url',
-      access_code: 'mock_access_code',
-      reference: `TTP-HTL-${Date.now()}`,
-    },
-  };
-  logger.info(`Mock Paystack payment initiated for ${finalAmount}`);
+    if (!paystackInitResponse.status) {
+      throw new ApiError('Failed to initialize payment', StatusCodes.BAD_REQUEST);
+    }
 
-  // 4. Record transaction in Ledger as PENDING
-  const ledgerEntry = await Ledger.create({
-    userId,
-    guestEmail: guestDetails.email,
-    guestPhoneNumber: guestDetails.phoneNumber,
-    transactionReference: paystackInitResponse.data.reference,
-    amount: basePrice,
-    currency: 'NGN',
-    status: 'Pending',
-    paymentGateway: 'Paystack',
-    paymentGatewayResponse: paystackInitResponse.data,
-    productType: 'Hotel Reservation',
-    productId: bookingReference,
-    markupApplied: hotelReservationCharge,
-    totalAmountPaid: finalAmount,
-    referralCode: referralCode || null,
-    productDetails: {
-      ratehawkBookingRef: bookingReference,
-      // ... other hotel details
-    },
-  });
+    logger.info(`Paystack payment initiated for hotel booking: ${paystackReference}`);
 
-  ApiResponse.success(res, StatusCodes.OK, 'Hotel booking initiated. Redirect to payment gateway.', {
-    authorizationUrl: paystackInitResponse.data.authorization_url,
-    reference: paystackInitResponse.data.reference,
-    amount: finalAmount,
-  });
+    // 5. Record transaction in Ledger as PENDING
+    const ledgerEntry = await Ledger.create({
+      userId,
+      guestEmail: guestDetails.email,
+      guestPhoneNumber: guestDetails.phoneNumber,
+      transactionReference: paystackReference,
+      amount: basePrice,
+      currency: hotelDetails.currency || 'NGN',
+      status: 'Pending',
+      paymentGateway: 'Paystack',
+      paymentGatewayResponse: paystackInitResponse.data,
+      productType: 'Hotel Reservation',
+      itemType: 'Hotel', // Required field for Ledger model
+      productId: bookingReference,
+      markupApplied: hotelReservationCharge,
+      profitMargin: hotelReservationCharge, // Required field - using service charge as profit margin
+      totalAmountPaid: finalAmount,
+      referralCode: referralCode || null,
+      productDetails: {
+        hotelId: hotelDetails.id,
+        hotelName: hotelDetails.name,
+        searchId: searchId,
+        roomId: roomId,
+        checkInDate: hotelDetails.checkInDate,
+        checkOutDate: hotelDetails.checkOutDate,
+        guestName: `${guestDetails.firstName} ${guestDetails.lastName}`,
+        roomType: hotelDetails.roomName || 'Standard Room',
+        // Note: Actual Ratehawk booking will be made after payment confirmation
+        pendingRatehawkBooking: true
+      },
+    });
+
+    logger.info(`Ledger entry created for hotel booking: ${ledgerEntry._id}`);
+
+    ApiResponse.success(res, StatusCodes.OK, 'Hotel booking initiated. Please complete payment to confirm reservation.', {
+      bookingReference: bookingReference,
+      authorizationUrl: paystackInitResponse.data.authorization_url,
+      paymentReference: paystackReference,
+      amount: finalAmount,
+      currency: hotelDetails.currency || 'NGN',
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes
+      hotelDetails: {
+        id: hotelDetails.id,
+        name: hotelDetails.name,
+        checkIn: hotelDetails.checkInDate,
+        checkOut: hotelDetails.checkOutDate,
+        roomType: hotelDetails.roomName || 'Standard Room'
+      },
+      guestDetails: {
+        name: `${guestDetails.firstName} ${guestDetails.lastName}`,
+        email: guestDetails.email,
+        phone: guestDetails.phoneNumber
+      },
+      serviceCharges: {
+        hotelReservationCharges: hotelReservationCharge
+      },
+      instructions: {
+        payment: 'Complete payment within 30 minutes to confirm hotel reservation',
+        cancellation: 'Cancellation policy depends on hotel terms and conditions'
+      }
+    });
+
+  } catch (error) {
+    logger.error('Hotel booking failed:', error.message);
+    throw error;
+  }
 });
+
+/**
+ * @description Verify hotel payment and complete Ratehawk booking.
+ * @route POST /api/v1/products/hotels/verify-payment
+ * @access Public (webhook-style endpoint)
+ */
+const verifyHotelPayment = asyncHandler(async (req, res) => {
+  const { reference } = req.body;
+
+  if (!reference) {
+    throw new ApiError('Payment reference is required', StatusCodes.BAD_REQUEST);
+  }
+
+  try {
+    // Find the ledger entry
+    const ledgerEntry = await Ledger.findOne({ transactionReference: reference });
+    if (!ledgerEntry) {
+      throw new ApiError('Transaction not found', StatusCodes.NOT_FOUND);
+    }
+
+    // Check if already processed
+    if (ledgerEntry.status === 'Completed') {
+      return ApiResponse.success(res, StatusCodes.OK, 'Payment already verified', {
+        transactionReference: reference,
+        status: 'Completed',
+        bookingReference: ledgerEntry.productDetails?.ratehawkBookingRef
+      });
+    }
+
+    // Verify payment with Paystack
+    const paystackVerification = await paystackService.verifyPayment(reference);
+
+    if (paystackVerification.data.status === 'success') {
+      logger.info('Hotel payment verified successfully, proceeding with Ratehawk booking', {
+        reference: reference,
+        amount: paystackVerification.data.amount / 100
+      });
+
+      let ratehawkBookingRef = null;
+      let bookingStatus = 'Payment Confirmed';
+
+      try {
+        // Extract hotel booking details from ledger
+        const { searchId, roomId, hotelId, hotelName, checkInDate, checkOutDate, guestName } = ledgerEntry.productDetails;
+
+        // Prepare guest details for Ratehawk
+        const guestDetails = {
+          firstName: guestName.split(' ')[0],
+          lastName: guestName.split(' ').slice(1).join(' '),
+          email: ledgerEntry.guestEmail,
+          phoneNumber: ledgerEntry.guestPhoneNumber
+        };
+
+        const hotelDetails = {
+          id: hotelId,
+          name: hotelName,
+          checkInDate: checkInDate,
+          checkOutDate: checkOutDate
+        };
+
+        // Attempt to book with Ratehawk
+        const ratehawkBookingResponse = await ratehawkService.bookHotel({
+          searchId: searchId,
+          roomId: roomId,
+          guestDetails: guestDetails,
+          hotelDetails: hotelDetails
+        });
+
+        ratehawkBookingRef = ratehawkBookingResponse.bookingReference;
+        bookingStatus = 'Booking Confirmed';
+
+        logger.info('Ratehawk hotel booking completed successfully', {
+          reference: reference,
+          ratehawkRef: ratehawkBookingRef
+        });
+
+      } catch (ratehawkError) {
+        logger.error('Ratehawk booking failed after payment confirmation', {
+          reference: reference,
+          error: ratehawkError.message,
+          stack: ratehawkError.stack
+        });
+
+        // Even if Ratehawk booking fails, we still mark payment as successful
+        // and will handle the booking manually
+        ratehawkBookingRef = `MANUAL-HTL-${Date.now()}`;
+        bookingStatus = 'Payment Confirmed - Manual Booking Required';
+      }
+
+      // Update ledger entry
+      ledgerEntry.status = 'Completed';
+      ledgerEntry.paymentGatewayResponse = paystackVerification.data;
+      ledgerEntry.productDetails = {
+        ...ledgerEntry.productDetails,
+        ratehawkBookingRef: ratehawkBookingRef,
+        bookingStatus: bookingStatus,
+        paymentConfirmedAt: new Date(),
+        ratehawkBookingCompletedAt: bookingStatus === 'Booking Confirmed' ? new Date() : null
+      };
+      await ledgerEntry.save();
+
+      // Send confirmation notifications
+      try {
+        await sendHotelBookingNotifications({
+          customerEmail: ledgerEntry.guestEmail,
+          customerPhone: ledgerEntry.guestPhoneNumber,
+          bookingReference: ratehawkBookingRef,
+          paymentReference: reference,
+          hotelDetails: ledgerEntry.productDetails,
+          totalAmount: ledgerEntry.totalAmountPaid,
+          currency: ledgerEntry.currency,
+          bookingStatus: bookingStatus
+        });
+      } catch (notificationError) {
+        logger.error('Failed to send hotel booking notifications', {
+          reference: reference,
+          error: notificationError.message
+        });
+        // Don't fail the entire process if notifications fail
+      }
+
+      logger.info(`Hotel booking completed: ${reference} with Ratehawk ref: ${ratehawkBookingRef}`);
+
+      ApiResponse.success(res, StatusCodes.OK, 'Hotel payment verified and booking confirmed', {
+        paymentStatus: 'success',
+        transactionReference: reference,
+        amountPaid: paystackVerification.data.amount / 100,
+        currency: ledgerEntry.currency,
+        paidAt: new Date(paystackVerification.data.paid_at).toISOString(),
+        applicationStatus: bookingStatus,
+        bookingReference: ratehawkBookingRef,
+        hotelDetails: {
+          name: ledgerEntry.productDetails.hotelName,
+          checkIn: ledgerEntry.productDetails.checkInDate,
+          checkOut: ledgerEntry.productDetails.checkOutDate,
+          guestName: ledgerEntry.productDetails.guestName
+        },
+        nextSteps: bookingStatus === 'Booking Confirmed' 
+          ? "Your hotel reservation has been successfully confirmed. You will receive your booking confirmation via email shortly."
+          : "Your payment has been confirmed. Our team will complete your hotel reservation manually and send you the confirmation within 24 hours."
+      });
+
+    } else {
+      // Update ledger entry as failed
+      ledgerEntry.status = 'Failed';
+      ledgerEntry.paymentGatewayResponse = paystackVerification.data;
+      await ledgerEntry.save();
+
+      logger.warn('Hotel payment verification failed', {
+        reference: reference,
+        paystackStatus: paystackVerification.data.status
+      });
+
+      throw new ApiError('Payment verification failed', StatusCodes.BAD_REQUEST);
+    }
+
+  } catch (error) {
+    logger.error('Hotel payment verification error', {
+      reference: reference,
+      error: error.message,
+      stack: error.stack
+    });
+
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError('Failed to verify hotel payment. Please contact support.', StatusCodes.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * @description Send hotel booking confirmation notifications.
+ * @param {object} notificationData - Data for notifications
+ */
+const sendHotelBookingNotifications = async (notificationData) => {
+  const {
+    customerEmail,
+    customerPhone,
+    bookingReference,
+    paymentReference,
+    hotelDetails,
+    totalAmount,
+    currency,
+    bookingStatus
+  } = notificationData;
+
+  try {
+    // Import notification services
+    const { sendEmail } = require('../utils/emailService');
+    const { getHotelConfirmationEmail } = require('../utils/emailTemplates');
+    const smsService = require('../utils/smsService');
+
+    // Prepare email content using new template
+    const emailSubject = `Hotel Booking Confirmation - ${bookingReference}`;
+    const emailHtml = getHotelConfirmationEmail({
+      bookingReference,
+      hotelName: hotelDetails.hotelName,
+      location: hotelDetails.location || `${hotelDetails.city || ''}, ${hotelDetails.country || ''}`.trim(),
+      checkIn: hotelDetails.checkInDate,
+      checkOut: hotelDetails.checkOutDate,
+      nights: hotelDetails.nights || 1,
+      rooms: hotelDetails.rooms || 1,
+      guests: hotelDetails.guests || 1,
+      totalAmount,
+      guestName: hotelDetails.guestName,
+      guestEmail: customerEmail
+    });
+
+    // Send email notification
+    await sendEmail({
+      to: customerEmail,
+      subject: emailSubject,
+      html: emailHtml
+    });
+
+    // Prepare SMS content
+    const smsMessage = `Hotel booking ${bookingStatus === 'Booking Confirmed' ? 'confirmed' : 'received'}! Ref: ${bookingReference}. Hotel: ${hotelDetails.hotelName}. Check-in: ${hotelDetails.checkInDate}. Amount: ${currency} ${totalAmount.toLocaleString()}. - The Travel Place`;
+
+    // Send SMS notification
+    await smsService.sendSMS(customerPhone, smsMessage);
+
+    logger.info('Hotel booking notifications sent successfully', {
+      email: customerEmail,
+      phone: customerPhone,
+      bookingRef: bookingReference
+    });
+
+  } catch (error) {
+    logger.error('Failed to send hotel booking notifications:', error.message);
+    throw error;
+  }
+};
 
 
 // --- Package Purchase System ---
@@ -931,7 +2234,7 @@ const sendPackageNotifications = async (notificationData) => {
     } else if (customerPhone) {
       // Send directly if queue is not available
       try {
-        const { sendWhatsAppMessage } = require('../utils/smsService');
+        const { sendWhatsAppMessage } = require('../utils/whatsappService');
         await sendWhatsAppMessage(customerPhone, whatsappMessage);
         logger.info(`Package confirmation WhatsApp sent directly to ${customerPhone}`);
       } catch (whatsappError) {
@@ -947,54 +2250,7 @@ const sendPackageNotifications = async (notificationData) => {
 
 // --- Visa Processing ---
 
-/**
- * Calculate visa fees based on destination country, visa type, and urgency
- */
-const calculateVisaFees = (destinationCountry, visaType, urgency) => {
-  // Base visa fees by country and type (in kobo - NGN * 100)
-  const baseFees = {
-    'United States': { Tourist: 16000000, Business: 16000000, Student: 35000000, Transit: 16000000, Work: 19000000 }, // $160, $160, $350, $160, $190
-    'United Kingdom': { Tourist: 9500000, Business: 9500000, Student: 34800000, Transit: 6400000, Work: 61000000 }, // £95, £95, £348, £64, £610
-    'Canada': { Tourist: 10000000, Business: 10000000, Student: 15000000, Transit: 7500000, Work: 15500000 }, // CAD $100, $100, $150, $75, $155
-    'Germany': { Tourist: 8000000, Business: 8000000, Student: 7500000, Transit: 8000000, Work: 7500000 }, // €80, €80, €75, €80, €75
-    'France': { Tourist: 8000000, Business: 8000000, Student: 9900000, Transit: 8000000, Work: 9900000 }, // €80, €80, €99, €80, €99
-    'Australia': { Tourist: 14500000, Business: 14500000, Student: 62000000, Transit: 14500000, Work: 31000000 }, // AUD $145, $145, $620, $145, $310
-    'Dubai': { Tourist: 35000000, Business: 35000000, Student: 120000000, Transit: 10000000, Work: 120000000 }, // AED 350, 350, 1200, 100, 1200
-    'South Africa': { Tourist: 9300000, Business: 9300000, Student: 42500000, Transit: 9300000, Work: 42500000 } // ZAR 930, 930, 4250, 930, 4250
-  };
 
-  // Service fees (in kobo)
-  const serviceFee = 1500000; // NGN 15,000 service fee
-
-  // Urgency fees (in kobo)
-  const urgencyFees = {
-    'Standard': 0,
-    'Express': 2500000, // NGN 25,000 additional
-    'Super Express': 5000000 // NGN 50,000 additional
-  };
-
-  const visaFee = baseFees[destinationCountry]?.[visaType] || 5000000; // Default NGN 50,000
-  const urgencyFee = urgencyFees[urgency] || 0;
-
-  return {
-    visaFee,
-    serviceFee,
-    urgencyFee,
-    total: visaFee + serviceFee + urgencyFee
-  };
-};
-
-/**
- * Get estimated processing time based on urgency
- */
-const getEstimatedProcessingTime = (urgency) => {
-  const processingTimes = {
-    'Standard': '10-15 business days',
-    'Express': '5-7 business days',
-    'Super Express': '2-3 business days'
-  };
-  return processingTimes[urgency] || '10-15 business days';
-};
 
 /**
  * @description Process payment for visa application.
@@ -1260,8 +2516,33 @@ const initiateVisaApplication = asyncHandler(async (req, res) => {
     }
   }
 
-  // Calculate fees based on destination country, visa type, and urgency
-  const fees = calculateVisaFees(destinationCountry, visaType, urgency);
+  // Get visa requirements and calculate fees from external API
+  let fees, requirements;
+  try {
+    const nationality = personalInformation?.nationality || 'Nigeria';
+    
+    // Get visa requirements from external API
+    const requirementsResponse = await visaProcessingService.getVisaRequirements(
+      destinationCountry, 
+      visaType, 
+      nationality
+    );
+    requirements = requirementsResponse.data;
+
+    // Calculate fees using external API
+    const feesResponse = await visaProcessingService.calculateVisaFees(
+      destinationCountry, 
+      visaType, 
+      urgency, 
+      nationality
+    );
+    fees = feesResponse.data;
+  } catch (error) {
+    logger.error('Failed to get visa requirements or fees from external API:', error.message);
+    // Fallback to local calculation
+    fees = calculateVisaFees(destinationCountry, visaType, urgency);
+    requirements = null;
+  }
 
   // Create visa application
   const visaApplicationData = {
@@ -1275,7 +2556,12 @@ const initiateVisaApplication = asyncHandler(async (req, res) => {
     fees,
     status: 'Pending', // Initial status
     estimatedProcessingTime: getEstimatedProcessingTime(urgency),
-    referralCode: referralCode || null
+    referralCode: referralCode || null,
+    // Store external API requirements if available
+    ...(requirements && { 
+      externalRequirements: requirements,
+      documentTypes: requirements.documentTypes || []
+    })
   };
 
   // Add optional fields if provided
@@ -1339,7 +2625,14 @@ const initiateVisaApplication = asyncHandler(async (req, res) => {
       status: visaApplication.status,
       fees: visaApplication.fees,
       estimatedProcessingTime: visaApplication.estimatedProcessingTime,
-      paymentStatus: visaApplication.paymentStatus
+      paymentStatus: visaApplication.paymentStatus,
+      ...(requirements && {
+        requirements: {
+          documentTypes: requirements.documentTypes,
+          additionalInfo: requirements.additionalInfo,
+          processingTime: requirements.processingTime
+        }
+      })
     }
   });
 });
@@ -1401,15 +2694,13 @@ const uploadVisaDocument = asyncHandler(async (req, res) => {
   const existingDocIndex = visaApplication.documents.findIndex(doc => doc.documentType === documentType);
 
   try {
-    // Upload file to Cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: `the-travel-place/visa-documents/${id}`,
-      resource_type: 'auto',
+    // Upload file using fileService (supports S3, Cloudflare, or Cloudinary)
+    const result = await fileService.uploadFile(req.file.path, `visa-documents/${id}`, {
       quality: 'auto:good',
-      transformation: [
-        { width: 1200, height: 1600, crop: 'limit' }, // Limit max dimensions
-        { quality: 'auto:good' }
-      ]
+      width: 1200,
+      height: 1600,
+      crop: 'limit',
+      contentType: req.file.mimetype
     });
 
     const documentData = {
@@ -1442,6 +2733,31 @@ const uploadVisaDocument = asyncHandler(async (req, res) => {
 
     await visaApplication.save();
 
+    // Perform automated document verification
+    let verificationResult = null;
+    try {
+      const verificationResponse = await visaProcessingService.verifyDocuments(
+        [documentData], 
+        visaApplication.visaType, 
+        visaApplication.destinationCountry
+      );
+      verificationResult = verificationResponse.data;
+      
+      // Update document with verification results
+      const docIndex = visaApplication.documents.length - 1;
+      visaApplication.documents[docIndex].verification = {
+        status: verificationResult.documents[0]?.status || 'requires_review',
+        confidence: verificationResult.documents[0]?.confidence || 0,
+        issues: verificationResult.documents[0]?.issues || [],
+        suggestions: verificationResult.documents[0]?.suggestions || [],
+        verifiedAt: new Date()
+      };
+      await visaApplication.save();
+    } catch (verificationError) {
+      logger.error('Document verification failed:', verificationError.message);
+      // Continue without verification - it's not critical for upload success
+    }
+
     // Clean up local file after upload
     fs.unlink(req.file.path, (err) => {
       if (err) logger.error(`Error deleting local file: ${err.message}`);
@@ -1469,14 +2785,29 @@ const uploadVisaDocument = asyncHandler(async (req, res) => {
         originalName: req.file.originalname,
         cloudinaryUrl: result.secure_url,
         size: result.bytes,
-        uploadedAt: documentData.uploadedAt
+        uploadedAt: documentData.uploadedAt,
+        ...(verificationResult && {
+          verification: {
+            status: verificationResult.documents[0]?.status,
+            confidence: verificationResult.documents[0]?.confidence,
+            issues: verificationResult.documents[0]?.issues,
+            suggestions: verificationResult.documents[0]?.suggestions
+          }
+        })
       },
       visaApplication: {
         id: visaApplication._id,
         status: visaApplication.status,
         totalDocuments: visaApplication.documents.length,
         applicationReference: visaApplication.applicationReference
-      }
+      },
+      ...(verificationResult && {
+        overallVerification: {
+          status: verificationResult.overallStatus,
+          score: verificationResult.verificationScore,
+          missingDocuments: verificationResult.missingDocuments
+        }
+      })
     });
   } catch (uploadError) {
     logger.error('Error uploading document to Cloudinary:', uploadError.message);
@@ -1520,7 +2851,61 @@ const getVisaApplicationDetails = asyncHandler(async (req, res) => {
     throw new ApiError('Unauthorized to view this application', StatusCodes.FORBIDDEN);
   }
 
-  ApiResponse.success(res, StatusCodes.OK, 'Visa application details fetched successfully', { visaApplication });
+  // Check for real-time status updates from external API if we have an external reference
+  let externalStatus = null;
+  if (visaApplication.externalReference) {
+    try {
+      const statusResponse = await visaProcessingService.checkVisaStatus(
+        visaApplication.externalReference,
+        visaApplication.applicationReference
+      );
+      externalStatus = statusResponse.data;
+      
+      // Update local status if external status has changed
+      if (externalStatus.status !== visaApplication.externalStatus) {
+        visaApplication.externalStatus = externalStatus.status;
+        visaApplication.lastExternalStatusCheck = new Date();
+        
+        // Map external status to internal status if needed
+        const statusMapping = {
+          'Submitted': 'Under Review',
+          'In Review': 'Under Review',
+          'Documents Required': 'Additional Documents Required',
+          'Approved': 'Approved',
+          'Rejected': 'Rejected'
+        };
+        
+        const mappedStatus = statusMapping[externalStatus.status];
+        if (mappedStatus && mappedStatus !== visaApplication.status) {
+          visaApplication.status = mappedStatus;
+          visaApplication.statusHistory.push({
+            status: mappedStatus,
+            updatedAt: new Date(),
+            notes: `Status updated from external processor: ${externalStatus.statusDescription}`
+          });
+        }
+        
+        await visaApplication.save();
+      }
+    } catch (statusError) {
+      logger.error('Failed to check external visa status:', statusError.message);
+      // Continue without external status - not critical for viewing application
+    }
+  }
+
+  ApiResponse.success(res, StatusCodes.OK, 'Visa application details fetched successfully', { 
+    visaApplication,
+    ...(externalStatus && {
+      externalStatus: {
+        status: externalStatus.status,
+        statusDescription: externalStatus.statusDescription,
+        currentStage: externalStatus.currentStage,
+        estimatedCompletion: externalStatus.estimatedCompletion,
+        nextSteps: externalStatus.nextSteps,
+        trackingUrl: visaApplication.trackingUrl
+      }
+    })
+  });
 });
 
 /**
@@ -1587,6 +2972,33 @@ const updateVisaApplicationStatus = asyncHandler(async (req, res) => {
     visaApplication.actualProcessingTime = Math.ceil(
       (new Date() - visaApplication.createdAt) / (1000 * 60 * 60 * 24)
     );
+  }
+
+  // Submit to external API when status changes to "Under Review" and has sufficient documents
+  if (status === 'Under Review' && oldStatus === 'Pending' && visaApplication.documents.length > 0) {
+    try {
+      const submissionResponse = await visaProcessingService.submitVisaApplication(visaApplication);
+      if (submissionResponse.success) {
+        visaApplication.externalReference = submissionResponse.data.externalReference;
+        visaApplication.externalStatus = submissionResponse.data.status;
+        visaApplication.trackingUrl = submissionResponse.data.trackingUrl;
+        
+        // Add note about external submission
+        visaApplication.applicationNotes.push({
+          note: `Application submitted to external processor. Reference: ${submissionResponse.data.externalReference}`,
+          addedBy: req.user.userId,
+          timestamp: new Date()
+        });
+      }
+    } catch (submissionError) {
+      logger.error('Failed to submit to external visa processor:', submissionError.message);
+      // Don't fail the status update if external submission fails
+      visaApplication.applicationNotes.push({
+        note: 'External submission failed - will retry later',
+        addedBy: req.user.userId,
+        timestamp: new Date()
+      });
+    }
   }
 
   await visaApplication.save();
@@ -1670,6 +3082,271 @@ const updateVisaApplicationStatus = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * @description Get visa requirements for a specific country and visa type.
+ * @route GET /api/v1/products/visa/requirements
+ * @access Public
+ */
+const getVisaRequirements = asyncHandler(async (req, res) => {
+  const { destinationCountry, visaType, nationality = 'Nigeria' } = req.query;
+
+  if (!destinationCountry || !visaType) {
+    throw new ApiError('Destination country and visa type are required', StatusCodes.BAD_REQUEST);
+  }
+
+  try {
+    const requirementsResponse = await visaProcessingService.getVisaRequirements(
+      destinationCountry,
+      visaType,
+      nationality
+    );
+
+    ApiResponse.success(res, StatusCodes.OK, 'Visa requirements fetched successfully', {
+      requirements: requirementsResponse.data
+    });
+  } catch (error) {
+    logger.error('Failed to get visa requirements:', error.message);
+    throw new ApiError('Failed to retrieve visa requirements', StatusCodes.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * @description Calculate visa fees for a specific application.
+ * @route POST /api/v1/products/visa/calculate-fees
+ * @access Public
+ */
+const calculateVisaApplicationFees = asyncHandler(async (req, res) => {
+  const { destinationCountry, visaType, urgency = 'Standard', nationality = 'Nigeria' } = req.body;
+
+  if (!destinationCountry || !visaType) {
+    throw new ApiError('Destination country and visa type are required', StatusCodes.BAD_REQUEST);
+  }
+
+  try {
+    const feesResponse = await visaProcessingService.calculateVisaFees(
+      destinationCountry,
+      visaType,
+      urgency,
+      nationality
+    );
+
+    ApiResponse.success(res, StatusCodes.OK, 'Visa fees calculated successfully', {
+      fees: feesResponse.data
+    });
+  } catch (error) {
+    logger.error('Failed to calculate visa fees:', error.message);
+    // Return fallback calculation
+    const fallbackFees = calculateVisaFees(destinationCountry, visaType, urgency);
+    ApiResponse.success(res, StatusCodes.OK, 'Visa fees calculated successfully (fallback)', {
+      fees: { ...fallbackFees, fallback: true }
+    });
+  }
+});
+
+/**
+ * @description Get available visa processing centers.
+ * @route GET /api/v1/products/visa/processing-centers
+ * @access Public
+ */
+const getVisaProcessingCenters = asyncHandler(async (req, res) => {
+  const { destinationCountry, applicantLocation } = req.query;
+
+  if (!destinationCountry) {
+    throw new ApiError('Destination country is required', StatusCodes.BAD_REQUEST);
+  }
+
+  try {
+    const centersResponse = await visaProcessingService.getProcessingCenters(
+      destinationCountry,
+      applicantLocation || 'Lagos'
+    );
+
+    ApiResponse.success(res, StatusCodes.OK, 'Processing centers fetched successfully', {
+      centers: centersResponse.data.centers
+    });
+  } catch (error) {
+    logger.error('Failed to get processing centers:', error.message);
+    throw new ApiError('Failed to retrieve processing centers', StatusCodes.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * @description Schedule a biometric appointment for visa application.
+ * @route POST /api/v1/products/visa/:id/schedule-appointment
+ * @access Private
+ */
+const scheduleVisaAppointment = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { preferredDate, preferredTime, location, type = 'biometric', specialRequirements } = req.body;
+
+  const visaApplication = await VisaApplication.findById(id);
+
+  if (!visaApplication) {
+    throw new ApiError('Visa application not found', StatusCodes.NOT_FOUND);
+  }
+
+  // Ensure user is authorized
+  if (req.user && visaApplication.userId && visaApplication.userId.toString() !== req.user.userId) {
+    throw new ApiError('Unauthorized to schedule appointment for this application', StatusCodes.FORBIDDEN);
+  }
+
+  if (!visaApplication.externalReference) {
+    throw new ApiError('Application must be submitted to external processor first', StatusCodes.BAD_REQUEST);
+  }
+
+  try {
+    const appointmentResponse = await visaProcessingService.scheduleAppointment(
+      visaApplication.externalReference,
+      {
+        preferredDate,
+        preferredTime,
+        location,
+        type,
+        contactPhone: visaApplication.guestPhoneNumber || req.user?.phoneNumber,
+        specialRequirements: specialRequirements || []
+      }
+    );
+
+    // Update visa application with appointment details
+    visaApplication.appointmentDetails = appointmentResponse.data;
+    visaApplication.applicationNotes.push({
+      note: `Appointment scheduled for ${appointmentResponse.data.scheduledDate} at ${appointmentResponse.data.scheduledTime}`,
+      addedBy: req.user?.userId,
+      timestamp: new Date()
+    });
+
+    await visaApplication.save();
+
+    ApiResponse.success(res, StatusCodes.OK, 'Appointment scheduled successfully', {
+      appointment: appointmentResponse.data
+    });
+  } catch (error) {
+    logger.error('Failed to schedule appointment:', error.message);
+    throw new ApiError('Failed to schedule visa appointment', StatusCodes.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * @description Check real-time visa application status.
+ * @route GET /api/v1/products/visa/:id/status
+ * @access Private
+ */
+const checkVisaApplicationStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const visaApplication = await VisaApplication.findById(id);
+
+  if (!visaApplication) {
+    throw new ApiError('Visa application not found', StatusCodes.NOT_FOUND);
+  }
+
+  // Ensure user is authorized
+  if (req.user && visaApplication.userId && visaApplication.userId.toString() !== req.user.userId) {
+    throw new ApiError('Unauthorized to check status for this application', StatusCodes.FORBIDDEN);
+  }
+
+  if (!visaApplication.externalReference) {
+    ApiResponse.success(res, StatusCodes.OK, 'Visa application status retrieved', {
+      status: {
+        internalStatus: visaApplication.status,
+        lastUpdated: visaApplication.updatedAt,
+        statusHistory: visaApplication.statusHistory,
+        externalSubmitted: false
+      }
+    });
+    return;
+  }
+
+  try {
+    const statusResponse = await visaProcessingService.checkVisaStatus(
+      visaApplication.externalReference,
+      visaApplication.applicationReference
+    );
+
+    // Update local status if needed
+    if (statusResponse.data.status !== visaApplication.externalStatus) {
+      visaApplication.externalStatus = statusResponse.data.status;
+      visaApplication.lastExternalStatusCheck = new Date();
+      await visaApplication.save();
+    }
+
+    ApiResponse.success(res, StatusCodes.OK, 'Visa application status retrieved', {
+      status: {
+        internalStatus: visaApplication.status,
+        externalStatus: statusResponse.data.status,
+        statusDescription: statusResponse.data.statusDescription,
+        currentStage: statusResponse.data.currentStage,
+        estimatedCompletion: statusResponse.data.estimatedCompletion,
+        nextSteps: statusResponse.data.nextSteps,
+        lastUpdated: statusResponse.data.lastUpdated,
+        biometric: statusResponse.data.biometric,
+        decision: statusResponse.data.decision,
+        trackingUrl: visaApplication.trackingUrl
+      }
+    });
+  } catch (error) {
+    logger.error('Failed to check visa status:', error.message);
+    throw new ApiError('Failed to retrieve visa application status', StatusCodes.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
+ * @function checkSanlamAllianzApiHealth
+ * @description Checks the health and connectivity of SanlamAllianz API endpoints
+ * @route GET /api/v1/products/health/sanlam-allianz
+ * @access Private (Admin only)
+ */
+const checkSanlamAllianzApiHealth = asyncHandler(async (req, res) => {
+  const { validateApiConnection } = require('../services/allianzService');
+  
+  try {
+    logger.info('Checking SanlamAllianz API health...');
+    const connectionStatus = await validateApiConnection();
+    
+    // Determine overall health status
+    const services = Object.keys(connectionStatus);
+    const connectedServices = services.filter(service => connectionStatus[service].status === 'connected');
+    const failedServices = services.filter(service => connectionStatus[service].status === 'failed');
+    const notConfiguredServices = services.filter(service => connectionStatus[service].status === 'not_configured');
+    
+    const overallStatus = failedServices.length === 0 ? 'healthy' : 'degraded';
+    const statusCode = overallStatus === 'healthy' ? StatusCodes.OK : StatusCodes.SERVICE_UNAVAILABLE;
+    
+    const healthReport = {
+      overall: overallStatus,
+      timestamp: new Date().toISOString(),
+      services: connectionStatus,
+      summary: {
+        total: services.length,
+        connected: connectedServices.length,
+        failed: failedServices.length,
+        notConfigured: notConfiguredServices.length
+      }
+    };
+    
+    logger.info(`SanlamAllianz API health check completed: ${overallStatus}`);
+    
+    ApiResponse.success(res, statusCode, 'SanlamAllianz API health check completed', healthReport);
+  } catch (error) {
+    logger.error('SanlamAllianz API health check failed:', error.message);
+    
+    const healthReport = {
+      overall: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error.message,
+      services: {},
+      summary: {
+        total: 0,
+        connected: 0,
+        failed: 0,
+        notConfigured: 0
+      }
+    };
+    
+    ApiResponse.success(res, StatusCodes.SERVICE_UNAVAILABLE, 'SanlamAllianz API health check failed', healthReport);
+  }
+});
+
 
 module.exports = {
   getServiceCharges,
@@ -1678,10 +3355,13 @@ module.exports = {
   getTravelInsuranceQuote,
   purchaseTravelInsuranceIndividual,
   purchaseTravelInsuranceFamily,
+  verifyTravelInsurancePayment,
   searchFlights,
   bookFlight,
+  verifyFlightPayment,
   searchHotels,
   bookHotel,
+  verifyHotelPayment,
   getAvailablePackages,
   getPackageDetails,
   initiatePackagePurchase,
@@ -1692,4 +3372,10 @@ module.exports = {
   updateVisaApplicationStatus,
   processVisaPayment,
   verifyVisaPayment,
+  getVisaRequirements,
+  calculateVisaApplicationFees,
+  getVisaProcessingCenters,
+  scheduleVisaAppointment,
+  checkVisaApplicationStatus,
+  checkSanlamAllianzApiHealth,
 };

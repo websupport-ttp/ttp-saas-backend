@@ -34,6 +34,9 @@ async function initializeApplication() {
     await createAllAnalyticsIndexes();
     logger.info('Analytics indexes created successfully');
 
+    // Initialize new XML and Cloudflare services
+    await initializeNewServices();
+
     // Warm up critical cache data
     await warmUpCache();
 
@@ -42,6 +45,47 @@ async function initializeApplication() {
     logger.error('Application initialization failed:', error.message);
     // Don't exit the process, just log the error
     // The application can still function without indexes
+  }
+}
+
+/**
+ * @function initializeNewServices
+ * @description Initialize new XML and Cloudflare services
+ */
+async function initializeNewServices() {
+  try {
+    logger.info('Initializing new XML and Cloudflare services...');
+
+    // Initialize Amadeus XML Service
+    try {
+      const AmadeusXmlService = require('../services/amadeusXmlService');
+      const amadeusService = new AmadeusXmlService();
+      
+      // First check if configuration is valid
+      if (!amadeusService.isConfigurationValid()) {
+        logger.warn('Amadeus XML service configuration is invalid or incomplete');
+        logger.warn('Application will continue without Amadeus XML service - flight bookings will use fallback mode');
+        return;
+      }
+      
+      logger.info('Amadeus XML service configuration is valid');
+      logger.info('Service will be initialized on first use');
+      
+      // Store service instance globally for reuse (optional)
+      global.amadeusXmlService = amadeusService;
+      
+    } catch (error) {
+      logger.warn('Amadeus XML service setup failed:', error.message);
+      logger.warn('Application will continue without Amadeus XML service - flight bookings will use fallback mode');
+    }
+
+    // Cloudflare Service - Removed (migrated to S3)
+    // Note: Cloudflare service has been replaced with AWS S3 for file storage
+    logger.info('File storage: Using AWS S3 (Cloudflare service removed)');
+
+    logger.info('New services initialization completed');
+  } catch (error) {
+    logger.error('New services initialization failed:', error.message);
   }
 }
 
@@ -76,5 +120,6 @@ async function warmUpCache() {
 
 module.exports = {
   initializeApplication,
+  initializeNewServices,
   warmUpCache
 };

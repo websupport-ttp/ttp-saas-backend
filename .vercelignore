@@ -1,0 +1,79 @@
+# Development files
+tests/
+scripts/
+tools/
+.kiro/
+
+# Test and coverage files
+coverage/
+.nyc_output/
+jest.resultProcessor.js
+
+# Development documentation
+docs/api-validation-report-*.json
+docs/api-documentation-*.json
+docs/api-documentation-*.md
+
+# Environment files (use Vercel environment variables instead)
+.env
+.env.local
+.env.development
+.env.test
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.temp/
+
+# User uploads (should be handled by cloud storage)
+uploads/
+
+# Git files
+.git/
+.gitignore
+
+# README and documentation (not needed for runtime)
+README.md
+LICENSE
+
+# Package manager files (keep package.json and package-lock.json)
+yarn.lock
+.pnpm-store/
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Spotlight-V100
+.Trashes

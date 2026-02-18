@@ -260,6 +260,81 @@ class ApiError extends Error {
       { operation, timeout, ...context }
     );
   }
+
+  /**
+   * Create an ApiError from XML error handler response
+   * @param {object} xmlError - Error object from XmlErrorHandler
+   * @returns {ApiError} ApiError instance
+   */
+  static fromXmlError(xmlError) {
+    if (!xmlError || !xmlError.error) {
+      return new ApiError('Unknown XML error', StatusCodes.INTERNAL_SERVER_ERROR);
+    }
+
+    const { code, message, details } = xmlError.error;
+    
+    // Map XML error codes to appropriate HTTP status codes
+    let statusCode = StatusCodes.INTERNAL_SERVER_ERROR;
+    
+    switch (code) {
+      case 'XML_TIMEOUT':
+      case 'XML_CONNECTION_TIMEOUT':
+        statusCode = StatusCodes.REQUEST_TIMEOUT;
+        break;
+      case 'XML_CONNECTION_REFUSED':
+      case 'XML_HOST_NOT_FOUND':
+      case 'XML_CONNECTION_ERROR':
+        statusCode = StatusCodes.BAD_GATEWAY;
+        break;
+      case 'XML_AUTHENTICATION_FAILED':
+        statusCode = StatusCodes.UNAUTHORIZED;
+        break;
+      case 'XML_SCHEMA_VALIDATION_ERROR':
+      case 'XML_PARSE_ERROR':
+      case 'XML_INVALID_CHARACTER':
+      case 'XML_UNCLOSED_TAG':
+      case 'XML_INCOMPLETE':
+        statusCode = StatusCodes.BAD_REQUEST;
+        break;
+      case 'AMADEUS_SOAP_FAULT':
+        statusCode = StatusCodes.BAD_GATEWAY;
+        break;
+      default:
+        statusCode = StatusCodes.INTERNAL_SERVER_ERROR;
+    }
+
+    return new ApiError(
+      message,
+      statusCode,
+      [],
+      code,
+      details
+    );
+  }
+
+  /**
+   * Create an ApiError from Cloudflare error handler response
+   * @param {object} cloudflareError - Error object from CloudflareErrorHandler
+   * @returns {ApiError} ApiError instance
+   */
+  static fromCloudflareError(cloudflareError) {
+    if (!cloudflareError || !cloudflareError.error) {
+      return new ApiError('Unknown Cloudflare error', StatusCodes.INTERNAL_SERVER_ERROR);
+    }
+
+    const { code, message, details } = cloudflareError.error;
+    
+    // Map error codes to appropriate HTTP status codes (Cloudflare removed)
+    const statusCode = 500; // Default to internal server error
+
+    return new ApiError(
+      message,
+      statusCode,
+      [],
+      code,
+      details
+    );
+  }
 }
 
 /**

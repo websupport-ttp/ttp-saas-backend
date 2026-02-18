@@ -71,7 +71,9 @@ const productionFormat = combine(
  */
 const createFileTransport = (filename, level = 'info') => {
   const fs = require('fs');
-  const logsDir = 'logs';
+  
+  // Use /tmp directory for serverless environments, logs directory for local development
+  const logsDir = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME ? '/tmp' : 'logs';
   
   // Create logs directory if it doesn't exist (except in test environment)
   if (process.env.NODE_ENV !== 'test') {
@@ -81,6 +83,10 @@ const createFileTransport = (filename, level = 'info') => {
       }
     } catch (error) {
       console.warn(`Could not create logs directory: ${error.message}`);
+      // In serverless environments, if we can't create the directory, return null to skip file logging
+      if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+        return null;
+      }
     }
   }
   
@@ -125,6 +131,7 @@ const getLogLevel = () => {
 const createTransports = () => {
   const isProduction = process.env.NODE_ENV === 'production';
   const isTest = process.env.NODE_ENV === 'test';
+  const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
   const transportsArray = [];
 
   // Console transport (always present, but silent in test)
@@ -135,14 +142,16 @@ const createTransports = () => {
     })
   );
 
-  // File transports for production only (not for test or development)
-  if (isProduction) {
+  // File transports for production only (not for test, development, or Vercel)
+  if (isProduction && !isVercel) {
     try {
-      transportsArray.push(
+      const fileTransports = [
         createFileTransport('error.log', 'error'),
         createFileTransport('combined.log', 'info'),
         createFileTransport('http.log', 'http')
-      );
+      ].filter(transport => transport !== null);
+      
+      transportsArray.push(...fileTransports);
     } catch (error) {
       console.warn('Could not create file transports:', error.message);
     }
@@ -158,24 +167,27 @@ const createTransports = () => {
 let logger;
 
 try {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
+  
   logger = createLogger({
     level: getLogLevel(),
     levels: logLevels,
-    format: process.env.NODE_ENV === 'production' ? productionFormat : developmentFormat,
+    format: isProduction ? productionFormat : developmentFormat,
     transports: createTransports(),
     exceptionHandlers: [
       new transports.Console({
-        format: process.env.NODE_ENV === 'production' ? productionFormat : developmentFormat,
+        format: isProduction ? productionFormat : developmentFormat,
         silent: process.env.NODE_ENV === 'test',
       }),
-      ...(process.env.NODE_ENV === 'production' ? [createFileTransport('exceptions.log')] : [])
+      ...(isProduction && !isVercel ? [createFileTransport('exceptions.log')].filter(t => t !== null) : [])
     ],
     rejectionHandlers: [
       new transports.Console({
-        format: process.env.NODE_ENV === 'production' ? productionFormat : developmentFormat,
+        format: isProduction ? productionFormat : developmentFormat,
         silent: process.env.NODE_ENV === 'test',
       }),
-      ...(process.env.NODE_ENV === 'production' ? [createFileTransport('rejections.log')] : [])
+      ...(isProduction && !isVercel ? [createFileTransport('rejections.log')].filter(t => t !== null) : [])
     ],
     exitOnError: false,
   });

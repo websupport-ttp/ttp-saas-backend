@@ -12,7 +12,7 @@ const {
 } = require('../controllers/categoryController');
 const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 const { UserRoles } = require('../utils/constants');
-const validate = require('../middleware/validationMiddleware');
+const { validate } = require('../middleware/validationMiddleware');
 const {
   validateCategoryHierarchy,
   validateSlugUniqueness,

@@ -4,7 +4,8 @@ const ApiResponse = require('../utils/apiResponse');
 const { ApiError } = require('../utils/apiError');
 const asyncHandler = require('../middleware/asyncHandler');
 const { sendEmail } = require('../utils/emailService');
-const { sendSMS, sendWhatsAppMessage } = require('../utils/smsService');
+const { sendSMS } = require('../utils/smsService');
+const { sendWhatsAppMessage } = require('../utils/whatsappService');
 const logger = require('../utils/logger');
 const Queue = require('bull'); // For message queueing
 

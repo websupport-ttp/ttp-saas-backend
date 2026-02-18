@@ -12,6 +12,12 @@ const logger = require('../utils/logger');
  * @returns {Function} Express middleware function
  */
 const createAdvancedRateLimiter = (options = {}) => {
+  // Disable rate limiting in development mode
+  if (process.env.NODE_ENV === 'development') {
+    logger.info('Rate limiting disabled in development mode');
+    return (req, res, next) => next();
+  }
+
   const {
     windowMs = 15 * 60 * 1000, // 15 minutes
     maxPerIP = 100,
@@ -305,6 +311,12 @@ const qrCodeSensitiveLimiter = createAdvancedRateLimiter({
  * @returns {Function} Express middleware function
  */
 const createQRCodeRateLimiter = (qrType, options = {}) => {
+  // Disable rate limiting in development mode
+  if (process.env.NODE_ENV === 'development') {
+    logger.info(`QR Code rate limiting disabled in development mode for ${qrType}`);
+    return (req, res, next) => next();
+  }
+
   const {
     windowMs = 15 * 60 * 1000,
     maxPerIP = 50,
@@ -365,27 +377,32 @@ const createQRCodeRateLimiter = (qrType, options = {}) => {
  * @function suspiciousActivityLimiter
  * @description Extremely strict limiter for detecting suspicious activity
  */
-const suspiciousActivityLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 20, // Very low limit
-  keyGenerator: (req) => `suspicious:${req.ip}`,
-  standardHeaders: false,
-  legacyHeaders: false,
-  skipSuccessfulRequests: true, // Only count failed requests
-  skipFailedRequests: false,
-  message: (req, res) => {
-    // Log suspicious activity
-    logger.logSecurityEvent('SUSPICIOUS_ACTIVITY_DETECTED', {
-      ip: req.ip,
-      userAgent: req.get('User-Agent'),
-      endpoint: req.originalUrl,
-      method: req.method,
-      userId: req.user?.userId,
-    }, 'critical');
+const suspiciousActivityLimiter = process.env.NODE_ENV === 'development'
+  ? (req, res, next) => {
+      logger.info('Suspicious activity limiter disabled in development mode');
+      next();
+    }
+  : rateLimit({
+      windowMs: 60 * 1000, // 1 minute
+      max: 20, // Very low limit
+      keyGenerator: (req) => `suspicious:${req.ip}`,
+      standardHeaders: false,
+      legacyHeaders: false,
+      skipSuccessfulRequests: true, // Only count failed requests
+      skipFailedRequests: false,
+      message: (req, res) => {
+        // Log suspicious activity
+        logger.logSecurityEvent('SUSPICIOUS_ACTIVITY_DETECTED', {
+          ip: req.ip,
+          userAgent: req.get('User-Agent'),
+          endpoint: req.originalUrl,
+          method: req.method,
+          userId: req.user?.userId,
+        }, 'critical');
 
-    ApiResponse.error(res, StatusCodes.TOO_MANY_REQUESTS, 'Suspicious activity detected');
-  },
-});
+        ApiResponse.error(res, StatusCodes.TOO_MANY_REQUESTS, 'Suspicious activity detected');
+      },
+    });
 
 module.exports = {
   apiLimiter,

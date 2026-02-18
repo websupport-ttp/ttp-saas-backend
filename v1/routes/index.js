@@ -3,6 +3,7 @@ const express = require('express');
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
 const productRoutes = require('./productRoutes');
+const bookingRoutes = require('./bookingRoutes');
 const messageRoutes = require('./messageRoutes');
 const postRoutes = require('./postRoutes');
 const categoryRoutes = require('./categoryRoutes');
@@ -11,6 +12,10 @@ const affiliateRoutes = require('./affiliateRoutes');
 const affiliateNotificationRoutes = require('./affiliateNotificationRoutes');
 const walletRoutes = require('./walletRoutes');
 const qrCodeRoutes = require('./qrCodeRoutes');
+const referenceDataRoutes = require('./referenceDataRoutes');
+const airportDbRoutes = require('./airportDbRoutes');
+const carHireRoutes = require('./carHireRoutes');
+const dashboardRoutes = require('./dashboardRoutes');
 
 // Import security middleware
 const { 
@@ -55,6 +60,7 @@ router.use(preventParameterPollution);
 router.use('/auth', authLimiter);
 router.use('/users', apiLimiter);
 router.use('/products', paymentLimiter); // Products involve payments
+router.use('/bookings', paymentLimiter); // Bookings involve payments
 router.use('/messages', apiLimiter);
 router.use('/posts', apiLimiter);
 router.use('/categories', apiLimiter);
@@ -63,11 +69,15 @@ router.use('/affiliates', affiliateLimiter); // Affiliate-specific rate limiting
 router.use('/affiliate-notifications', affiliateNotificationLimiter); // Notification-specific rate limiting
 router.use('/wallets', paymentLimiter); // Wallets involve financial operations
 router.use('/qr-codes', qrCodeLimiter); // QR code specific rate limiting
+router.use('/reference', apiLimiter); // Reference data with standard rate limiting
+router.use('/car-hire', paymentLimiter); // Car hire involves payments
+router.use('/dashboard', apiLimiter); // Dashboard stats with standard rate limiting
 
 // Define base routes for each module
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/products', productRoutes);
+router.use('/bookings', bookingRoutes);
 router.use('/messages', messageRoutes);
 router.use('/posts', postRoutes);
 router.use('/categories', categoryRoutes);
@@ -76,5 +86,9 @@ router.use('/affiliates', affiliateRoutes);
 router.use('/affiliate-notifications', affiliateNotificationRoutes);
 router.use('/wallets', walletRoutes);
 router.use('/qr-codes', qrCodeRoutes);
+router.use('/reference', referenceDataRoutes);
+router.use('/airportdb', airportDbRoutes); // AirportDB endpoints for autocomplete
+router.use('/car-hire', carHireRoutes); // Car hire endpoints
+router.use('/dashboard', dashboardRoutes); // Dashboard statistics endpoints
 
 module.exports = router;

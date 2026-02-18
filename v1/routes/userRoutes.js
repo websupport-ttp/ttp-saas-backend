@@ -6,11 +6,14 @@ const {
   getAllUsers,
   getSingleUser,
   updateUserRole,
+  makeUserStaff,
+  updateStaffClearance,
+  getAllStaff,
   deleteUser,
 } = require('../controllers/userController');
 const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 const { UserRoles } = require('../utils/constants');
-const validate = require('../middleware/validationMiddleware');
+const { validate } = require('../middleware/validationMiddleware');
 const { registerSchema } = require('../utils/validationSchemas'); // Reusing register schema for update validation
 
 const router = express.Router();
@@ -314,5 +317,135 @@ router.route('/:id').get(authenticateUser, authorizeRoles(UserRoles.ADMIN), getS
  *               $ref: '#/components/schemas/StandardErrorResponse'
  */
 router.put('/:id/role', authenticateUser, authorizeRoles(UserRoles.ADMIN), updateUserRole);
+
+/**
+ * @openapi
+ * /users/staff:
+ *   get:
+ *     summary: Get all staff members (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: clearanceLevel
+ *         schema:
+ *           type: integer
+ *           enum: [1, 2, 3, 4]
+ *         description: Filter by clearance level
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *         description: Filter by department
+ *     responses:
+ *       200:
+ *         description: Staff members fetched successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/staff', authenticateUser, authorizeRoles(UserRoles.ADMIN), getAllStaff);
+
+/**
+ * @openapi
+ * /users/{id}/make-staff:
+ *   put:
+ *     summary: Make a user a staff member with clearance level (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The user ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - clearanceLevel
+ *             properties:
+ *               clearanceLevel:
+ *                 type: integer
+ *                 enum: [1, 2, 3, 4]
+ *                 description: Staff clearance level (1=Drivers/Assistants, 2=Ticketing Officers, 3=Supervisors, 4=Management)
+ *                 example: 2
+ *               department:
+ *                 type: string
+ *                 example: "Ticketing"
+ *               employeeId:
+ *                 type: string
+ *                 example: "EMP001"
+ *     responses:
+ *       200:
+ *         description: User successfully made staff member
+ *       400:
+ *         description: Invalid clearance level
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: User not found
+ *       409:
+ *         description: Employee ID already in use
+ */
+router.put('/:id/make-staff', authenticateUser, authorizeRoles(UserRoles.ADMIN), makeUserStaff);
+
+/**
+ * @openapi
+ * /users/{id}/clearance:
+ *   put:
+ *     summary: Update staff clearance level (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The user ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               clearanceLevel:
+ *                 type: integer
+ *                 enum: [1, 2, 3, 4]
+ *                 description: Staff clearance level
+ *                 example: 3
+ *               department:
+ *                 type: string
+ *                 example: "Operations"
+ *               employeeId:
+ *                 type: string
+ *                 example: "EMP002"
+ *     responses:
+ *       200:
+ *         description: Staff clearance updated successfully
+ *       400:
+ *         description: Invalid clearance level or user is not staff
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: User not found
+ *       409:
+ *         description: Employee ID already in use
+ */
+router.put('/:id/clearance', authenticateUser, authorizeRoles(UserRoles.ADMIN), updateStaffClearance);
 
 module.exports = router;

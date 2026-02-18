@@ -133,7 +133,7 @@ const travelInsurancePurchaseIndividualSchema = z.object({
       Occupation: z.string().min(2, 'Occupation must be at least 2 characters').max(100, 'Occupation cannot exceed 100 characters'),
       MaritalStatusId: z.number().int().positive('Marital status ID must be a positive integer'),
       PreExistingMedicalCondition: z.boolean(),
-      MedicalCondition: z.string().max(1000, 'Medical condition description cannot exceed 1000 characters').optional(),
+      MedicalCondition: z.string().max(1000, 'Medical condition description cannot exceed 1000 characters').nullable().transform(val => val || ''),
       NextOfKin: z.object({
         FullName: z.string().min(2, 'Next of kin name must be at least 2 characters').max(100, 'Next of kin name cannot exceed 100 characters'),
         Address: z.string().min(10, 'Next of kin address must be at least 10 characters').max(500, 'Next of kin address cannot exceed 500 characters'),
@@ -156,8 +156,11 @@ const flightSearchSchema = z.object({
     returnDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Return date must be in YYYY-MM-DD format').optional(),
     adults: z.number().int().min(1, 'At least 1 adult is required').max(9, 'Maximum 9 adults allowed'),
     children: z.number().int().min(0, 'Children count cannot be negative').max(9, 'Maximum 9 children allowed').default(0),
+    infants: z.number().int().min(0, 'Infants count cannot be negative').max(9, 'Maximum 9 infants allowed').default(0),
     travelClass: z.enum(['ECONOMY', 'PREMIUM_ECONOMY', 'BUSINESS', 'FIRST']).default('ECONOMY'),
     currencyCode: z.string().length(3, 'Currency code must be 3 characters').regex(/^[A-Z]{3}$/, 'Currency code must be uppercase letters').default('NGN'),
+    max: z.number().int().min(1, 'Max results must be at least 1').max(100, 'Max results cannot exceed 100').default(50).optional(),
+    nonStop: z.boolean().default(false).optional(),
   }),
   query: z.object({}).optional(),
   params: z.object({}).optional(),
@@ -167,19 +170,52 @@ const flightBookSchema = z.object({
   body: z.object({
     flightDetails: z.object({
       id: z.string().min(1, 'Flight ID is required').max(100, 'Flight ID is too long'),
-      price: z.number().positive('Flight price must be positive'),
+      price: z.union([
+        z.number().positive('Flight price must be positive'),
+        z.object({
+          total: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val),
+          base: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val).optional(),
+          currency: z.string().optional()
+        }).transform(obj => parseFloat(obj.total || obj.base || 0))
+      ]),
     }),
-    passengerDetails: z.object({
-      firstName: nameSchema,
-      lastName: nameSchema,
-      email: emailSchema,
-      phoneNumber: phoneSchema,
+    passengerDetails: z.array(z.object({
+      id: z.string().optional(),
+      name: z.object({
+        firstName: nameSchema,
+        lastName: nameSchema,
+      }),
+      gender: z.enum(['MALE', 'FEMALE', 'Male', 'Female', 'Other']).optional(),
       dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date of birth must be in YYYY-MM-DD format').optional(),
-      gender: z.enum(['Male', 'Female', 'Other']).optional(),
-      passportNumber: z.string().min(6, 'Passport number must be at least 6 characters').max(20, 'Passport number cannot exceed 20 characters').optional(),
-    }),
-    paymentDetails: z.object({}).optional(),
+      contact: z.object({
+        emailAddress: emailSchema,
+        phones: z.array(z.object({
+          deviceType: z.string().optional(),
+          countryCallingCode: z.string().optional(),
+          number: z.string().min(1, 'Phone number is required'),
+        })).optional(),
+      }),
+      documents: z.array(z.object({
+        documentType: z.string().optional(),
+        number: z.string().optional(),
+        expiryDate: z.string().optional(),
+        issuanceCountry: z.string().optional(),
+        nationality: z.string().optional(),
+        holder: z.boolean().optional(),
+      })).optional(),
+    })).min(1, 'At least one passenger is required'),
+    paymentDetails: z.object({
+      currency: z.string().optional(),
+      callback_url: z.string().url().optional(),
+    }).optional(),
     referralCode: z.string().min(3, 'Referral code must be at least 3 characters').max(50, 'Referral code cannot exceed 50 characters').trim().toUpperCase().optional(),
+    isGuestBooking: z.boolean().optional(),
+    guestContactInfo: z.object({
+      email: emailSchema,
+      phone: z.string().min(1, 'Phone number is required'),
+      countryCode: z.string().optional(),
+      dialCode: z.string().optional(),
+    }).optional(),
   }),
   query: z.object({}).optional(),
   params: z.object({}).optional(),
@@ -187,12 +223,11 @@ const flightBookSchema = z.object({
 
 const hotelSearchSchema = z.object({
   body: z.object({
-    checkin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Check-in date must be in YYYY-MM-DD format'),
-    checkout: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Check-out date must be in YYYY-MM-DD format'),
-    country: z.string().length(2, 'Country code must be 2 characters').regex(/^[A-Z]{2}$/, 'Country code must be uppercase letters'),
-    city: z.string().min(2, 'City name must be at least 2 characters').max(100, 'City name cannot exceed 100 characters'),
+    destination: z.string().min(2, 'Destination must be at least 2 characters').max(100, 'Destination cannot exceed 100 characters'),
+    checkInDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Check-in date must be in YYYY-MM-DD format'),
+    checkOutDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Check-out date must be in YYYY-MM-DD format'),
     adults: z.number().int().min(1, 'At least 1 adult is required').max(20, 'Maximum 20 adults allowed'),
-    children: z.array(z.number().int().min(0).max(17, 'Child age cannot exceed 17')).max(10, 'Maximum 10 children allowed').default([]),
+    children: z.number().int().min(0, 'Children count cannot be negative').max(10, 'Maximum 10 children allowed').default(0),
     currency: z.string().length(3, 'Currency code must be 3 characters').regex(/^[A-Z]{3}$/, 'Currency code must be uppercase letters').default('NGN'),
   }),
   query: z.object({}).optional(),
@@ -295,6 +330,47 @@ const visaPaymentVerificationSchema = z.object({
     id: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid visa application ID format'),
   }),
 });
+
+const visaRequirementsSchema = z.object({
+  query: z.object({
+    destinationCountry: z.string().min(2, 'Destination country is required'),
+    visaType: z.string().min(1, 'Visa type is required'),
+    nationality: z.string().optional(),
+  }),
+});
+
+const visaFeesCalculationSchema = z.object({
+  body: z.object({
+    destinationCountry: z.string().min(2, 'Destination country is required'),
+    visaType: z.string().min(1, 'Visa type is required'),
+    urgency: z.enum(['Standard', 'Express', 'Super Express']).optional(),
+    nationality: z.string().optional(),
+  }),
+});
+
+const visaProcessingCentersSchema = z.object({
+  query: z.object({
+    destinationCountry: z.string().min(2, 'Destination country is required'),
+    applicantLocation: z.string().optional(),
+  }),
+});
+
+// Generic ID parameter validation
+const mongoIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid MongoDB ObjectId format');
+
+const visaAppointmentSchema = z.object({
+  params: z.object({ id: mongoIdSchema }),
+  body: z.object({
+    preferredDate: z.string().min(1, 'Preferred date is required'),
+    preferredTime: z.string().min(1, 'Preferred time is required'),
+    location: z.string().min(1, 'Location is required'),
+    type: z.enum(['biometric', 'interview', 'document_submission']).optional(),
+    specialRequirements: z.array(z.string()).optional(),
+  }),
+});
+
+
+
 
 // Guest checkout schema
 const guestCheckoutSchema = z.object({
@@ -534,12 +610,11 @@ const packagePaymentVerificationSchema = z.object({
   params: z.object({}).optional(),
 });
 
-// Generic ID parameter validation
 const mongoIdParamSchema = z.object({
   body: z.object({}).optional(),
   query: z.object({}).optional(),
   params: z.object({
-    id: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid ID format'),
+    id: mongoIdSchema,
   }),
 });
 
@@ -566,7 +641,13 @@ module.exports = {
   visaStatusUpdateSchema,
   visaPaymentSchema,
   visaPaymentVerificationSchema,
+  visaRequirementsSchema,
+  visaFeesCalculationSchema,
+  visaProcessingCentersSchema,
+  visaAppointmentSchema,
   guestCheckoutSchema,
+  
+
   
   // Package schemas
   packagePurchaseSchema,
@@ -583,5 +664,6 @@ module.exports = {
   duplicatePostSchema,
   
   // Generic schemas
+  mongoIdSchema,
   mongoIdParamSchema,
 };

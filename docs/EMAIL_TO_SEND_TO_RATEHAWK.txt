@@ -1,0 +1,79 @@
+To: apisupport@ratehawk.com
+CC: vivian.obi@ratehawk.com
+Subject: APIR-39029 - Sandbox API Credentials Authentication Issue
+
+---
+
+Dear Mikhail,
+
+Thank you for providing the sandbox API credentials and Pre-Certification Checklist. We have completed the integration implementation and are ready to begin testing, however we are encountering an authentication issue that is preventing us from proceeding.
+
+ISSUE SUMMARY
+We are receiving 401 "incorrect_credentials" errors when attempting to authenticate with the sandbox API using the credentials provided on October 29, 2025.
+
+CREDENTIALS BEING USED
+• API Key ID: 44
+• Access Token: 2ef38047-b92b-42a8-ae09-f8b86ea319ed
+• Base URL: https://api.worldota.net
+• Authentication Method: HTTP Basic Auth
+
+TEST DETAILS
+Endpoint: POST https://api.worldota.net/api/b2b/v3/search/multicomplete
+
+Request:
+{
+  "query": "London",
+  "language": "en"
+}
+
+Response:
+{
+  "status": "error",
+  "error": "incorrect_credentials",
+  "debug": {
+    "key_id": 44,
+    "api_key_id": 0,
+    "is_active": false
+  }
+}
+
+ANALYSIS
+The API recognizes our key_id (44) but shows api_key_id as 0 and is_active as false, suggesting the credentials may not be fully activated in your system.
+
+QUESTIONS
+1. Do the sandbox credentials require additional activation steps?
+2. Is IP whitelisting required for sandbox access? If so, we can provide our IP addresses immediately.
+3. Are there any additional setup requirements we may have missed?
+
+CURRENT STATUS
+We have successfully implemented:
+✓ All core API endpoints (/search/multicomplete, /search/serp, /hotel/prebook, /order/booking/form, /order/booking/finish, /order/booking/finish/status)
+✓ HTTP Basic Authentication
+✓ Comprehensive error handling
+✓ Request/response transformation logic
+
+We are ready to:
+• Complete the Pre-Certification Checklist
+• Map the test hotel (hid = 8473727)
+• Conduct comprehensive testing
+• Provide website access for your verification
+
+However, we cannot proceed with any testing until the authentication issue is resolved.
+
+REQUEST
+Please advise on the steps needed to activate our sandbox credentials so we can begin testing and move forward with the certification process.
+
+We are standing by and ready to proceed immediately once the credentials are working.
+
+Thank you for your assistance.
+
+Best regards,
+
+Opeyemi Oladejobi Akinkunmi
+Website Manager/Graphics Designer
+The Travel Place Limited
+Email: websupport@travelplaceng.com
+Mobile: +234 817 148 1480
+Phone: 0700TRAVELP
+Address: 5 Usuma Close, Maitama, Abuja, Nigeria
+Website: www.travelplaceng.com

@@ -117,7 +117,13 @@ const securityConfig = {
       if (!origin) return callback(null, true);
       
       if (process.env.NODE_ENV === 'production') {
-        const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim());
+        const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(o => o);
+        
+        // If no allowed origins are configured, allow all (for testing)
+        if (allowedOrigins.length === 0) {
+          return callback(null, true);
+        }
+        
         if (allowedOrigins.includes(origin)) {
           return callback(null, true);
         } else {
@@ -139,6 +145,9 @@ const securityConfig = {
       'X-Device-ID',
       'X-Request-ID',
       'X-Forwarded-For',
+      'X-Client-Version',
+      'X-Client-Platform',
+      'X-Guest-Request',
     ],
     exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
     maxAge: 86400, // 24 hours
@@ -315,17 +324,41 @@ const swaggerOptions = {
   apis: ['./v1/routes/*.js', './docs/swagger.js'], // Paths to files containing OpenAPI annotations
 };
 
-// Temporarily disable swagger docs to avoid YAML parsing errors during tests
-if (process.env.NODE_ENV !== 'test') {
-  const swaggerDocs = swaggerJsdoc(swaggerOptions);
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+// Setup Swagger documentation (disable only during automated tests)
+if (process.env.NODE_ENV !== 'test' || process.env.ENABLE_SWAGGER === 'true') {
+  try {
+    const swaggerDocs = swaggerJsdoc(swaggerOptions);
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs, {
+      explorer: true,
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: 'The Travel Place API Documentation'
+    }));
+    
+    // Also serve the raw swagger JSON
+    app.get('/api-docs.json', (req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      res.send(swaggerDocs);
+    });
+    
+    console.log('📚 Swagger documentation available at /api-docs');
+  } catch (error) {
+    console.warn('⚠️  Failed to setup Swagger documentation:', error.message);
+  }
 }
+
+// V1 API Routes
+app.get('/', (req, res) => {
+  res.send(`Welcome to The Travel Place's API`)
+})
 
 // V1 API Routes
 app.use('/api/v1', require('./v1/routes'));
 
 // Health check routes (separate from v1 for monitoring tools)
 app.use('/health', require('./v1/routes/healthRoutes'));
+
+// Monitoring routes for XML metrics
+app.use('/api/v1/monitoring', require('./v1/routes/monitoring'));
 
 // Handle unhandled routes first
 app.all('*', (req, res, next) => {

@@ -88,7 +88,6 @@ const WalletTransactionSchema = new mongoose.Schema({
     type: String,
     trim: true,
     maxlength: [100, 'Reference cannot exceed 100 characters'],
-    index: true,
   },
   relatedId: {
     type: mongoose.Schema.Types.ObjectId,

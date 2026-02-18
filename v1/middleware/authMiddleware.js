@@ -35,6 +35,23 @@ const extractTokenFromRequest = (req) => {
  * Supports token rotation, fingerprinting, and blacklist checking.
  */
 const authenticateUser = asyncHandler(async (req, res, next) => {
+  // Handle test authentication header in test environment
+  if (process.env.NODE_ENV === 'test' && req.headers['x-test-user']) {
+    try {
+      const userInfo = JSON.parse(req.headers['x-test-user']);
+      if (userInfo.userId && userInfo.role) {
+        req.user = { 
+          userId: userInfo.userId,
+          role: userInfo.role,
+          email: userInfo.email || 'test@example.com'
+        };
+        return next();
+      }
+    } catch (error) {
+      // Invalid JSON in test header, fall through to regular authentication
+    }
+  }
+
   const accessToken = extractTokenFromRequest(req);
   const { refreshToken } = req.signedCookies;
 
@@ -222,7 +239,26 @@ const authorizeRoles = (...roles) => {
  */
 const optionalAuthenticateUser = asyncHandler(async (req, res, next) => {
   try {
-    const { accessToken } = req.signedCookies;
+    // Handle test authentication header in test environment
+    if (process.env.NODE_ENV === 'test' && req.headers['x-test-user']) {
+      try {
+        const userInfo = JSON.parse(req.headers['x-test-user']);
+        if (userInfo.userId && userInfo.role) {
+          req.user = { 
+            userId: userInfo.userId,
+            role: userInfo.role,
+            email: userInfo.email || 'test@example.com'
+          };
+          return next();
+        }
+      } catch (error) {
+        // Invalid JSON in test header, continue without authentication
+        return next();
+      }
+    }
+
+    // Extract token from both header and cookies (same as authenticateUser)
+    const accessToken = extractTokenFromRequest(req);
 
     if (!accessToken) {
       return next();
@@ -346,6 +382,78 @@ const preventConcurrentSessions = asyncHandler(async (req, res, next) => {
   next();
 });
 
+/**
+ * @function requireStaffClearance
+ * @description Middleware to check if staff member has minimum required clearance level.
+ * Admins bypass this check automatically.
+ * @param {number} minimumLevel - The minimum clearance level required (1-4).
+ * @param {boolean} allowAdmin - Whether to allow Admin role to bypass (default: true).
+ * @returns {Function} An Express middleware function.
+ */
+const requireStaffClearance = (minimumLevel, allowAdmin = true) => {
+  return asyncHandler(async (req, res, next) => {
+    if (!req.user || !req.user.userId) {
+      throw new ApiError('Authentication required', StatusCodes.UNAUTHORIZED);
+    }
+
+    // Fetch full user details to check clearance level
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      throw new ApiError('User not found', StatusCodes.NOT_FOUND);
+    }
+
+    // Allow Admins to bypass staff clearance check
+    if (allowAdmin && user.role === 'Admin') {
+      req.user.clearanceLevel = 4; // Admins have highest clearance
+      return next();
+    }
+
+    // Check if user is staff
+    if (user.role !== 'Staff') {
+      throw new ApiError(
+        'Access denied: This resource is only accessible to staff members',
+        StatusCodes.FORBIDDEN
+      );
+    }
+
+    // Check clearance level
+    if (!user.staffClearanceLevel || user.staffClearanceLevel < minimumLevel) {
+      const { StaffClearanceDescription } = require('../utils/constants');
+      
+      logger.logSecurityEvent('INSUFFICIENT_CLEARANCE', {
+        userId: req.user.userId,
+        userClearance: user.staffClearanceLevel,
+        requiredClearance: minimumLevel,
+        endpoint: req.originalUrl,
+        method: req.method,
+        ip: req.ip,
+      }, 'medium');
+
+      throw new ApiError(
+        `Insufficient clearance: ${StaffClearanceDescription[minimumLevel]} or higher required`,
+        StatusCodes.FORBIDDEN
+      );
+    }
+
+    // Attach clearance info to request
+    req.user.staffClearanceLevel = user.staffClearanceLevel;
+    req.user.staffDepartment = user.staffDepartment;
+    req.user.staffEmployeeId = user.staffEmployeeId;
+
+    // Log successful clearance check for audit
+    logger.logSecurityEvent('CLEARANCE_CHECK_PASSED', {
+      userId: req.user.userId,
+      clearanceLevel: user.staffClearanceLevel,
+      requiredLevel: minimumLevel,
+      endpoint: req.originalUrl,
+      method: req.method,
+      ip: req.ip,
+    }, 'low');
+
+    next();
+  });
+};
+
 module.exports = { 
   authenticateUser, 
   authorizeRoles, 
@@ -353,4 +461,5 @@ module.exports = {
   requireEmailVerification,
   requirePhoneVerification,
   preventConcurrentSessions,
+  requireStaffClearance,
 };

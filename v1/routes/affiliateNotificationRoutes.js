@@ -2,7 +2,7 @@
 const express = require('express');
 const AffiliateNotificationController = require('../controllers/affiliateNotificationController');
 const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
-const validate = require('../middleware/validationMiddleware');
+const { validate } = require('../middleware/validationMiddleware');
 const { mongoIdParamSchema } = require('../utils/validationSchemas');
 const { 
   affiliateNotificationLimiter, 

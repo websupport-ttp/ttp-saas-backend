@@ -265,7 +265,7 @@ router.get('/', healthRateLimit, getHealthStatus);
  * /health/service/{serviceName}:
  *   get:
  *     summary: Get health status for a specific service
- *     description: Returns health status for a specific service (database, redis, paystack, amadeus, allianz, ratehawk, system)
+ *     description: Returns health status for a specific service (database, redis, paystack, amadeus, s3, allianz, ratehawk, system)
  *     tags: [Health Monitoring]
  *     parameters:
  *       - in: path
@@ -273,7 +273,7 @@ router.get('/', healthRateLimit, getHealthStatus);
  *         required: true
  *         schema:
  *           type: string
- *           enum: [database, redis, paystack, amadeus, allianz, ratehawk, system]
+ *           enum: [database, redis, paystack, amadeus, s3, allianz, ratehawk, system]
  *         description: Name of the service to check
  *     responses:
  *       200:

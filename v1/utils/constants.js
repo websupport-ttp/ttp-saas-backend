@@ -13,6 +13,31 @@ const UserRoles = {
 };
 
 /**
+ * @enum {number} StaffClearanceLevel
+ * @description Defines the clearance levels for staff members.
+ * Tier 1: Drivers and Office Assistants (basic access)
+ * Tier 2: Ticketing Officers (booking and customer management)
+ * Tier 3: Supervisors (team oversight and reporting)
+ * Tier 4: Management (full operational access)
+ */
+const StaffClearanceLevel = {
+  TIER_1: 1, // Drivers and Office Assistants
+  TIER_2: 2, // Ticketing Officers
+  TIER_3: 3, // Supervisors
+  TIER_4: 4, // Management
+};
+
+/**
+ * @description Staff clearance level descriptions
+ */
+const StaffClearanceDescription = {
+  1: 'Tier 1 - Drivers and Office Assistants',
+  2: 'Tier 2 - Ticketing Officers',
+  3: 'Tier 3 - Supervisors',
+  4: 'Tier 4 - Management',
+};
+
+/**
  * @enum {number} ServiceChargeEnum
  * @description Defines the service charges for different booking types.
  * These values will be stored in Redis and can be updated by admins.
@@ -23,6 +48,7 @@ const serviceChargeEnum = {
   travelInsuranceCharges: 1000,
   visaProcessingCharges: 7500,
   packageCharges: 2000,
+
 };
 
 /**
@@ -78,6 +104,8 @@ const PackageDifficulty = {
 
 module.exports = {
   UserRoles,
+  StaffClearanceLevel,
+  StaffClearanceDescription,
   serviceChargeEnum,
   TransactionStatus,
   PaymentMethod,

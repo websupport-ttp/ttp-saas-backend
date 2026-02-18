@@ -9,7 +9,7 @@ const VisaApplicationSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: function() { return !this.guestEmail; }
+    required: function () { return !this.guestEmail; }
   },
   guestEmail: {
     type: String,
@@ -19,9 +19,9 @@ const VisaApplicationSchema = new mongoose.Schema({
       /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
       'Please add a valid email address',
     ],
-    required: function() { return !this.userId; },
+    required: function () { return !this.userId; },
     validate: {
-      validator: function(email) {
+      validator: function (email) {
         return !this.userId || !email; // Either userId or guestEmail, not both
       },
       message: 'Cannot have both userId and guestEmail'
@@ -34,7 +34,7 @@ const VisaApplicationSchema = new mongoose.Schema({
       /^\+?[1-9]\d{1,14}$/, // E.164 format
       'Please add a valid phone number',
     ],
-    required: function() { return !this.userId; }
+    required: function () { return !this.userId; }
   },
   applicationReference: {
     type: String,
@@ -101,6 +101,23 @@ const VisaApplicationSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
       },
+      verification: {
+        status: {
+          type: String,
+          enum: ['verified', 'rejected', 'requires_review'],
+          default: 'requires_review'
+        },
+        confidence: {
+          type: Number,
+          min: 0,
+          max: 100,
+          default: 0
+        },
+        issues: [String],
+        suggestions: [String],
+        extractedData: Object,
+        verifiedAt: Date
+      }
     },
   ],
   status: {
@@ -138,6 +155,43 @@ const VisaApplicationSchema = new mongoose.Schema({
       },
     },
   ],
+  // External API integration fields
+  externalReference: {
+    type: String,
+    trim: true,
+    required: false,
+  },
+  externalStatus: {
+    type: String,
+    trim: true,
+    required: false,
+  },
+  trackingUrl: {
+    type: String,
+    trim: true,
+    required: false,
+  },
+  lastExternalStatusCheck: {
+    type: Date,
+    required: false,
+  },
+  externalRequirements: {
+    type: Object,
+    required: false,
+  },
+  documentTypes: [{
+    type: String,
+    trim: true,
+  }],
+  appointmentDetails: {
+    appointmentId: String,
+    scheduledDate: Date,
+    scheduledTime: String,
+    location: String,
+    address: String,
+    confirmationCode: String,
+    instructions: [String],
+  },
   // Referral tracking
   referralCode: {
     type: String,
@@ -150,15 +204,15 @@ const VisaApplicationSchema = new mongoose.Schema({
 });
 
 // Pre-save middleware to generate application reference
-VisaApplicationSchema.pre('save', function(next) {
+VisaApplicationSchema.pre('save', function (next) {
   if (this.isNew && !this.applicationReference) {
-    this.applicationReference = `VISA-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    this.applicationReference = `VISA-${Date.now()}-${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
   }
   next();
 });
 
 // Pre-save middleware to calculate total fees
-VisaApplicationSchema.pre('save', function(next) {
+VisaApplicationSchema.pre('save', function (next) {
   if (this.fees) {
     this.fees.total = (this.fees.visaFee || 0) + (this.fees.serviceFee || 0) + (this.fees.urgencyFee || 0);
   }

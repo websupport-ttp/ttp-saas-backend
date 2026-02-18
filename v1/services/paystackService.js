@@ -62,7 +62,7 @@ const makePaystackRequest = async (method, endpoint, data = null) => {
 /**
  * @function initializePayment
  * @description Initializes a payment transaction with Paystack.
- * @param {object} paymentDetails - Details for the payment, including email, amount, and reference.
+ * @param {object} paymentDetails - Details for the payment, including email, amount, reference, and optional callback_url.
  * @returns {object} Paystack initialization response, including authorization URL.
  * @throws {ApiError} If Paystack initialization fails.
  */
@@ -77,6 +77,15 @@ const initializePayment = async (paymentDetails) => {
     ...paymentDetails,
     amount: Math.round(paymentDetails.amount * 100), // Convert to kobo
   };
+
+  // Include callback_url if provided
+  if (paymentDetails.callback_url) {
+    processedDetails.callback_url = paymentDetails.callback_url;
+    logger.info(`Payment initialized with callback URL: ${paymentDetails.callback_url}`);
+    console.log(`[DEBUG] Paystack payload with callback:`, JSON.stringify(processedDetails, null, 2));
+  } else {
+    console.log(`[DEBUG] No callback URL provided in payment details`);
+  }
 
   return await paystackWrapper.execute(
     () => makePaystackRequest('POST', '/transaction/initialize', processedDetails),

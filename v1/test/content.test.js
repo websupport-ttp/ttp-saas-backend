@@ -13,6 +13,9 @@ jest.mock('../utils/emailService', () => ({
 }));
 jest.mock('../utils/smsService', () => ({
   sendSMS: jest.fn(),
+}));
+
+jest.mock('../utils/whatsappService', () => ({
   sendWhatsAppMessage: jest.fn(),
 }));
 

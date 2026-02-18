@@ -14,6 +14,55 @@ require('../v1/docs/analytics-api-documentation');
 // Import notification API documentation
 require('../v1/docs/notification-api-documentation');
 
+// Visa API documentation removed - no visa routes implemented
+
+/**
+ * @openapi
+ * info:
+ *   title: The Travel Place API
+ *   version: 2.0.0
+ *   description: |
+ *     The Travel Place API provides comprehensive travel booking and management services.
+ *     
+ *     ## Recent Updates (v2.0.0)
+ *     
+ *     ### Migration to AWS S3
+ *     - File uploads now use AWS S3 instead of Cloudflare Images
+ *     - Improved scalability, reliability, and cost efficiency
+ *     - New file upload response format with S3-specific data
+ *     - Support for signed URLs and private file access
+ *     
+ *     ### Amadeus XML Integration
+ *     - Flight search and booking now use Amadeus XML SOAP API
+ *     - Enhanced flight data and booking capabilities
+ *     - Backward compatible API responses maintained
+ *     
+ *     ### Enhanced Error Handling
+ *     - New error codes for XML processing and S3 operations
+ *     - More detailed error responses with context information
+ *     
+ *     ## Active Services
+ *     - **File Storage**: AWS S3 (migrated from Cloudflare Images)
+ *     - **Flight Search**: Amadeus XML SOAP API
+ *     - **Payments**: Paystack
+ *     - **SMS**: Twilio
+ *     - **WhatsApp**: WhatsApp Business API
+ *     - **Email**: Nodemailer with Gmail SMTP
+ *     
+ *     ## Health Monitoring
+ *     The API includes comprehensive health check endpoints to monitor:
+ *     - Database connectivity
+ *     - AWS S3 service
+ *     - Amadeus XML service
+ *     - Overall system health
+ *   contact:
+ *     name: The Travel Place API Support
+ *     email: api-support@thetravelplace.com
+ *   license:
+ *     name: MIT
+ *     url: https://opensource.org/licenses/MIT
+ */
+
 /**
  * @openapi
  * components:
@@ -2227,6 +2276,1495 @@ require('../v1/docs/notification-api-documentation');
  *             errorCode: "SERVICE_UNAVAILABLE"
  *             timestamp: "2024-01-15T10:30:00.000Z"
  *             requestId: "req_abc123def456"
+ */
+
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     # Updated File Upload Schemas for AWS S3
+ *     S3FileUploadResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: true
+ *         message:
+ *           type: string
+ *           example: "File uploaded successfully"
+ *         data:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: string
+ *               description: S3 object key
+ *               example: "uploads/1678888888888-abc123-image.jpg"
+ *             filename:
+ *               type: string
+ *               description: Original filename
+ *               example: "sample_image.jpg"
+ *             uploaded:
+ *               type: string
+ *               format: date-time
+ *               description: Upload timestamp
+ *               example: "2024-01-15T10:30:00.000Z"
+ *             requireSignedURLs:
+ *               type: boolean
+ *               description: Whether the image requires signed URLs
+ *               example: false
+ *             bucket:
+ *               type: string
+ *               description: S3 bucket name
+ *               example: "your-thetravelplace"
+ *             region:
+ *               type: string
+ *               description: AWS region
+ *               example: "eu-north-1"
+ *             url:
+ *               type: string
+ *               description: Primary file URL (signed or public)
+ *               example: "https://your-thetravelplace.s3.eu-north-1.amazonaws.com/uploads/1678888888888-abc123-image.jpg"
+ *             signedUrl:
+ *               type: string
+ *               description: Signed URL for secure access
+ *               example: "https://your-thetravelplace.s3.eu-north-1.amazonaws.com/uploads/1678888888888-abc123-image.jpg?X-Amz-Algorithm=..."
+ *             publicUrl:
+ *               type: string
+ *               description: Public URL (if file is public)
+ *               example: "https://your-thetravelplace.s3.eu-north-1.amazonaws.com/uploads/1678888888888-abc123-image.jpg"
+ *             meta:
+ *               type: object
+ *               properties:
+ *                 originalFilename:
+ *                   type: string
+ *                   example: "sample_image.jpg"
+ *                 uploadedBy:
+ *                   type: string
+ *                   example: "user-id-123"
+ *                 uploadedAt:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2024-01-15T10:30:00.000Z"
+
+ *     
+ *     # Enhanced Error Response Schema
+ *     EnhancedErrorResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: false
+ *         error:
+ *           type: object
+ *           properties:
+ *             code:
+ *               type: string
+ *               description: Specific error code
+ *               enum: [
+ *                 "S3_UPLOAD_ERROR",
+ *                 "S3_DELETE_ERROR", 
+ *                 "S3_ACCESS_DENIED",
+ *                 "S3_BUCKET_NOT_FOUND",
+ *                 "AMADEUS_XML_PARSE_ERROR",
+ *                 "AMADEUS_XML_TIMEOUT",
+ *                 "AMADEUS_SOAP_FAULT",
+ *                 "XML_VALIDATION_ERROR"
+ *               ]
+ *               example: "AMADEUS_XML_PARSE_ERROR"
+ *             message:
+ *               type: string
+ *               description: Human-readable error message
+ *               example: "Failed to parse XML response from Amadeus"
+ *             details:
+ *               type: object
+ *               description: Additional error context
+ *               properties:
+ *                 xmlError:
+ *                   type: string
+ *                   example: "Invalid XML structure in SOAP response"
+ *                 endpoint:
+ *                   type: string
+ *                   example: "/flight-search"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2024-01-15T10:30:00Z"
+ *                 requestId:
+ *                   type: string
+ *                   example: "req-123-abc"
+ *     
+ *     # Health Check Schemas
+ *     HealthCheckResponse:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: string
+ *           enum: [healthy, unhealthy, degraded]
+ *           example: "healthy"
+ *         timestamp:
+ *           type: string
+ *           format: date-time
+ *           example: "2024-01-15T10:30:00Z"
+ *         services:
+ *           type: object
+ *           properties:
+ *             database:
+ *               type: string
+ *               enum: [healthy, unhealthy]
+ *               example: "healthy"
+ *             s3:
+ *               type: string
+ *               enum: [healthy, unhealthy]
+ *               example: "healthy"
+ *             amadeusXml:
+ *               type: string
+ *               enum: [healthy, unhealthy]
+ *               example: "healthy"
+ *         version:
+ *           type: string
+ *           example: "2.0.0"
+ *         uptime:
+ *           type: number
+ *           description: Uptime in seconds
+ *           example: 86400
+ *     
+
+ *     
+ *     # Flight Booking Schemas
+ *     FlightSearchRequest:
+ *       type: object
+ *       required:
+ *         - originLocationCode
+ *         - destinationLocationCode
+ *         - departureDate
+ *         - adults
+ *       properties:
+ *         originLocationCode:
+ *           type: string
+ *           pattern: "^[A-Z]{3}$"
+ *           description: Origin airport IATA code (3 letters)
+ *           example: "LOS"
+ *         destinationLocationCode:
+ *           type: string
+ *           pattern: "^[A-Z]{3}$"
+ *           description: Destination airport IATA code (3 letters)
+ *           example: "JFK"
+ *         departureDate:
+ *           type: string
+ *           format: date
+ *           description: Departure date (YYYY-MM-DD)
+ *           example: "2024-12-15"
+ *         returnDate:
+ *           type: string
+ *           format: date
+ *           description: Return date for round trip (optional)
+ *           example: "2024-12-22"
+ *         adults:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 9
+ *           description: Number of adult passengers
+ *           example: 2
+ *         children:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 9
+ *           description: Number of child passengers (2-11 years)
+ *           example: 1
+ *           default: 0
+ *         travelClass:
+ *           type: string
+ *           enum: [ECONOMY, PREMIUM_ECONOMY, BUSINESS, FIRST]
+ *           description: Preferred travel class
+ *           example: "ECONOMY"
+ *           default: "ECONOMY"
+ *         currencyCode:
+ *           type: string
+ *           pattern: "^[A-Z]{3}$"
+ *           description: Preferred currency for pricing
+ *           example: "NGN"
+ *           default: "NGN"
+ *     
+ *     FlightSearchResponse:
+ *       type: object
+ *       properties:
+ *         meta:
+ *           type: object
+ *           properties:
+ *             count:
+ *               type: integer
+ *               description: Number of flight offers returned
+ *               example: 25
+ *             currency:
+ *               type: string
+ *               example: "NGN"
+ *             links:
+ *               type: object
+ *               properties:
+ *                 self:
+ *                   type: string
+ *                   example: "https://api.amadeus.com/v2/shopping/flight-offers"
+ *         data:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/FlightOffer'
+ *         dictionaries:
+ *           type: object
+ *           properties:
+ *             locations:
+ *               type: object
+ *               additionalProperties:
+ *                 type: object
+ *                 properties:
+ *                   cityCode:
+ *                     type: string
+ *                     example: "NYC"
+ *                   countryCode:
+ *                     type: string
+ *                     example: "US"
+ *             aircraft:
+ *               type: object
+ *               additionalProperties:
+ *                 type: string
+ *               example:
+ *                 "763": "BOEING 767-300"
+ *             currencies:
+ *               type: object
+ *               additionalProperties:
+ *                 type: string
+ *               example:
+ *                 "NGN": "NIGERIAN NAIRA"
+ *             carriers:
+ *               type: object
+ *               additionalProperties:
+ *                 type: string
+ *               example:
+ *                 "DL": "DELTA AIR LINES"
+ *     
+ *     FlightOffer:
+ *       type: object
+ *       properties:
+ *         type:
+ *           type: string
+ *           example: "flight-offer"
+ *         id:
+ *           type: string
+ *           example: "1"
+ *         source:
+ *           type: string
+ *           example: "GDS"
+ *         instantTicketingRequired:
+ *           type: boolean
+ *           example: false
+ *         nonHomogeneous:
+ *           type: boolean
+ *           example: false
+ *         oneWay:
+ *           type: boolean
+ *           example: false
+ *         lastTicketingDate:
+ *           type: string
+ *           format: date
+ *           example: "2024-12-10"
+ *         numberOfBookableSeats:
+ *           type: integer
+ *           example: 9
+ *         itineraries:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/FlightItinerary'
+ *         price:
+ *           $ref: '#/components/schemas/FlightPrice'
+ *         pricingOptions:
+ *           type: object
+ *           properties:
+ *             fareType:
+ *               type: array
+ *               items:
+ *                 type: string
+ *               example: ["PUBLISHED"]
+ *             includedCheckedBagsOnly:
+ *               type: boolean
+ *               example: true
+ *         validatingAirlineCodes:
+ *           type: array
+ *           items:
+ *             type: string
+ *           example: ["DL"]
+ *         travelerPricings:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/TravelerPricing'
+ *     
+ *     FlightItinerary:
+ *       type: object
+ *       properties:
+ *         duration:
+ *           type: string
+ *           example: "PT15H30M"
+ *         segments:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/FlightSegment'
+ *     
+ *     FlightSegment:
+ *       type: object
+ *       properties:
+ *         departure:
+ *           $ref: '#/components/schemas/FlightEndpoint'
+ *         arrival:
+ *           $ref: '#/components/schemas/FlightEndpoint'
+ *         carrierCode:
+ *           type: string
+ *           example: "DL"
+ *         number:
+ *           type: string
+ *           example: "156"
+ *         aircraft:
+ *           type: object
+ *           properties:
+ *             code:
+ *               type: string
+ *               example: "763"
+ *         operating:
+ *           type: object
+ *           properties:
+ *             carrierCode:
+ *               type: string
+ *               example: "DL"
+ *         duration:
+ *           type: string
+ *           example: "PT10H30M"
+ *         id:
+ *           type: string
+ *           example: "1"
+ *         numberOfStops:
+ *           type: integer
+ *           example: 0
+ *         blacklistedInEU:
+ *           type: boolean
+ *           example: false
+ *     
+ *     FlightEndpoint:
+ *       type: object
+ *       properties:
+ *         iataCode:
+ *           type: string
+ *           example: "LOS"
+ *         terminal:
+ *           type: string
+ *           example: "1"
+ *         at:
+ *           type: string
+ *           format: date-time
+ *           example: "2024-12-15T10:30:00"
+ *     
+ *     FlightPrice:
+ *       type: object
+ *       properties:
+ *         currency:
+ *           type: string
+ *           example: "NGN"
+ *         total:
+ *           type: string
+ *           example: "850000.00"
+ *         base:
+ *           type: string
+ *           example: "750000.00"
+ *         fees:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               amount:
+ *                 type: string
+ *                 example: "50000.00"
+ *               type:
+ *                 type: string
+ *                 example: "SUPPLIER"
+ *         grandTotal:
+ *           type: string
+ *           example: "855000.00"
+ *     
+ *     TravelerPricing:
+ *       type: object
+ *       properties:
+ *         travelerId:
+ *           type: string
+ *           example: "1"
+ *         fareOption:
+ *           type: string
+ *           example: "STANDARD"
+ *         travelerType:
+ *           type: string
+ *           example: "ADULT"
+ *         price:
+ *           $ref: '#/components/schemas/FlightPrice'
+ *         fareDetailsBySegment:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               segmentId:
+ *                 type: string
+ *                 example: "1"
+ *               cabin:
+ *                 type: string
+ *                 example: "ECONOMY"
+ *               fareBasis:
+ *                 type: string
+ *                 example: "UU1YXFII"
+ *               class:
+ *                 type: string
+ *                 example: "U"
+ *               includedCheckedBags:
+ *                 type: object
+ *                 properties:
+ *                   quantity:
+ *                     type: integer
+ *                     example: 1
+ *     
+ *     FlightBookingRequest:
+ *       type: object
+ *       required:
+ *         - flightDetails
+ *         - passengerDetails
+ *       properties:
+ *         flightDetails:
+ *           type: object
+ *           required:
+ *             - id
+ *             - price
+ *           properties:
+ *             id:
+ *               type: string
+ *               description: Flight offer ID from search results
+ *               example: "1"
+ *             price:
+ *               type: number
+ *               description: Total flight price
+ *               example: 855000
+ *         passengerDetails:
+ *           type: object
+ *           required:
+ *             - firstName
+ *             - lastName
+ *             - email
+ *             - phoneNumber
+ *           properties:
+ *             firstName:
+ *               type: string
+ *               description: Passenger first name
+ *               example: "John"
+ *             lastName:
+ *               type: string
+ *               description: Passenger last name
+ *               example: "Doe"
+ *             email:
+ *               type: string
+ *               format: email
+ *               description: Contact email address
+ *               example: "john.doe@example.com"
+ *             phoneNumber:
+ *               type: string
+ *               description: Contact phone number
+ *               example: "+2348012345678"
+ *             dateOfBirth:
+ *               type: string
+ *               format: date
+ *               description: Passenger date of birth (optional)
+ *               example: "1990-05-15"
+ *             gender:
+ *               type: string
+ *               enum: [Male, Female, Other]
+ *               description: Passenger gender (optional)
+ *               example: "Male"
+ *             passportNumber:
+ *               type: string
+ *               description: Passport number (optional)
+ *               example: "A12345678"
+ *         paymentDetails:
+ *           type: object
+ *           description: Payment information for Paystack integration
+ *           properties:
+ *             currency:
+ *               type: string
+ *               enum: [NGN, USD, GHS, ZAR, KES]
+ *               description: Payment currency
+ *               example: "NGN"
+ *             callback_url:
+ *               type: string
+ *               format: uri
+ *               description: URL to redirect after payment
+ *               example: "https://yourapp.com/payment/callback"
+ *         referralCode:
+ *           type: string
+ *           description: Optional referral code for affiliate tracking
+ *           example: "REF123456"
+ *     
+ *     FlightBookingResponse:
+ *       type: object
+ *       properties:
+ *         bookingReference:
+ *           type: string
+ *           description: Temporary booking reference
+ *           example: "TTP-FL-1678888888888"
+ *         authorizationUrl:
+ *           type: string
+ *           description: Paystack payment URL
+ *           example: "https://checkout.paystack.com/mock_auth_url"
+ *         paymentReference:
+ *           type: string
+ *           description: Payment transaction reference
+ *           example: "TTP-FL-PAY-1678888888888"
+ *         amount:
+ *           type: number
+ *           description: Total amount to be paid (including service charges)
+ *           example: 860000
+ *         currency:
+ *           type: string
+ *           description: Payment currency
+ *           example: "NGN"
+ *         expiresAt:
+ *           type: string
+ *           format: date-time
+ *           description: Booking hold expiry time
+ *           example: "2024-12-15T11:30:00Z"
+ *         serviceCharges:
+ *           type: object
+ *           properties:
+ *             flightBookingCharges:
+ *               type: number
+ *               example: 5000
+ *         instructions:
+ *           type: object
+ *           properties:
+ *             payment:
+ *               type: string
+ *               example: "Complete payment within 30 minutes to confirm booking"
+ *             documents:
+ *               type: string
+ *               example: "Ensure passport is valid for at least 6 months from travel date"
+ *     
+ *     # Hotel Booking Schemas
+ *     HotelSearchRequest:
+ *       type: object
+ *       required:
+ *         - destination
+ *         - checkInDate
+ *         - checkOutDate
+ *         - adults
+ *       properties:
+ *         destination:
+ *           type: string
+ *           description: Destination city or location
+ *           example: "Lagos"
+ *         checkInDate:
+ *           type: string
+ *           format: date
+ *           description: Check-in date (YYYY-MM-DD)
+ *           example: "2024-12-15"
+ *         checkOutDate:
+ *           type: string
+ *           format: date
+ *           description: Check-out date (YYYY-MM-DD)
+ *           example: "2024-12-18"
+ *         adults:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 10
+ *           description: Number of adult guests
+ *           example: 2
+ *         children:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 10
+ *           description: Number of child guests
+ *           example: 0
+ *           default: 0
+ *         currency:
+ *           type: string
+ *           enum: [NGN, USD, EUR, GBP]
+ *           description: Preferred currency for pricing
+ *           example: "NGN"
+ *           default: "NGN"
+ *     
+ *     HotelSearchResponse:
+ *       type: object
+ *       properties:
+ *         searchId:
+ *           type: string
+ *           description: Search session ID for booking
+ *           example: "search_abc123def456"
+ *         hotels:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/HotelOffer'
+ *         totalResults:
+ *           type: integer
+ *           description: Total number of hotels found
+ *           example: 25
+ *         searchCriteria:
+ *           $ref: '#/components/schemas/HotelSearchRequest'
+ *     
+ *     HotelOffer:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: Hotel ID
+ *           example: "12345"
+ *         name:
+ *           type: string
+ *           description: Hotel name
+ *           example: "Eko Hotel & Suites"
+ *         address:
+ *           type: string
+ *           description: Hotel address
+ *           example: "1415 Adetokunbo Ademola Street, Victoria Island, Lagos"
+ *         stars:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 5
+ *           description: Hotel star rating
+ *           example: 5
+ *         rating:
+ *           type: number
+ *           minimum: 0
+ *           maximum: 5
+ *           description: Guest rating score
+ *           example: 4.3
+ *         reviewCount:
+ *           type: integer
+ *           description: Number of guest reviews
+ *           example: 1250
+ *         images:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Array of hotel image URLs
+ *           example: ["https://example.com/hotel1.jpg", "https://example.com/hotel2.jpg"]
+ *         amenities:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Hotel amenities
+ *           example: ["WiFi", "Pool", "Gym", "Restaurant", "Spa"]
+ *         rooms:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/HotelRoom'
+ *         location:
+ *           type: object
+ *           properties:
+ *             latitude:
+ *               type: number
+ *               example: 6.4281
+ *             longitude:
+ *               type: number
+ *               example: 3.4219
+ *     
+ *     HotelRoom:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: Room offer ID for booking
+ *           example: "room_hash_abc123"
+ *         name:
+ *           type: string
+ *           description: Room type name
+ *           example: "Deluxe Room"
+ *         price:
+ *           type: number
+ *           description: Room price per night
+ *           example: 185000
+ *         currency:
+ *           type: string
+ *           description: Price currency
+ *           example: "NGN"
+ *         cancellationPolicy:
+ *           type: string
+ *           description: Cancellation policy details
+ *           example: "Free cancellation until 24 hours before check-in"
+ *         breakfast:
+ *           type: string
+ *           description: Breakfast inclusion
+ *           example: "Included"
+ *         bedding:
+ *           type: string
+ *           description: Bed type
+ *           example: "King Bed"
+ *         maxOccupancy:
+ *           type: integer
+ *           description: Maximum number of guests
+ *           example: 2
+ *         roomSize:
+ *           type: string
+ *           description: Room size information
+ *           example: "35 sqm"
+ *         amenities:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Room-specific amenities
+ *           example: ["Air Conditioning", "Mini Bar", "Safe", "Balcony"]
+ *     
+ *     HotelBookingRequest:
+ *       type: object
+ *       required:
+ *         - hotelDetails
+ *         - guestDetails
+ *         - searchId
+ *         - roomId
+ *       properties:
+ *         hotelDetails:
+ *           type: object
+ *           required:
+ *             - id
+ *             - name
+ *             - price
+ *             - checkInDate
+ *             - checkOutDate
+ *           properties:
+ *             id:
+ *               type: string
+ *               description: Hotel ID from search results
+ *               example: "12345"
+ *             name:
+ *               type: string
+ *               description: Hotel name
+ *               example: "Eko Hotel & Suites"
+ *             price:
+ *               type: number
+ *               description: Total room price
+ *               example: 185000
+ *             currency:
+ *               type: string
+ *               description: Price currency
+ *               example: "NGN"
+ *             checkInDate:
+ *               type: string
+ *               format: date
+ *               description: Check-in date
+ *               example: "2024-12-15"
+ *             checkOutDate:
+ *               type: string
+ *               format: date
+ *               description: Check-out date
+ *               example: "2024-12-18"
+ *             roomName:
+ *               type: string
+ *               description: Selected room type
+ *               example: "Deluxe Room"
+ *         guestDetails:
+ *           type: object
+ *           required:
+ *             - firstName
+ *             - lastName
+ *             - email
+ *             - phoneNumber
+ *           properties:
+ *             firstName:
+ *               type: string
+ *               description: Primary guest first name
+ *               example: "John"
+ *             lastName:
+ *               type: string
+ *               description: Primary guest last name
+ *               example: "Doe"
+ *             email:
+ *               type: string
+ *               format: email
+ *               description: Contact email address
+ *               example: "john.doe@example.com"
+ *             phoneNumber:
+ *               type: string
+ *               description: Contact phone number
+ *               example: "+2348012345678"
+ *             specialRequests:
+ *               type: string
+ *               description: Special requests or preferences
+ *               example: "Late check-in, non-smoking room"
+ *         paymentDetails:
+ *           type: object
+ *           properties:
+ *             email:
+ *               type: string
+ *               format: email
+ *               description: Payment email (usually same as guest email)
+ *               example: "john.doe@example.com"
+ *             currency:
+ *               type: string
+ *               enum: [NGN, USD, GHS, ZAR, KES]
+ *               description: Payment currency
+ *               example: "NGN"
+ *             callback_url:
+ *               type: string
+ *               format: uri
+ *               description: URL to redirect after payment
+ *               example: "https://yourapp.com/payment/callback"
+ *         searchId:
+ *           type: string
+ *           description: Search session ID from hotel search
+ *           example: "search_abc123def456"
+ *         roomId:
+ *           type: string
+ *           description: Room offer ID from search results
+ *           example: "room_hash_abc123"
+ *         referralCode:
+ *           type: string
+ *           description: Optional referral code for affiliate tracking
+ *           example: "HOTEL-REF123"
+ *     
+ *     HotelBookingResponse:
+ *       type: object
+ *       properties:
+ *         bookingReference:
+ *           type: string
+ *           description: Temporary booking reference
+ *           example: "TTP-HTL-1678888888888"
+ *         authorizationUrl:
+ *           type: string
+ *           description: Paystack payment URL
+ *           example: "https://checkout.paystack.com/abc123def456"
+ *         paymentReference:
+ *           type: string
+ *           description: Payment transaction reference
+ *           example: "TTP-HTL-PAY-1678888888888"
+ *         amount:
+ *           type: number
+ *           description: Total amount to be paid (including service charges)
+ *           example: 188000
+ *         currency:
+ *           type: string
+ *           description: Payment currency
+ *           example: "NGN"
+ *         expiresAt:
+ *           type: string
+ *           format: date-time
+ *           description: Booking hold expiry time
+ *           example: "2024-12-15T11:30:00Z"
+ *         hotelDetails:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: string
+ *               example: "12345"
+ *             name:
+ *               type: string
+ *               example: "Eko Hotel & Suites"
+ *             checkIn:
+ *               type: string
+ *               format: date
+ *               example: "2024-12-15"
+ *             checkOut:
+ *               type: string
+ *               format: date
+ *               example: "2024-12-18"
+ *             roomType:
+ *               type: string
+ *               example: "Deluxe Room"
+ *         guestDetails:
+ *           type: object
+ *           properties:
+ *             name:
+ *               type: string
+ *               example: "John Doe"
+ *             email:
+ *               type: string
+ *               example: "john.doe@example.com"
+ *             phone:
+ *               type: string
+ *               example: "+2348012345678"
+ *         serviceCharges:
+ *           type: object
+ *           properties:
+ *             hotelReservationCharges:
+ *               type: number
+ *               example: 3000
+ *         instructions:
+ *           type: object
+ *           properties:
+ *             payment:
+ *               type: string
+ *               example: "Complete payment within 30 minutes to confirm hotel reservation"
+ *             cancellation:
+ *               type: string
+ *               example: "Cancellation policy depends on hotel terms and conditions"
+ *     
+ *     HotelPaymentVerificationRequest:
+ *       type: object
+ *       required:
+ *         - reference
+ *       properties:
+ *         reference:
+ *           type: string
+ *           description: Payment reference from Paystack
+ *           example: "TTP-HTL-PAY-1678888888888"
+ *     
+ *     HotelPaymentVerificationResponse:
+ *       type: object
+ *       properties:
+ *         paymentStatus:
+ *           type: string
+ *           enum: [success, failed]
+ *           description: Payment verification status
+ *           example: "success"
+ *         transactionReference:
+ *           type: string
+ *           description: Original payment reference
+ *           example: "TTP-HTL-PAY-1678888888888"
+ *         amountPaid:
+ *           type: number
+ *           description: Amount paid by customer
+ *           example: 188000
+ *         currency:
+ *           type: string
+ *           description: Payment currency
+ *           example: "NGN"
+ *         paidAt:
+ *           type: string
+ *           format: date-time
+ *           description: Payment completion timestamp
+ *           example: "2024-12-15T10:45:00Z"
+ *         applicationStatus:
+ *           type: string
+ *           enum: [Booking Confirmed, Payment Confirmed - Manual Booking Required]
+ *           description: Booking status after payment
+ *           example: "Booking Confirmed"
+ *         bookingReference:
+ *           type: string
+ *           description: Final booking reference from Ratehawk
+ *           example: "RATEHAWK-HTL-789012345"
+ *         hotelDetails:
+ *           type: object
+ *           properties:
+ *             name:
+ *               type: string
+ *               example: "Eko Hotel & Suites"
+ *             checkIn:
+ *               type: string
+ *               format: date
+ *               example: "2024-12-15"
+ *             checkOut:
+ *               type: string
+ *               format: date
+ *               example: "2024-12-18"
+ *             guestName:
+ *               type: string
+ *               example: "John Doe"
+ *         nextSteps:
+ *           type: string
+ *           description: Instructions for next steps
+ *           example: "Your hotel reservation has been successfully confirmed. You will receive your booking confirmation via email shortly."
+ *     
+ *     # Visa Consultancy Schemas
+ *     VisaApplicationRequest:
+ *       type: object
+ *       required:
+ *         - destinationCountry
+ *         - visaType
+ *         - personalInformation
+ *         - contactInformation
+ *       properties:
+ *         destinationCountry:
+ *           type: string
+ *           description: Country for which visa is required
+ *           example: "United States"
+ *         visaType:
+ *           type: string
+ *           enum: [Tourist, Business, Student, Transit, Work, Family Visit]
+ *           description: Type of visa being applied for
+ *           example: "Tourist"
+ *         urgency:
+ *           type: string
+ *           enum: [Standard, Express]
+ *           description: Processing urgency level
+ *           example: "Standard"
+ *           default: "Standard"
+ *         personalInformation:
+ *           $ref: '#/components/schemas/VisaPersonalInformation'
+ *         contactInformation:
+ *           $ref: '#/components/schemas/VisaContactInformation'
+ *         travelInformation:
+ *           $ref: '#/components/schemas/VisaTravelInformation'
+ *         additionalNotes:
+ *           type: string
+ *           description: Any additional information or special requests
+ *           example: "First time traveling to the US"
+ *     
+ *     VisaPersonalInformation:
+ *       type: object
+ *       required:
+ *         - firstName
+ *         - lastName
+ *         - dateOfBirth
+ *         - nationality
+ *         - passportNumber
+ *       properties:
+ *         firstName:
+ *           type: string
+ *           description: Applicant's first name
+ *           example: "John"
+ *         lastName:
+ *           type: string
+ *           description: Applicant's last name
+ *           example: "Doe"
+ *         otherNames:
+ *           type: string
+ *           description: Applicant's middle name(s)
+ *           example: "Michael"
+ *         dateOfBirth:
+ *           type: string
+ *           format: date
+ *           description: Date of birth (YYYY-MM-DD)
+ *           example: "1990-05-15"
+ *         gender:
+ *           type: string
+ *           enum: [Male, Female]
+ *           description: Applicant's gender
+ *           example: "Male"
+ *         nationality:
+ *           type: string
+ *           description: Applicant's nationality
+ *           example: "Nigerian"
+ *         maritalStatus:
+ *           type: string
+ *           enum: [Single, Married, Divorced, Widowed]
+ *           description: Marital status
+ *           example: "Single"
+ *         occupation:
+ *           type: string
+ *           description: Current occupation
+ *           example: "Software Engineer"
+ *         passportNumber:
+ *           type: string
+ *           description: International passport number
+ *           example: "A12345678"
+ *         passportExpiryDate:
+ *           type: string
+ *           format: date
+ *           description: Passport expiry date
+ *           example: "2030-05-15"
+ *     
+ *     VisaContactInformation:
+ *       type: object
+ *       required:
+ *         - email
+ *         - phoneNumber
+ *         - address
+ *       properties:
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Contact email address
+ *           example: "john.doe@example.com"
+ *         phoneNumber:
+ *           type: string
+ *           description: Contact phone number
+ *           example: "+2348012345678"
+ *         address:
+ *           type: string
+ *           description: Residential address
+ *           example: "123 Main Street, Lagos, Nigeria"
+ *         city:
+ *           type: string
+ *           description: City of residence
+ *           example: "Lagos"
+ *         state:
+ *           type: string
+ *           description: State of residence
+ *           example: "Lagos State"
+ *     
+ *     VisaTravelInformation:
+ *       type: object
+ *       properties:
+ *         purposeOfTravel:
+ *           type: string
+ *           description: Purpose of travel
+ *           example: "Tourism and sightseeing"
+ *         intendedTravelDate:
+ *           type: string
+ *           format: date
+ *           description: Intended travel date
+ *           example: "2024-12-15"
+ *         durationOfStay:
+ *           type: string
+ *           description: Expected duration of stay
+ *           example: "2 weeks"
+ *     
+ *     VisaApplicationResponse:
+ *       type: object
+ *       properties:
+ *         applicationId:
+ *           type: string
+ *           description: Unique application ID
+ *           example: "VISA-APP-1678888888888"
+ *         status:
+ *           type: string
+ *           enum: [
+ *             "Pending Document Upload",
+ *             "Documents Under Review", 
+ *             "Payment Pending",
+ *             "In Progress",
+ *             "Completed",
+ *             "Rejected"
+ *           ]
+ *           example: "Pending Document Upload"
+ *         consultancyFee:
+ *           type: number
+ *           description: Consultancy fee amount
+ *           example: 25000
+ *         currency:
+ *           type: string
+ *           description: Fee currency
+ *           example: "NGN"
+ *         requiredDocuments:
+ *           type: array
+ *           description: List of required documents to upload
+ *           items:
+ *             type: string
+ *           example: [
+ *             "International Passport Bio-data Page",
+ *             "Passport Photograph",
+ *             "Bank Statement (3 months)",
+ *             "Employment Letter"
+ *           ]
+ *         nextSteps:
+ *           type: string
+ *           description: Instructions for next steps
+ *           example: "Please upload the required documents and proceed to payment"
+ *     
+ *     VisaDocumentUploadResponse:
+ *       type: object
+ *       properties:
+ *         documentId:
+ *           type: string
+ *           description: Unique document ID
+ *           example: "DOC-1678888888888"
+ *         fileName:
+ *           type: string
+ *           description: Original file name
+ *           example: "passport_biodata.pdf"
+ *         documentType:
+ *           type: string
+ *           description: Type of document uploaded
+ *           example: "International Passport Bio-data Page"
+ *         uploadedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Upload timestamp
+ *           example: "2024-01-15T10:30:00Z"
+ *         fileSize:
+ *           type: number
+ *           description: File size in bytes
+ *           example: 1048576
+ *         status:
+ *           type: string
+ *           enum: ["Pending Review", "Approved", "Rejected"]
+ *           description: Document verification status
+ *           example: "Pending Review"
+ *         remainingDocuments:
+ *           type: array
+ *           description: List of remaining required documents
+ *           items:
+ *             type: string
+ *           example: ["Passport Photograph", "Bank Statement"]
+ *     
+ *     VisaPaymentResponse:
+ *       type: object
+ *       properties:
+ *         paymentReference:
+ *           type: string
+ *           description: Payment transaction reference
+ *           example: "TTP-VISA-PAY-1678888888888"
+ *         authorizationUrl:
+ *           type: string
+ *           description: Paystack payment URL
+ *           example: "https://checkout.paystack.com/mock_auth_url"
+ *         amount:
+ *           type: number
+ *           description: Total amount to be paid
+ *           example: 25000
+ *         currency:
+ *           type: string
+ *           description: Payment currency
+ *           example: "NGN"
+ *         consultancyFee:
+ *           type: number
+ *           description: Base consultancy fee
+ *           example: 25000
+ *         serviceCharges:
+ *           type: object
+ *           properties:
+ *             visaProcessingCharges:
+ *               type: number
+ *               example: 0
+ *         expiresAt:
+ *           type: string
+ *           format: date-time
+ *           description: Payment link expiry time
+ *           example: "2024-01-15T11:30:00Z"
+ */
+
+/**
+ * @openapi
+ * paths:
+ *   /api/v1/health:
+ *     get:
+ *       tags:
+ *         - Health Check
+ *       summary: Get overall system health status
+ *       description: Returns the health status of all system components including database, AWS S3, and Amadeus XML services
+ *       responses:
+ *         '200':
+ *           description: System health status
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 $ref: '#/components/schemas/HealthCheckResponse'
+ *         '503':
+ *           description: System is unhealthy
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 $ref: '#/components/schemas/HealthCheckResponse'
+ *   
+ *   /api/v1/health/s3:
+ *     get:
+ *       tags:
+ *         - Health Check
+ *       summary: Check AWS S3 service health
+ *       description: Specifically checks the health and connectivity of AWS S3 storage service
+ *       responses:
+ *         '200':
+ *           description: S3 service is healthy
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "healthy"
+ *                   service:
+ *                     type: string
+ *                     example: "s3"
+ *                   responseTime:
+ *                     type: number
+ *                     description: Response time in milliseconds
+ *                     example: 150
+ *                   lastChecked:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2024-01-15T10:30:00Z"
+ *         '503':
+ *           description: S3 service is unhealthy
+ *   
+ *   /api/v1/health/amadeus-xml:
+ *     get:
+ *       tags:
+ *         - Health Check
+ *       summary: Check Amadeus XML service health
+ *       description: Specifically checks the health and connectivity of Amadeus XML SOAP service
+ *       responses:
+ *         '200':
+ *           description: Amadeus XML service is healthy
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "healthy"
+ *                   service:
+ *                     type: string
+ *                     example: "amadeus-xml"
+ *                   responseTime:
+ *                     type: number
+ *                     description: Response time in milliseconds
+ *                     example: 250
+ *                   lastChecked:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2024-01-15T10:30:00Z"
+ *         '503':
+ *           description: Amadeus XML service is unhealthy
+ *   
+
+ *   
+ *   /api/v1/upload:
+ *     post:
+ *       tags:
+ *         - File Management
+ *       summary: Upload file to AWS S3
+ *       description: |
+ *         Upload a file to AWS S3 storage service. 
+ *         
+ *         Files are stored using AWS S3 for scalable and reliable storage.
+ *       security:
+ *         - bearerAuth: []
+ *       requestBody:
+ *         required: true
+ *         content:
+ *           multipart/form-data:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 file:
+ *                   type: string
+ *                   format: binary
+ *                   description: File to upload
+ *                 metadata:
+ *                   type: string
+ *                   description: JSON string of additional metadata
+ *                   example: '{"category": "profile", "userId": "123"}'
+ *       responses:
+ *         '200':
+ *           description: File uploaded successfully
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 $ref: '#/components/schemas/S3FileUploadResponse'
+ *         '400':
+ *           description: Invalid file or request
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 $ref: '#/components/schemas/EnhancedErrorResponse'
+ *         '401':
+ *           description: Unauthorized - Authentication required
+ *         '413':
+ *           description: File too large
+ *         '429':
+ *           description: Rate limit exceeded
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 $ref: '#/components/schemas/EnhancedErrorResponse'
+ *         '500':
+ *           description: Upload failed
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 $ref: '#/components/schemas/EnhancedErrorResponse'
+ *   
+ *   /api/v1/files/{fileId}:
+ *     delete:
+ *       tags:
+ *         - File Management
+ *       summary: Delete file from AWS S3
+ *       description: |
+ *         Delete a file from AWS S3 storage service.
+ *         
+ *         Provide the S3 object key to delete the file from storage.
+ *       security:
+ *         - bearerAuth: []
+ *       parameters:
+ *         - in: path
+ *           name: fileId
+ *           required: true
+ *           schema:
+ *             type: string
+ *           description: Cloudflare image ID
+ *           example: "cloudflare-image-id-xyz789"
+ *       responses:
+ *         '200':
+ *           description: File deleted successfully
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   success:
+ *                     type: boolean
+ *                     example: true
+ *                   message:
+ *                     type: string
+ *                     example: "File deleted successfully"
+ *                   data:
+ *                     type: object
+ *                     properties:
+ *                       deletedId:
+ *                         type: string
+ *                         example: "cloudflare-image-id-xyz789"
+ *                       deletedAt:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2024-01-15T10:30:00Z"
+ *         '400':
+ *           description: Invalid file ID
+ *         '401':
+ *           description: Unauthorized - Authentication required
+ *         '404':
+ *           description: File not found
+ *         '500':
+ *           description: Deletion failed
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 $ref: '#/components/schemas/EnhancedErrorResponse'
+ *     
+ *     get:
+ *       tags:
+ *         - File Management
+ *       summary: Get file metadata
+ *       description: Retrieve metadata for a file stored in Cloudflare Images
+ *       security:
+ *         - bearerAuth: []
+ *       parameters:
+ *         - in: path
+ *           name: fileId
+ *           required: true
+ *           schema:
+ *             type: string
+ *           description: Cloudflare image ID
+ *           example: "cloudflare-image-id-xyz789"
+ *       responses:
+ *         '200':
+ *           description: File metadata retrieved successfully
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   success:
+ *                     type: boolean
+ *                     example: true
+ *                   data:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "cloudflare-image-id-xyz789"
+ *                       filename:
+ *                         type: string
+ *                         example: "sample_image.jpg"
+ *                       uploaded:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2024-01-15T10:30:00.000Z"
+ *                       requireSignedURLs:
+ *                         type: boolean
+ *                         example: false
+ *                       variants:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                         example: [
+ *                           "https://imagedelivery.net/your-hash/cloudflare-image-id-xyz789/public"
+ *                         ]
+ *                       meta:
+ *                         type: object
+ *                         description: Custom metadata
+ *         '401':
+ *           description: Unauthorized - Authentication required
+ *         '404':
+ *           description: File not found
+ *         '500':
+ *           description: Internal server error
  */
 
 // Export empty object to make this a valid Node.js module

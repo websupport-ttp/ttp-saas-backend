@@ -1,0 +1,83 @@
+To: apisupport@ratehawk.com
+CC: vivian.obi@ratehawk.com
+Subject: APIR-39029 - Need Valid Test Data for Sandbox Environment
+
+---
+
+Dear Mikhail,
+
+Thank you for your help with the sandbox URL correction. The API is now authenticating successfully and we can make API calls.
+
+However, we're encountering validation errors when trying to search for hotels because the sandbox environment appears to have very limited test data available.
+
+CURRENT STATUS
+
+✅ Working:
+• API authentication successful (credentials recognized)
+• Multicomplete endpoint responding (200 OK)
+• Using USD currency (NGN not supported in sandbox, which is expected)
+
+❌ Blocked:
+• Hotel search failing with "invalid region_id field, this region cannot be searched"
+• Multicomplete search returns empty results for most destinations
+• Cannot find valid region IDs to test with
+
+ERROR DETAILS
+
+When we try to search for hotels, we get:
+{
+  "status": "error",
+  "error": "invalid_params",
+  "debug": {
+    "validation_error": "invalid region_id field, this region cannot be searched"
+  }
+}
+
+We've tried region IDs: 2114, 6040 - both invalid in sandbox.
+
+WHAT WE NEED
+
+To proceed with integration testing and complete the Pre-Certification Checklist, please provide:
+
+1. Valid Region IDs
+   - List of region IDs that exist in the sandbox environment
+   - Or at least 2-3 example region IDs we can use for testing
+
+2. Test Hotel Information
+   - The region_id for the test hotel (hid = 8473727 or id = "test_hotel_do_not_book")
+   - How to search for this specific test hotel
+
+3. Test Destinations
+   - List of cities/destinations that have hotel data in sandbox
+   - Example search queries that will return results
+
+4. Supported Currencies (Optional)
+   - Confirmation that USD is correct for sandbox
+   - List of other supported currencies if any
+
+INTEGRATION STATUS
+
+Our integration is 100% complete and ready for testing:
+• All API endpoints implemented correctly
+• Error handling and logging in place
+• Request/response transformation working
+• Ready to begin comprehensive testing
+
+We just need valid test data to proceed with:
+• Testing hotel search functionality
+• Mapping the test hotel
+• Completing the Pre-Certification Checklist
+• Providing website access for your verification
+
+Please provide the valid test data so we can move forward with the certification process.
+
+Thank you for your assistance.
+
+Best regards,
+
+Opeyemi Oladejobi Akinkunmi
+Website Manager/Graphics Designer
+The Travel Place Limited
+Email: websupport@travelplaceng.com
+Mobile: +234 817 148 1480
+Website: www.travelplaceng.com

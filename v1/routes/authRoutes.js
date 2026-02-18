@@ -15,7 +15,7 @@ const {
 const { authenticateUser } = require('../middleware/authMiddleware');
 const { authLimiter, strictAuthLimiter } = require('../middleware/rateLimitMiddleware');
 const { createAuditMiddleware } = require('../middleware/auditMiddleware');
-const validate = require('../middleware/validationMiddleware');
+const { validate } = require('../middleware/validationMiddleware');
 const {
   registerSchema,
   loginSchema,

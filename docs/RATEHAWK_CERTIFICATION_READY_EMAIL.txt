@@ -1,0 +1,97 @@
+To: apisupport@ratehawk.com
+CC: vivian.obi@ratehawk.com
+Subject: APIR-39029 - Ready for Certification - The Travel Place Limited
+
+---
+
+Dear Mikhail,
+
+We are pleased to inform you that our Ratehawk API integration is complete and we are ready to begin the certification process.
+
+INTEGRATION STATUS
+
+✅ Completed:
+• All core API endpoints implemented and tested
+• Sandbox API authentication successful (Key ID: 44)
+• API connectivity verified with sandbox environment
+• Error handling and logging implemented
+• Request/response transformation working correctly
+• Fallback mechanisms in place
+• Code reviewed and production-ready
+
+SANDBOX TESTING COMPLETED
+
+We have successfully:
+• Verified API authentication with sandbox credentials
+• Tested all endpoint accessibility (35 endpoints active)
+• Confirmed correct request/response formats
+• Validated error handling with various scenarios
+• Understood that sandbox is limited to test hotel bookings only
+
+CERTIFICATION DELIVERABLES
+
+We are providing:
+1. Completed Pre-Certification Checklist (attached)
+2. Integration workflow diagram (attached)
+3. Website access for verification (details below)
+4. Technical documentation of our implementation
+
+WEBSITE ACCESS DETAILS
+
+URL: https://www.travelplaceng.com
+Test Account Credentials: [Will be provided upon request]
+
+Note: Currently displaying mock hotel data as fallback while awaiting production credentials. The integration logic is fully implemented and will seamlessly switch to live data once production credentials are provided.
+
+PRODUCT TYPE
+
+Website - Travel booking platform where ETG rates will be presented to end users
+
+PAYMENT TYPE
+
+Deposit - Payment comes from partner's deposit (B2B API model)
+
+IP ADDRESSES FOR WHITELISTING
+
+We use dynamic IP addresses currently. We can provide static IPs if required for production. Please let us know if this is mandatory.
+
+NEXT STEPS REQUESTED
+
+1. Review of our Pre-Certification Checklist
+2. Verification of our website implementation
+3. Provision of production API credentials for live testing
+4. Guidance on any adjustments needed for certification
+
+TECHNICAL IMPLEMENTATION HIGHLIGHTS
+
+• 3-step search logic implemented (Search → Hotel Page → Prebook → Booking)
+• Static data dump integration ready (weekly full dump + daily incremental)
+• Cancellation policies parsed and displayed correctly
+• Tax and fees handling implemented (separate display for non-included taxes)
+• Children logic supported (up to 17 years old)
+• Multi-room booking supported
+• Citizenship/residency parameter included in searches
+• Meal types mapped and displayed
+• Commission model: Net prices with partner-calculated markup
+• Room name reflection implemented
+• Error handling for all booking statuses
+• Webhook support ready for implementation
+
+CONTACT INFORMATION
+
+Primary Contact: Opeyemi Oladejobi Akinkunmi
+Email: websupport@travelplaceng.com
+Phone: +234 817 148 1480
+Company: The Travel Place Limited
+Address: 5 Usuma Close, Maitama, Abuja, Nigeria
+Website: www.travelplaceng.com
+
+We are excited to move forward with the certification process and are available for any questions or clarifications you may need.
+
+Thank you for your support throughout the integration process.
+
+Best regards,
+
+Opeyemi Oladejobi Akinkunmi
+Website Manager/Graphics Designer
+The Travel Place Limited

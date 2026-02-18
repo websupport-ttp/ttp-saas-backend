@@ -38,6 +38,7 @@ docs/api-documentation-*.md
 
 # Kiro IDE configuration
 .kiro/
+.snapshots/
 
 # Development tools
 jest.resultProcessor.js

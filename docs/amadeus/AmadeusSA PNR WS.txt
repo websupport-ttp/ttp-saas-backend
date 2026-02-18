@@ -1,0 +1,2563 @@
+
+
+
+Amadeus Southern Africa PNR Web Services Specifications
+November 13, 2015
+
+Table of contents
+1 Overview	3
+2 OTA_TravelBuildRQ/RS version 3	4
+2.1 References	4
+2.2 Definition	4
+2.3 Travel Build Request message elements	4
+2.4 Travel Build Response message elements	13
+2.5 Validating Airline Requirement (mandatory for Amadeus)	20
+2.6 Advance Passenger Information (APIS) Requirement	21
+3 OTA_PNRCancelRQ/RS	23
+3.1 References	23
+3.2 Definition	23
+3.3 PNR Cancel Request message elements	23
+3.4 PNR Cancel Response message elements	23
+4 OTA_PNRReadRQ/RS version 03	25
+4.1 References	25
+4.2 Definition	25
+4.3 PNR Read Request message elements	25
+4.4 PNR Read Response message elements	25
+5 OTA_UpdateRQ/RS	27
+5.1 References	27
+5.2 Definition	27
+5.3 Message structure	27
+5.4 Update Request message elements - insert option	28
+5.5 Update Request message elements - delete option	33
+5.6 Update Request message elements - modify option	37
+6.7 Update Request message elements - insert, delete and modify options in the same request	41
+6 IssueTicketRQ/RS	43
+6.1 References	43
+6.2 Definition	43
+6.3 IssueTicket Request message element	43
+6.4 IssueTicket Response message elements	45
+7 VoidTicketRQ/RS	46
+7.1 References	46
+7.2 Definition	46
+7.3 VoidTicket Request message element	46
+7.4 VoidTicket Response message elements	47
+
+
+
+
+1 Overview
+The TripXML Web Services are based on OTA specifications 2005A. Amadeus has made a few changes to the original OTA schemas to better fit its business needs. These changes are outlined in this document.
+This document provides information on the following web services that are offered by TripXML:
+o Travel build: creates a reservation in the provider system
+o PNR cancel: cancels a reservation
+o PNR read: retrieves a reservation
+o Update: add, delete and modify elements in an existing reservation (PNR)
+o Queue: provides queue management messages
+o Queue read: retrieves a reservation from a specific queue
+o Transfer Ownership: changes the ownership of a reservation
+o Stored Fare build: create a stored fare record shell in a reservation
+The document is based on the OTA messages user guide to help customers familiar with OTA specifications better understand the specific TripXML implementation.
+All TripXML web services require the POS group of elements to be included in each request message, as defined below:
+<POS>
+<Source PseudoCityCode="YOUR PCC">
+<RequestorID Type="21" ID="requestor"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>GDS Name</Name>
+<System>Target System</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+
+The POS data will be provided by the Amadeus support team.
+
+2 OTA_TravelBuildRQ/RS version 3
+
+2.1 References
+
+Web service URL: http://amadeusws.tripxml.com/TripXML/wsTravelBuild_v03.asmx
+WSDL: http://amadeusws.tripxml.com/TripXML/wsTravelBuild_v03.asmx?WSDL
+
+
+2.2 Definition
+The TravelBuild version 3 has the same features as the previous version and a few differences in the response (the request is exactly the same). The response will contain more PNR information especially ticketing data when the PNR was ticketed.
+
+OTA_TravelItineraryRQ definition
+
+OTA did not define any OTA_TravelItineraryRQ message up to now. Because OTA_TravelItineraryRS exists, we have created the equivalent for the request message. Our current version of OTA_TravelItineraryRQ is made of 4 possible XML groups:
+
+o OTA_AirBookRQ
+o OTA_VehResRQ
+o OTA_HotelResRQ
+o TPA_Extensions
+The last TPA_Extensions group contains definitions of some new data and some duplicate data already defined in the Air, Car and Hotel book groups. This is to avoid creating, for example, an OTA_AirBookRQ that will contain the names in a Car only PNR.
+TPA_Extensions group will typically contain data shared between the three Book XML groups to avoid duplication of redundant data in the request XML message.
+
+
+
+2.3 Travel Build Request message elements
+TPA_Extensions shared wih previous version of TravelBuild
+
+o FlightType
+o DateChange
+o FlownIndicator
+o FOPType
+o PNRData group that contains the definition of OTA:
+o Traveler group
+
+o Telephone group
+o Email group
+o Address group
+o Ticketing group
+o CarData group containing OTA:
+o NumCars
+o CarLocation group
+o CarRate group
+o HotelData group containing OTA:
+o ExtraAdult
+o ExtraChild
+o Crib
+o RollawayAdult
+o RollawayChild
+o PriceData group containing OTA
+o PriceType
+o PublishedFares group
+o NegoFares group
+
+Example 1:
+Create a reservation with air, car and hotel segments.
+
+<OTA_TravelItineraryRQ>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="requestor"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Test</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<OTA_AirBookRQ>
+<AirItinerary DirectionInd="Circle">
+<OriginDestinationOptions>
+<OriginDestinationOption>
+                   <FlightSegment DepartureDateTime="2006-07-04T17:40:00" ArrivalDateTime="2006-07- 05T08:15:00" RPH="1" FlightNumber="0095" ResBookDesigCode="L" NumberInParty="1">
+<DepartureAirport LocationCode="MIA"/>
+<ArrivalAirport LocationCode="CDG"/>
+<MarketingAirline Code="AF"/>
+</FlightSegment>
+                   <FlightSegment DepartureDateTime="2006-07-05T10:35:00" ArrivalDateTime="2006-07- 05T12:10:00" RPH="2" FlightNumber="7702" ResBookDesigCode="M" NumberInParty="1">
+<DepartureAirport LocationCode="CDG"/>
+<ArrivalAirport LocationCode="NCE"/>
+<MarketingAirline Code="AF"/>
+</FlightSegment>
+</OriginDestinationOption>
+<OriginDestinationOption>
+                   <FlightSegment DepartureDateTime="2006-07-27T07:25:00" ArrivalDateTime="2006-07- 27T09:00:00" RPH="3" FlightNumber="7711" ResBookDesigCode="V" NumberInParty="1">
+<DepartureAirport LocationCode="NCE"/>
+<ArrivalAirport LocationCode="CDG"/>
+<MarketingAirline Code="AF"/>
+</FlightSegment>
+                   <FlightSegment DepartureDateTime="2006-07-27T10:55:00" ArrivalDateTime="2006-07- 27T14:20:00" RPH="4" FlightNumber="0090" ResBookDesigCode="V" NumberInParty="1">
+
+<DepartureAirport LocationCode="CDG"/>
+<ArrivalAirport LocationCode="MIA"/>
+<MarketingAirline Code="AF"/>
+</FlightSegment>
+</OriginDestinationOption>
+</OriginDestinationOptions>
+</AirItinerary>
+</OTA_AirBookRQ>
+<OTA_HotelResRQ>
+<HotelReservations>
+<HotelReservation RoomStayReservation="1">
+<RoomStays>
+<RoomStay SourceOfBusiness="I">
+<RoomRates>
+<RoomRate BookingCode="C2TCOR" NumberOfUnits="1" RatePlanCode="COR"/>
+</RoomRates>
+<GuestCounts>
+<GuestCount AgeQualifyingCode="ADT" Age="0" Count="1"/>
+</GuestCounts>
+<TimeSpan Start="2006-07-05" Duration="7" End="2006-07-12"/>
+<Guarantee GuaranteeType="CC">
+<GuaranteesAccepted>
+<GuaranteeAccepted>
+                                  <PaymentCard CardType="Credit" CardCode="VI" CardNumber="4444333322221111" ExpireDate="0506">
+<CardHolderName>JOHN SMITH</CardHolderName>
+<Address FormattedInd="0" Type="Home">
+<StreetNmbr>7300 NORTH KENDALL DRIVE</StreetNmbr>
+<CityName>MIAMI</CityName>
+<PostalCode>33156</PostalCode>
+<StateProv>FL</StateProv>
+<CountryName>USA</CountryName>
+</Address>
+</PaymentCard>
+</GuaranteeAccepted>
+</GuaranteesAccepted>
+</Guarantee>
+<DepositPayments>
+<RequiredPayment>
+<AcceptedPayments>
+<AcceptedPayment>
+                                      <PaymentCard CardType="Credit" CardCode="VI" CardNumber="4444333322221111" ExpireDate="0506">
+<CardHolderName>JOHN SMITH</CardHolderName>
+<Address FormattedInd="0" Type="Home">
+<StreetNmbr>7300 NORTH KENDALL DRIVE</StreetNmbr>
+<CityName>MIAMI</CityName>
+<PostalCode>33156</PostalCode>
+<StateProv>FL</StateProv>
+<CountryName>USA</CountryName>
+</Address>
+</PaymentCard>
+</AcceptedPayment>
+</AcceptedPayments>
+</RequiredPayment>
+</DepositPayments>
+                      <BasicPropertyInfo ChainCode="UI" HotelCode="GOU" HotelCityCode="NCE" HotelCodeContext="CP"/>
+<ResGuestRPHs>
+<ResGuestRPH RPH="1"/>
+</ResGuestRPHs>
+<SpecialRequests>
+<SpecialRequest RequestCode="SI">
+<Text>Supplental Information</Text>
+</SpecialRequest>
+<SpecialRequest RequestCode="TN">
+<Text>TN12345</Text>
+</SpecialRequest>
+</SpecialRequests>
+</RoomStay>
+
+</RoomStays>
+</HotelReservation>
+</HotelReservations>
+</OTA_HotelResRQ>
+<OTA_VehResRQ>
+<VehResRQCore Status="Available">
+<VehRentalCore PickUpDateTime="2006-07-05T06:00:00" ReturnDateTime="2006-08-04T06:00:00">
+<PickUpLocation LocationCode="NCE"/>
+<ReturnLocation LocationCode="NCE"/>
+</VehRentalCore>
+<VendorPref Code="EP" CodeContext="CP"/>
+<VehPref>
+<VehType VehicleCategory="EBMN"/>
+</VehPref>
+<RateQualifier RateQualifier="EUPR"/>
+<TPA_Extensions>
+<CarData NumCars="1">
+<CarRate Rate="63301" Currency="USD"/>
+</CarData>
+</TPA_Extensions>
+</VehResRQCore>
+</OTA_VehResRQ>
+<TPA_Extensions>
+<PNRData>
+<Traveler PassengerTypeCode="ADT" BirthDate="1952-07-24">
+<PersonName>
+<NamePrefix>MR</NamePrefix>
+<GivenName>JOHN</GivenName>
+<Surname>TEST</Surname>
+<NameTitle>MD</NameTitle>
+</PersonName>
+<TravelerRefNumber RPH="1"/>
+</Traveler>
+           <Telephone PhoneLocationType="Home" CountryAccessCode="1" AreaCityCode="MIA" PhoneNumber="305-444-4444" FormattedInd="0"/>
+           <Telephone PhoneLocationType="Business" CountryAccessCode="1" AreaCityCode="MIA" PhoneNumber="305-670-1561" FormattedInd="0"/>
+<Email>info@Amadeus.com</Email>
+<Address FormattedInd="0" Type="Home">
+<StreetNmbr>7300 North Kendall Drive</StreetNmbr>
+<CityName>MIAMI</CityName>
+<PostalCode>33156</PostalCode>
+<StateProv StateCode="FL"/>
+<CountryName Code="US"/>
+</Address>
+<Ticketing TicketTimeLimit="2006-07-03T06:00:00" TicketType="eTicket"/>
+</PNRData>
+<PriceData PriceType="Published">
+<PublishedFares>
+<FareRestrictPref>
+<AdvResTicketing>
+<AdvReservation/>
+</AdvResTicketing>
+<StayRestrictions>
+<MinimumStay/>
+<MaximumStay/>
+</StayRestrictions>
+<VoluntaryChanges>
+<Penalty/>
+</VoluntaryChanges>
+</FareRestrictPref>
+</PublishedFares>
+</PriceData>
+</TPA_Extensions>
+</OTA_TravelItineraryRQ>
+
+
+Example 2:
+Create a reservation with air only.
+
+<OTA_TravelItineraryRQ>
+<POS>
+<Source PseudoCityCode="ABCD">
+<RequestorID Type="21" ID="requestor"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Apollo</Name>
+<System>Test</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<OTA_AirBookRQ>
+<AirItinerary DirectionInd="Circle">
+<OriginDestinationOptions>
+<OriginDestinationOption>
+                   <FlightSegment DepartureDateTime="2006-05-10T10:59:00" ArrivalDateTime="2006-05- 10T12:51:00" RPH="1" FlightNumber="0754" ResBookDesigCode="T" NumberInParty="1">
+<DepartureAirport LocationCode="MIA"/>
+<ArrivalAirport LocationCode="ATL"/>
+<MarketingAirline Code="DL"/>
+</FlightSegment>
+</OriginDestinationOption>
+<OriginDestinationOption>
+                   <FlightSegment DepartureDateTime="2006-05-14T22:41:00" ArrivalDateTime="2006-05- 15T00:19:00" RPH="2" FlightNumber="1241" ResBookDesigCode="T" NumberInParty="1">
+<DepartureAirport LocationCode="ATL"/>
+<ArrivalAirport LocationCode="MIA"/>
+<MarketingAirline Code="DL"/>
+</FlightSegment>
+</OriginDestinationOption>
+</OriginDestinationOptions>
+</AirItinerary>
+</OTA_AirBookRQ>
+<TPA_Extensions>
+<PNRData>
+<Traveler PassengerTypeCode="ADT" BirthDate="1952-07-24">
+<PersonName>
+<NamePrefix>MR</NamePrefix>
+<GivenName>JOHN</GivenName>
+<Surname>TEST</Surname>
+<NameTitle>MD</NameTitle>
+</PersonName>
+<TravelerRefNumber RPH="1"/>
+</Traveler>
+           <Telephone PhoneLocationType="Home" CountryAccessCode="1" AreaCityCode="MIA" PhoneNumber="305-444-4444" FormattedInd="0"/>
+<Ticketing TicketTimeLimit="2006-05-09T06:00:00" TicketType="eTicket"/>
+</PNRData>
+<PriceData PriceType="Published">
+<PublishedFares>
+<FareRestrictPref>
+<AdvResTicketing>
+<AdvReservation/>
+</AdvResTicketing>
+<StayRestrictions>
+<MinimumStay/>
+<MaximumStay/>
+</StayRestrictions>
+<VoluntaryChanges>
+<Penalty/>
+</VoluntaryChanges>
+</FareRestrictPref>
+</PublishedFares>
+</PriceData>
+</TPA_Extensions>
+</OTA_TravelItineraryRQ>
+
+Example 3:
+Create a reservation with car only.
+<OTA_TravelItineraryRQ>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="requestor"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Test</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<OTA_VehResRQ>
+<VehResRQCore Status="Available">
+<VehRentalCore PickUpDateTime="2006-06-08T06:00:00" ReturnDateTime="2006-06-22T06:00:00">
+<PickUpLocation LocationCode="DEN"/>
+<ReturnLocation LocationCode="DEN"/>
+</VehRentalCore>
+<VendorPref Code="ZR" CodeContext="CP"/>
+<VehPref>
+<VehType VehicleCategory="ECAR"/>
+</VehPref>
+<RateQualifier RateQualifier="WKL55"/>
+<TPA_Extensions>
+<CarData NumCars="1">
+<CarRate Rate="9995" Currency="USD"/>
+</CarData>
+</TPA_Extensions>
+</VehResRQCore>
+</OTA_VehResRQ>
+<TPA_Extensions>
+<PNRData>
+<Traveler PassengerTypeCode="ADT" BirthDate="1952-07-24">
+<PersonName>
+<NamePrefix>MR</NamePrefix>
+<GivenName>JOHN</GivenName>
+<Surname>TEST</Surname>
+<NameTitle>MD</NameTitle>
+</PersonName>
+<TravelerRefNumber RPH="1"/>
+</Traveler>
+           <Telephone PhoneLocationType="Home" CountryAccessCode="1" AreaCityCode="MIA" PhoneNumber="305-444-4444" FormattedInd="0"/>
+           <Telephone PhoneLocationType="Business" CountryAccessCode="1" AreaCityCode="MIA" PhoneNumber="305-670-1561" FormattedInd="0"/>
+<Email>info@Amadeus.com</Email>
+<Address FormattedInd="0" Type="Home">
+<StreetNmbr>7300 North Kendall Drive</StreetNmbr>
+<CityName>MIAMI</CityName>
+<PostalCode>33156</PostalCode>
+<StateProv StateCode="FL"/>
+<CountryName Code="US"/>
+</Address>
+<Ticketing TicketTimeLimit="2006-06-06T06:00:00" TicketType="eTicket"/>
+</PNRData>
+</TPA_Extensions>
+</OTA_TravelItineraryRQ>
+
+
+Example 4:
+Create a reservation with hotel only.
+
+<OTA_TravelItineraryRQ>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="requestor"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Test</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<OTA_HotelResRQ>
+<HotelReservations>
+<HotelReservation RoomStayReservation="1">
+<RoomStays>
+<RoomStay SourceOfBusiness="I">
+<RoomRates>
+<RoomRate BookingCode="ROHPRO" NumberOfUnits="1" RatePlanCode="PRO"/>
+</RoomRates>
+<GuestCounts>
+<GuestCount AgeQualifyingCode="ADT" Age="0" Count="1"/>
+</GuestCounts>
+<TimeSpan Start="2006-09-07" Duration="7" End="2006-09-14"/>
+<Guarantee GuaranteeType="CC">
+<GuaranteesAccepted>
+<GuaranteeAccepted>
+                                  <PaymentCard CardType="Credit" CardCode="VI" CardNumber="4444333322221111" ExpireDate="0506">
+<CardHolderName>JOHN SMITH</CardHolderName>
+<Address FormattedInd="0" Type="Home">
+<StreetNmbr>7300 NORTH KENDALL DRIVE</StreetNmbr>
+<CityName>MIAMI</CityName>
+<PostalCode>33156</PostalCode>
+<StateProv>FL</StateProv>
+<CountryName>USA</CountryName>
+</Address>
+</PaymentCard>
+</GuaranteeAccepted>
+</GuaranteesAccepted>
+</Guarantee>
+<DepositPayments>
+<RequiredPayment>
+<AcceptedPayments>
+<AcceptedPayment>
+                                      <PaymentCard CardType="Credit" CardCode="VI" CardNumber="4444333322221111" ExpireDate="0506">
+<CardHolderName>JOHN SMITH</CardHolderName>
+<Address FormattedInd="0" Type="Home">
+<StreetNmbr>7300 NORTH KENDALL DRIVE</StreetNmbr>
+<CityName>MIAMI</CityName>
+<PostalCode>33156</PostalCode>
+<StateProv>FL</StateProv>
+<CountryName>USA</CountryName>
+</Address>
+</PaymentCard>
+</AcceptedPayment>
+</AcceptedPayments>
+</RequiredPayment>
+</DepositPayments>
+                      <BasicPropertyInfo ChainCode="BR" HotelCode="SCB" HotelCityCode="SFO" HotelCodeContext="DY"/>
+<ResGuestRPHs>
+<ResGuestRPH RPH="1"/>
+</ResGuestRPHs>
+<SpecialRequests>
+<SpecialRequest RequestCode="SI">
+
+<Text>Supplental Information</Text>
+</SpecialRequest>
+<SpecialRequest RequestCode="TN">
+<Text>TN12345</Text>
+</SpecialRequest>
+</SpecialRequests>
+</RoomStay>
+</RoomStays>
+</HotelReservation>
+</HotelReservations>
+</OTA_HotelResRQ>
+<TPA_Extensions>
+<PNRData>
+<Traveler PassengerTypeCode="ADT" BirthDate="1952-07-24">
+<PersonName>
+<NamePrefix>MR</NamePrefix>
+<GivenName>JOHN</GivenName>
+<Surname>TEST</Surname>
+<NameTitle>MD</NameTitle>
+</PersonName>
+<TravelerRefNumber RPH="1"/>
+</Traveler>
+           <Telephone PhoneLocationType="Home" CountryAccessCode="1" AreaCityCode="MIA" PhoneNumber="305-444-4444" FormattedInd="0"/>
+           <Telephone PhoneLocationType="Business" CountryAccessCode="1" AreaCityCode="MIA" PhoneNumber="305-670-1561" FormattedInd="0"/>
+<Email>info@Amadeus.com</Email>
+<Address FormattedInd="0" Type="Home">
+<StreetNmbr>7300 North Kendall Drive</StreetNmbr>
+<CityName>MIAMI</CityName>
+<PostalCode>33156</PostalCode>
+<StateProv StateCode="FL"/>
+<CountryName Code="US"/>
+</Address>
+<Ticketing TicketTimeLimit="2006-09-05T06:00:00" TicketType="eTicket"/>
+</PNRData>
+</TPA_Extensions>
+</OTA_TravelItineraryRQ>
+
+
+Example 5:
+Create a reservation with air, credit card as for of payment and SSR DOCS (required by some countries before issuing tickets).
+<OTA_TravelItineraryRQ>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="requestor"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Test</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<OTA_AirBookRQ>
+<AirItinerary DirectionInd="Circle">
+<OriginDestinationOptions>
+<OriginDestinationOption>
+                   <FlightSegment DepartureDateTime="2014-08-01T22:20:00" ArrivalDateTime="2014-08- 02T08:20:00" RPH="1" FlightNumber="766" ResBookDesigCode="U" NumberInParty="2">
+<DepartureAirport LocationCode="JNB"/>
+<ArrivalAirport LocationCode="DXB"/>
+<MarketingAirline Code="EK"/>
+</FlightSegment>
+
+                   <FlightSegment DepartureDateTime="2014-08-02T09:40:00" ArrivalDateTime="2014-08- 02T14:20:00" RPH="2" FlightNumber="29" ResBookDesigCode="U" NumberInParty="2">
+<DepartureAirport LocationCode="DXB"/>
+<ArrivalAirport LocationCode="LHR"/>
+<MarketingAirline Code="EK"/>
+</FlightSegment>
+</OriginDestinationOption>
+<OriginDestinationOption>
+                   <FlightSegment DepartureDateTime="2014-08-08T17:00:00" ArrivalDateTime="2014-08- 09T02:50:00" RPH="3" FlightNumber="30" ResBookDesigCode="U" NumberInParty="2">
+<DepartureAirport LocationCode="LHR"/>
+<ArrivalAirport LocationCode="DXB"/>
+<MarketingAirline Code="EK"/>
+</FlightSegment>
+                   <FlightSegment DepartureDateTime="2014-08-09T04:40:00" ArrivalDateTime="2014-08- 09T10:50:00" RPH="4" FlightNumber="761" ResBookDesigCode="U" NumberInParty="2">
+<DepartureAirport LocationCode="DXB"/>
+<ArrivalAirport LocationCode="JNB"/>
+<MarketingAirline Code="EK"/>
+</FlightSegment>
+</OriginDestinationOption>
+</OriginDestinationOptions>
+</AirItinerary>
+<TravelerInfo>
+<SpecialReqDetails>
+<SpecialServiceRequests>
+<SpecialServiceRequest SSRCode="DOCS" TravelerRefNumberRPHList="1">
+<Text>	24JUL52-M--SMITH-JOHN</Text>
+</SpecialServiceRequest>
+<SpecialServiceRequest SSRCode="DOCS" TravelerRefNumberRPHList="2">
+<Text>----24AUG54-F--SMITH-JANE</Text>
+</SpecialServiceRequest>
+</SpecialServiceRequests>
+</SpecialReqDetails>
+</TravelerInfo>
+<Fulfillment>
+<PaymentDetails>
+<PaymentDetail>
+<PaymentCard CardType="Credit" CardCode="VI" CardNumber="4444333322221111"
+ExpireDate="0515"/>
+</PaymentDetail>
+</PaymentDetails>
+</Fulfillment>
+</OTA_AirBookRQ>
+<TPA_Extensions>
+<PNRData>
+<Traveler PassengerTypeCode="ADT" BirthDate="1952-07-24">
+<PersonName>
+<NamePrefix>MR</NamePrefix>
+<GivenName>JOHN</GivenName>
+<Surname>SMITH</Surname>
+</PersonName>
+<TravelerRefNumber RPH="1"/>
+</Traveler>
+<Traveler PassengerTypeCode="ADT" BirthDate="1955-08-24">
+<PersonName>
+<NamePrefix>MRS</NamePrefix>
+<GivenName>JANE</GivenName>
+<Surname>SMITH</Surname>
+</PersonName>
+<TravelerRefNumber RPH="2"/>
+</Traveler>
+           <Telephone PhoneLocationType="Home" CountryAccessCode="1" AreaCityCode="MIA" PhoneNumber="305-444-4444" FormattedInd="0"/>
+<Email>info@thomalex.com</Email>
+<Ticketing TicketTimeLimit="2014-07-31T06:00:00" TicketType="eTicket"/>
+</PNRData>
+<PriceData PriceType="Published" ValidatingAirlineCode="EK">
+<PublishedFares/>
+</PriceData>
+
+</TPA_Extensions>
+</OTA_TravelItineraryRQ>
+
+
+
+
+
+
+2.4 Travel Build Response message elements
+TPA_Extensions shared wih previous version of TravelBuild
+
+o FlightType
+o DateChange
+o FlownIndicator
+o FOPType
+o RPH
+o BookingCode
+o Status
+o ConfirmationNumber
+o ExtraAdult
+o ExtraChild
+o Crib
+o RollawayAdult
+o RollawayChild
+o AlternateCurrency
+o RateQuoted
+o RateRequested
+o OverrideCorporateRate
+o TourNumber
+o RoomLocation
+o MealPlan
+o CorporateDiscount
+o AdvancedDeposit
+o CarOption/Option
+o CarOption/Text
+o CarType
+
+TPA_Extensions specific to TravelBuildRQ version 3:
+
+o Attribute NumberInParty - used in miscellaneous segments
+o IssuedTickets group of data - used when PNR has been ticketed
+o Vendor - used in miscellaneous segments
+o OriginCityCode - used in miscellaneous segments
+
+
+Example 1:
+Simple PNR response with passenger names, air segments, phone and ticketing element info. PNR has not been priced so there is no pricing information returned. TPA_Extensions in Air elements contains the record locator from the airline (Icelandair in this case). It can be different from the record locator returned in the ItineraryRef element (that is the GDS record locator).
+<OTA_TravelItineraryRS Version="v03">
+
+<Success/>
+<TravelItinerary>
+<ItineraryRef Type="PNR" ID="3IJQP2" ID_Context="MCO1S3100"/>
+<CustomerInfos>
+<CustomerInfo RPH="1">
+<Customer>
+<PersonName NameType="ADT">
+<GivenName>TEST</GivenName>
+<Surname>TESTER</Surname>
+</PersonName>
+<Telephone PhoneUseType="H" PhoneNumber="123-456-7890"/>
+</Customer>
+</CustomerInfo>
+<CustomerInfo RPH="2">
+<Customer>
+<PersonName NameType="ADT">
+<GivenName>TESTA</GivenName>
+<Surname>TESTER</Surname>
+</PersonName>
+<Telephone PhoneUseType="H" PhoneNumber="123-456-7890"/>
+</Customer>
+</CustomerInfo>
+</CustomerInfos>
+<ItineraryInfo>
+<ReservationItems>
+<Item ItinSeqNumber="3">
+                   <Air DepartureDateTime="2008-06-05T19:20:00" ArrivalDateTime="2008-06-06T06:20:00" StopQuantity="0" RPH="1" FlightNumber="656" ResBookDesigCode="B" NumberInParty="2" Status="HK" E_TicketEligibility="Eligible" DepartureDay="Thu">
+<DepartureAirport LocationCode="MSP" Terminal="H">Minneapolis St Paul, MN,
+
+US</DepartureAirport>
+
+<ArrivalAirport LocationCode="KEF">Keflavik International, IS</ArrivalAirport>
+<OperatingAirline Code="FI">ICELANDAIR</OperatingAirline>
+<Equipment AirEquipType="75W"/>
+<MarketingAirline Code="FI">ICELANDAIR</MarketingAirline>
+<TPA_Extensions ConfirmationNumber="3IJQP2"/>
+
+</Air>
+</Item>
+<Item ItinSeqNumber="4">
+                   <Air DepartureDateTime="2008-06-09T16:35:00" ArrivalDateTime="2008-06-09T17:55:00" StopQuantity="0" RPH="2" FlightNumber="657" ResBookDesigCode="B" NumberInParty="2" Status="HK" E_TicketEligibility="Eligible" DepartureDay="Mon">
+<DepartureAirport LocationCode="KEF">Keflavik International, IS</DepartureAirport>
+<ArrivalAirport LocationCode="MSP">Minneapolis St Paul, MN, US</ArrivalAirport>
+<OperatingAirline Code="FI">ICELANDAIR</OperatingAirline>
+<Equipment AirEquipType="75W"/>
+<MarketingAirline Code="FI">ICELANDAIR</MarketingAirline>
+<TPA_Extensions ConfirmationNumber="3IJQP2"/>
+</Air>
+</Item>
+</ReservationItems>
+<Ticketing TicketTimeLimit="2008-05-30T23:59:00" TicketType="eTicket"/>
+<SpecialRequestDetails/>
+</ItineraryInfo>
+<TravelCost/>
+<UpdatedBy CreateDateTime="2008-03-21T11:11:00"/>
+</TravelItinerary>
+</OTA_TravelItineraryRS>
+
+
+
+Example 2:
+Create a reservation with air only.
+<OTA_TravelItineraryRS Version="2">
+<Success/>
+<TravelItinerary>
+<ItineraryRef Type="PNR" ID="ZPQJ5E"/>
+
+<CustomerInfos>
+<CustomerInfo RPH="1">
+<Customer>
+<PersonName NameType="ADT">
+<GivenName>JOHN MD</GivenName>
+<Surname>TEST</Surname>
+</PersonName>
+<Telephone PhoneNumber="1-305-444-4444" PhoneUseType="HOME"/>
+</Customer>
+</CustomerInfo>
+</CustomerInfos>
+<ItineraryInfo>
+<ReservationItems>
+<Item>
+                   <Air DepartureDateTime="2006-05-10T10:59:00" RPH="1" FlightNumber="754" ResBookDesigCode="T" ActionCode="HK" NumberInParty="1">
+<DepartureAirport LocationCode="MIA">Miami International, FL, US</DepartureAirport>
+<ArrivalAirport LocationCode="ATL">Atlanta, GA, US</ArrivalAirport>
+<Equipment AirEquipType=""/>
+<MarketingAirline Code="DL">DELTA AIR LINES INC.</MarketingAirline>
+<TPA_Extensions DateChange="00" FlownIndicator="false"/>
+</Air>
+                   <Air DepartureDateTime="2006-05-14T22:41:00" RPH="2" FlightNumber="1241" ResBookDesigCode="T" ActionCode="HK" NumberInParty="1">
+<DepartureAirport LocationCode="ATL">Atlanta, GA, US</DepartureAirport>
+<ArrivalAirport LocationCode="MIA">Miami International, FL, US</ArrivalAirport>
+<Equipment AirEquipType=""/>
+<MarketingAirline Code="DL">DELTA AIR LINES INC.</MarketingAirline>
+<TPA_Extensions DateChange="01" FlownIndicator="false"/>
+</Air>
+</Item>
+</ReservationItems>
+<Ticketing TicketType="Paper">
+<TicketAdvisory>09MAY/0600</TicketAdvisory>
+</Ticketing>
+</ItineraryInfo>
+<TravelCost/>
+</TravelItinerary>
+</OTA_TravelItineraryRS>
+
+
+Example 3:
+Create a reservation with car only.
+
+<OTA_TravelItineraryRS Version="2">
+<Success/>
+<TravelItinerary>
+<ItineraryRef Type="PNR" ID="YXBHND"/>
+<CustomerInfos>
+<CustomerInfo RPH="1">
+<Customer>
+<PersonName NameType="ADT">
+<GivenName>JOHN</GivenName>
+<Surname>TEST</Surname>
+</PersonName>
+<Telephone PhoneNumber="MIA305-670-1561" PhoneUseType="B"/>
+<Telephone PhoneNumber="MIA305-444-4444" PhoneUseType="H"/>
+<Email>INFO@AMADEUS.COM</Email>
+</Customer>
+</CustomerInfo>
+</CustomerInfos>
+<ItineraryInfo>
+<ReservationItems>
+<Item ItinSeqNumber="2">
+<Vehicle>
+<ConfID Type="8" ID="W4045712"/>
+<Vendor Code="ZR"/>
+                      <VehRentalCore PickUpDateTime="2006-06-08T06:00:00.0000000-04:00" ReturnDateTime="2006-06-22T06:00:00.0000000-04:00">
+
+<PickUpLocation LocationCode="DEN"/>
+<ReturnLocation LocationCode="DEN"/>
+</VehRentalCore>
+<Veh AirConditionInd="true" TransmissionType="Automatic">
+<VehType VehicleCategory="2/4 Door Car">ECAR</VehType>
+<VehClass Size="Economy"/>
+</Veh>
+<RentalRate>
+<RateDistance Unlimited="true" DistUnitName="Mile"/>
+<VehicleCharges>
+                              <VehicleCharge Amount="9995" CurrencyCode="USD" DecimalPlaces="2" TaxInclusive="false" Description="Weekly Rate" GuaranteedInd="true"/>
+</VehicleCharges>
+<RateQualifier RateQualifier="WKL55" RatePeriod="Weekly"/>
+</RentalRate>
+<TPA_Extensions>
+<CarOptions>
+<CarOption Option="Booking Source">
+<Text>00810364</Text>
+</CarOption>
+<CarOption Option="Pick Up Time">
+<Text>0600</Text>
+</CarOption>
+<CarOption Option="DropOff Location">
+<Text>DEN</Text>
+</CarOption>
+<CarOption Option="Reservation Last and First Names">
+<Text>TEST JOHN</Text>
+</CarOption>
+<CarOption Option="Rate Code">
+<Text>WKL55</Text>
+</CarOption>
+<CarOption Option="Guaranteed Rate">
+<Text>*ZR*USD99.95WY-UNL MI-0F</Text>
+</CarOption>
+<CarOption Option="DropOff Time">
+<Text>0600</Text>
+</CarOption>
+</CarOptions>
+</TPA_Extensions>
+</Vehicle>
+</Item>
+</ReservationItems>
+<Ticketing TicketTimeLimit="2006-06-06T06:00:00.0000000-04:00" TicketType="Paper"/>
+<SpecialRequestDetails/>
+</ItineraryInfo>
+<TravelCost/>
+</TravelItinerary>
+</OTA_TravelItineraryRS>
+
+
+Example 4:
+Create a reservation with hotel only.
+<OTA_TravelItineraryRS Version="2">
+<Success/>
+<TravelItinerary>
+<ItineraryRef Type="PNR" ID="YXBHNH"/>
+<CustomerInfos>
+<CustomerInfo RPH="1">
+<Customer>
+<PersonName NameType="ADT">
+<GivenName>JOHN</GivenName>
+<Surname>TEST</Surname>
+</PersonName>
+<Telephone PhoneNumber="MIA305-670-1561" PhoneUseType="B"/>
+<Telephone PhoneNumber="MIA305-444-4444" PhoneUseType="H"/>
+<Email>INFO@AMADEUS.COM</Email>
+</Customer>
+
+</CustomerInfo>
+</CustomerInfos>
+<ItineraryInfo>
+<ReservationItems>
+<Item ItinSeqNumber="2">
+<Hotel>
+<Reservation>
+<RoomTypes/>
+<RatePlans>
+<RatePlan RatePlanCode="PRO"/>
+</RatePlans>
+<RoomRates>
+<RoomRate>
+<Rates>
+<Rate>
+<Base AmountBeforeTax="237300" CurrencyCode="USD"
+
+DecimalPlaces="2"/>
+
+</Rate>
+</Rates>
+</RoomRate>
+</RoomRates>
+<GuestCounts>
+<GuestCount Count="1"/>
+</GuestCounts>
+<TimeSpan Start="2006-09-07" End="2006-09-14"/>
+<BasicPropertyInfo ChainCode="BR" HotelCode="SCB" HotelCityCode="SFO"
+
+HotelName="RENAISSANCE STANFORD"/>
+</Reservation>
+<TPA_Extensions ConfirmationNumber="	"/>
+</Hotel>
+</Item>
+</ReservationItems>
+<Ticketing TicketTimeLimit="2006-09-05T06:00:00.0000000-04:00" TicketType="Paper"/>
+<SpecialRequestDetails/>
+</ItineraryInfo>
+<TravelCost/>
+</TravelItinerary>
+</OTA_TravelItineraryRS>
+
+
+Example 5:
+Reservation shows issued ticket numbers.
+
+<OTA_TravelItineraryRS Version="v03">
+<Success/>
+<TravelItinerary>
+<ItineraryRef Type="PNR" ID="364S4K" ID_Context="JNBZA2222"/>
+<CustomerInfos>
+<CustomerInfo RPH="1">
+<Customer>
+<PersonName NameType="ADT">
+<GivenName>JOHN</GivenName>
+<Surname>SMITH</Surname>
+</PersonName>
+<Telephone PhoneNumber="3053953933 - DAY" PhoneUseType="O"/>
+<Telephone PhoneNumber="** INTERNET BOOKING **" PhoneUseType="O"/>
+<Email>JOHNSMITH@AOL.COM</Email>
+<Address UseType="Billing">
+<AddressLine>JOHN SMITH,123 SW 123ST, MIAMI FL 33176</AddressLine>
+</Address>
+<Address UseType="Mailing">
+<StreetNmbr>123 SW 123ST</StreetNmbr>
+<CityName>MIAMI</CityName>
+<PostalCode>33176</PostalCode>
+<StateProv StateCode="FL"/>
+<CountryName Code="US"/>
+<ContactName>JOHN SMITH</ContactName>
+</Address>
+
+</Customer>
+</CustomerInfo>
+<CustomerInfo RPH="2">
+<Customer>
+<PersonName NameType="ADT">
+<GivenName>JANE</GivenName>
+<Surname>SMITH</Surname>
+</PersonName>
+<Telephone PhoneNumber="3053953933 - DAY" PhoneUseType="O"/>
+<Telephone PhoneNumber="** INTERNET BOOKING **" PhoneUseType="O"/>
+<Email>JOHNSMITH@AOL.COM</Email>
+<Address UseType="Billing">
+<AddressLine>JOHN SMITH,123 SW 123ST, MIAMI FL 33176</AddressLine>
+</Address>
+<Address UseType="Mailing">
+<StreetNmbr>123 SW 123ST</StreetNmbr>
+<CityName>MIAMI</CityName>
+<PostalCode>33176</PostalCode>
+<StateProv StateCode="FL"/>
+<CountryName Code="US"/>
+<ContactName>JOHN SMITH</ContactName>
+</Address>
+</Customer>
+</CustomerInfo>
+</CustomerInfos>
+<ItineraryInfo>
+<ReservationItems>
+<Item ItinSeqNumber="3">
+                   <Air DepartureDateTime="2009-02-16T20:35:00" ArrivalDateTime="2009-02-17T06:40:00" StopQuantity="0" RPH="1" FlightNumber="630" ResBookDesigCode="O" NumberInParty="2" Status="HK" E_TicketEligibility="Eligible" DepartureDay="Mon">
+<DepartureAirport LocationCode="BOS" Terminal="E">Boston, MA, US</DepartureAirport>
+<ArrivalAirport LocationCode="KEF">Keflavik International, IS</ArrivalAirport>
+<OperatingAirline Code="FI">ICELANDAIR</OperatingAirline>
+<Equipment AirEquipType="75W"/>
+<MarketingAirline Code="FI">ICELANDAIR</MarketingAirline>
+<TPA_Extensions ConfirmationNumber="364S4K"/>
+</Air>
+</Item>
+<Item ItinSeqNumber="4">
+                   <Air DepartureDateTime="2009-02-20T17:00:00" ArrivalDateTime="2009-02-20T17:50:00" StopQuantity="0" RPH="2" FlightNumber="631" ResBookDesigCode="O" NumberInParty="2" Status="HK" E_TicketEligibility="Eligible" DepartureDay="Fri">
+<DepartureAirport LocationCode="KEF">Keflavik International, IS</DepartureAirport>
+<ArrivalAirport LocationCode="BOS">Boston, MA, US</ArrivalAirport>
+<OperatingAirline Code="FI">ICELANDAIR</OperatingAirline>
+<Equipment AirEquipType="75W"/>
+<MarketingAirline Code="FI">ICELANDAIR</MarketingAirline>
+<TPA_Extensions ConfirmationNumber="364S4K"/>
+</Air>
+</Item>
+<ItemPricing>
+<AirFareInfo PricingSource="Private">
+<ItinTotalFare>
+<BaseFare Amount="65000" CurrencyCode="USD" DecimalPlaces="2"/>
+<Taxes Amount="19832" CurrencyCode="USD" DecimalPlaces="2">
+<Tax Amount="19832" CurrencyCode="USD" DecimalPlaces="2"/>
+</Taxes>
+<TotalFare Amount="84832" CurrencyCode="USD" DecimalPlaces="2"/>
+</ItinTotalFare>
+<PTC_FareBreakdowns>
+<PTC_FareBreakdown PricingSource="Private">
+<PassengerTypeQuantity Code="ADT" Quantity="1"/>
+<FareBasisCodes>
+<FareBasisCode>IT</FareBasisCode>
+<FareBasisCode>IT</FareBasisCode>
+</FareBasisCodes>
+<PassengerFare>
+<BaseFare Amount="32500" CurrencyCode="USD" DecimalPlaces="2"/>
+<Taxes>
+
+<Tax Code="XP" Amount="2500"/>
+<Tax Code="YC" Amount="550"/>
+<Tax Code="US" Amount="1540"/>
+<Tax Code="US" Amount="1540"/>
+<Tax Code="XA" Amount="500"/>
+<Tax Code="XY" Amount="700"/>
+<Tax Code="AY" Amount="250"/>
+<Tax Code="IS" Amount="1312"/>
+<Tax Code="ZU" Amount="574"/>
+<Tax Code="XF" Amount="450"/>
+</Taxes>
+<TotalFare Amount="42416" CurrencyCode="USD" DecimalPlaces="2"/>
+</PassengerFare>
+<TPA_Extensions>
+<FareCalculation>BOS FI KEF Q100.00 M/IT FI BOS Q100.00 M/IT END
+ROE1.000000 XF BOS4.5</FareCalculation>
+</TPA_Extensions>
+</PTC_FareBreakdown>
+<PTC_FareBreakdown PricingSource="Private">
+<PassengerTypeQuantity Code="ADT" Quantity="1"/>
+<FareBasisCodes>
+<FareBasisCode>IT</FareBasisCode>
+<FareBasisCode>IT</FareBasisCode>
+</FareBasisCodes>
+<PassengerFare>
+<BaseFare Amount="32500" CurrencyCode="USD" DecimalPlaces="2"/>
+<Taxes>
+<Tax Code="XP" Amount="2500"/>
+<Tax Code="YC" Amount="550"/>
+<Tax Code="US" Amount="1540"/>
+<Tax Code="US" Amount="1540"/>
+<Tax Code="XA" Amount="500"/>
+<Tax Code="XY" Amount="700"/>
+<Tax Code="AY" Amount="250"/>
+<Tax Code="IS" Amount="1312"/>
+<Tax Code="ZU" Amount="574"/>
+<Tax Code="XF" Amount="450"/>
+</Taxes>
+<TotalFare Amount="42416" CurrencyCode="USD" DecimalPlaces="2"/>
+</PassengerFare>
+<TPA_Extensions>
+<FareCalculation>BOS FI KEF Q100.00 M/IT FI BOS Q100.00 M/IT END
+ROE1.000000 XF BOS4.5</FareCalculation>
+</TPA_Extensions>
+</PTC_FareBreakdown>
+</PTC_FareBreakdowns>
+</AirFareInfo>
+</ItemPricing>
+</ReservationItems>
+<Ticketing TicketType="eTicket">
+<TicketAdvisory>OK-291208/JNBZA2222</TicketAdvisory>
+</Ticketing>
+<SpecialRequestDetails>
+<Remarks>
+<Remark>VT TRANSACTION NUMBER - 166626</Remark>
+<Remark>CUSTOMER QUOTED: 1216.32</Remark>
+</Remarks>
+<SpecialRemarks>
+<SpecialRemark RemarkType="Endorsement">
+                      <Text>PAX *M*21140384 VALID ON FI ONLY/NON END/NON REF/VALIDITY 30 DAYS/ CHANGE FEE $200.00</Text>
+</SpecialRemark>
+<SpecialRemark RemarkType="TourCode">
+<Text>PAX *IT5FI1TO</Text>
+</SpecialRemark>
+</SpecialRemarks>
+</SpecialRequestDetails>
+<TPA_Extensions>
+<IssuedTickets>
+
+                   <IssuedTicket TravelerRefNumberRPHList="1" FlightRefNumberRPHList="3 4">PAX 108- 2105414048/ETFI/USD424.16/29DEC08/ORLFI0202/10990405</IssuedTicket>
+                   <IssuedTicket TravelerRefNumberRPHList="2" FlightRefNumberRPHList="3 4">PAX 108- 2105414049/ETFI/USD424.16/29DEC08/ORLFI0202/10990405</IssuedTicket>
+                   <IssuedTicket TravelerRefNumberRPHList="1" FlightRefNumberRPHList="3 4">PAX 2900009067 TTP/ET OK ETICKET</IssuedTicket>
+                   <IssuedTicket TravelerRefNumberRPHList="2" FlightRefNumberRPHList="3 4">PAX 2900009068 TTP/ET OK ETICKET</IssuedTicket>
+<TicketingCarrier>FI</TicketingCarrier>
+</IssuedTickets>
+</TPA_Extensions>
+</ItineraryInfo>
+<TravelCost>
+<FormOfPayment RPH="1">
+<PaymentCard CardCode="VI" CardNumber="4444333322221111" ExpireDate="0710"/>
+<TPA_Extensions FOPType="CC" ConfirmationNumber="N04173C"/>
+</FormOfPayment>
+</TravelCost>
+<UpdatedBy CreateDateTime="2008-12-29T01:01:00"/>
+<TPA_Extensions>
+<AgencyCommission Amount="0"/>
+</TPA_Extensions>
+</TravelItinerary>
+</OTA_TravelItineraryRS>
+
+
+
+2.5 Validating Airline Requirement (mandatory for Amadeus)
+This information is mandatory when working with Amadeus, it is really a must have, so Amadeus can guarantee the price booked. It is ValidatingAirlineCode.
+
+Here is an extract of booking request that shows where to put it:
+
+<TPA_Extensions>
+<PNRData>
+<Traveler BirthDate="1952-02-13" PassengerTypeCode="ADT">
+<PersonName>
+<GivenName>JOHN</GivenName>
+<Surname>SMITH</Surname>
+</PersonName>
+<TravelerRefNumber RPH="1"/>
+</Traveler>
+<Telephone CountryAccessCode="1" PhoneNumber="305-444-444"/>
+<Ticketing TicketTimeLimit="2015-03-10T00:00:00Z" TicketType="eTicket"/>
+</PNRData>
+<!-- ValidatingCarrier is mandatory, you get it in LowFareResponse -->
+    <!-- you get if from this element in LowFarePlus reponse: <AirItineraryPricingInfo PricingSource="Published" ValidatingAirlineCode="AF"> -->
+<PriceData PriceType="Published" ValidatingAirlineCode="AF">
+<!-- you need to add it here, always-->
+<PublishedFares>
+<FareRestrictPref>
+<AdvResTicketing>
+<AdvReservation/>
+</AdvResTicketing>
+<VoluntaryChanges>
+<Penalty/>
+</VoluntaryChanges>
+</FareRestrictPref>
+</PublishedFares>
+</PriceData>
+</TPA_Extensions>
+
+This is being returned in LowFarePlus response for each fare, here is an extract:
+<AirItineraryPricingInfo PricingSource="Published" ValidatingAirlineCode="AF">
+
+<!-- type of fare (can be Published or Private) and validating airline, both elements to pass in booking request -->
+<ItinTotalFare>
+<BaseFare Amount="15814" CurrencyCode="USD" DecimalPlaces="2"/>
+<Taxes>
+<Tax TaxCode="TotalTax" Amount="4006" CurrencyCode="USD" DecimalPlaces="2"/>
+</Taxes>
+<TotalFare Amount="19820" CurrencyCode="USD" DecimalPlaces="2"/>
+</ItinTotalFare>
+</AirItineraryPricingInfo>
+
+
+
+2.6 Advance Passenger Information (APIS) Requirement
+Advanced Passenger Information (APIS) data for passengers are required by some of the airlines due to government requirements. To support the APIS data to be sent to the requested airlines, IATA approved format are available with TripXML TravelBuild message.
+
+This is supported in TravelBuild message in SpecialServiceRequest element, the format is described below.
+Note: TravelerRefNumberRPHList contains the passenger reference at booking creation time. Airline code is sent as YY so the SSR will apply to all airlines in the itinerary.
+a) Example with Passport has travel document.
+
+<SpecialServiceRequests>
+<SpecialServiceRequest SSRCode="DOCS" TravelerRefNumberRPHList="1">
+<Airline Code="YY"/>
+<Text>P-GBR-12345678-GBR-30JUN73-M-14JUN12-SMITH-JOHN</Text>
+</SpecialServiceRequest>
+</SpecialServiceRequests>
+
+P-GBR-12345678-GBR-30JUN73-M-14JUN12-SMITH-JOHN (1)(2)	(3)	(4)	(5)	(6)	(7)	(8)	(9)
+
+1) Travel document type (P = Passport)
+2) Travel document issuing country
+3) Travel document number
+4) Passenger nationality
+5) Passenger date of birth
+6) Passenger gender
+7) Travel document expiry date
+8) Surname in travel document
+9) Given name in travel document
+
+a) Example with minimum gender and birth date information.
+
+<SpecialServiceRequests>
+<SpecialServiceRequest SSRCode="DOCS" TravelerRefNumberRPHList="1">
+<Airline Code="YY"/>
+<Text>	30JUN73-M--SMITH-JOHN</Text>
+</SpecialServiceRequest>
+</SpecialServiceRequests>
+
+----30JUN73-M--SMITH-JOHN
+(6)	(7)	(8)	(9)
+
+6) Passenger date of birth
+7) Passenger gender
+8) Surname in travel document
+9) Given name in travel document
+
+3 OTA_PNRCancelRQ/RS
+
+3.1 References
+
+Web service URL: http://amadeusws.tripxml.com/TripXML/wsPNRCancel.asmx
+
+WSDL: http://amadeusws.tripxml.com/TripXML/wsPNRCancel.asmx?WSDL
+
+
+3.2 Definition
+The PNRCancel method allows users to cancel the complete itinerary in a PNR based on the PNR's record locator. The response message returns the cancellation confirmation.
+
+
+3.3 PNR Cancel Request message elements
+Example 1:
+Cancel PNR reference YXBHNH.
+
+<OTA_CancelRQ>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="requestor"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Test</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<UniqueID ID="YXBHNH"/>
+</OTA_CancelRQ>
+
+
+3.4 PNR Cancel Response message elements
+Example 1:
+Cancel PNR reference YXBHNH.
+<OTA_CancelRS Version="3.14" Status="Cancelled">
+<Success/>
+<UniqueID ID="YXBHNH"/>
+</OTA_CancelRS>
+
+
+Example 2:
+Cancel an invalid PNR reference, returns error.
+
+<OTA_CancelRS Version="1.001" TransactionIdentifier="YXBHNU" Status="Unsuccessful">
+<Errors>
+<Error Type="E">NO MATCH FOR RECORD LOCATOR</Error>
+</Errors>
+</OTA_CancelRS>
+
+4 OTA_PNRReadRQ/RS version 03
+
+4.1 References
+
+Web service URL: http://amadeusws.tripxml.com/TripXML/wsPNRRead_v03.asmx
+
+WSDL: http://amadeusws.tripxml.com/TripXML/wsPNRRead_v03.asmx?WSDL
+
+
+4.2 Definition
+The PNRRead method allows users to retrieve a PNR (Passenger Name Record) based on the PNR's record locator. The response message returns the full PNR information back.
+
+Note: The response to PNRRead is the same as the response to TravelBuild message.
+
+4.3 PNR Read Request message elements
+Example 1:
+Retrieve PNR reference YXBHNH.
+<OTA_ReadRQ>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="requestor"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Test</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<UniqueID ID="YXBHNH"/>
+</OTA_ReadRQ>
+
+
+
+4.4 PNR Read Response message elements
+Example 1:
+Retrieve PNR reference.
+<OTA_TravelItineraryRS Version="v03">
+<Success/>
+<TravelItinerary>
+<ItineraryRef Type="PNR" ID="YXBHNH"/>
+<CustomerInfos>
+<CustomerInfo RPH="1">
+<Customer>
+
+<PersonName NameType="ADT">
+<GivenName>JOHN</GivenName>
+<Surname>TEST</Surname>
+</PersonName>
+<Telephone PhoneNumber="MIA305-670-1561" PhoneUseType="B"/>
+<Telephone PhoneNumber="MIA305-444-4444" PhoneUseType="H"/>
+<Email>INFO@AMADEUS.COM</Email>
+</Customer>
+</CustomerInfo>
+</CustomerInfos>
+<ItineraryInfo>
+<ReservationItems>
+<Item ItinSeqNumber="2">
+<Hotel>
+<Reservation>
+<RoomTypes/>
+<RatePlans>
+<RatePlan RatePlanCode="PRO"/>
+</RatePlans>
+<RoomRates>
+<RoomRate>
+<Rates>
+<Rate>
+<Base AmountBeforeTax="237300" CurrencyCode="USD"
+
+DecimalPlaces="2"/>
+
+
+</Rate>
+</Rates>
+</RoomRate>
+</RoomRates>
+<GuestCounts>
+<GuestCount Count="1"/>
+</GuestCounts>
+<TimeSpan Start="2006-09-07" End="2006-09-14"/>
+<BasicPropertyInfo ChainCode="BR" HotelCode="SCB" HotelCityCode="SFO"
+
+HotelName="RENAISSANCE STANFORD"/>
+</Reservation>
+<TPA_Extensions ConfirmationNumber="	"/>
+</Hotel>
+</Item>
+</ReservationItems>
+<Ticketing TicketTimeLimit="2006-09-05T06:00:00.0000000-04:00" TicketType="Paper"/>
+<SpecialRequestDetails/>
+</ItineraryInfo>
+<TravelCost/>
+</TravelItinerary>
+</OTA_TravelItineraryRS>
+
+5 OTA_UpdateRQ/RS
+
+5.1 References
+Web service URL: http://amadeusws.tripxml.com/TripXML/wsUpdate.asmx
+
+WSDL: http://amadeusws.tripxml.com/TripXML/wsUpdate?WSDL
+
+
+5.2 Definition
+
+The Update method allows users to make changes to an existing reservation (PNR) based on the PNR's record locator. The response message returns the full PNR information back.
+Note: The response to PNRRead is the same as the response to TravelBuild message.
+
+With the Update method it is possible to:
+- insert new elements to the PNR
+- delete existing elements from the PNR
+- modify existing elements in the PNR
+- insert, delete, modify (and any other combination) elements in PNR in one single transaction
+
+When an Update request is received by TripXML, it will:
+- retrieve the existing PNR
+- apply the insert, delete and modify changes
+- end transact the PNR to complete changes
+- return the updated PNR back in the response
+
+If any of the Update elements fails (like trying to change an element that does not exist), the whole transaction will fail and no update will take place. An error message specifying the reason for failure will be returned in the response.
+
+
+5.3 Message structure
+Each Position element inside the Update message corresponds to one update action. The Element element contains the update action in the attribute Operation. Operation can be "insert", "delete" or "modify". The Child element contains the element to update. Inside the Element group, the data to be updated is listed.
+
+Delete example: request is to "delete" a Remark in Remarks group:
+
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/ItineraryInfo/SpecialRequestDetails/Remarks">
+<Element Operation="delete" Child="Remarks">
+<Remarks>
+<Remark>*PR*** AGENCY</Remark>
+</Remarks>
+</Element>
+</Position>
+
+The client application will typically reatrieve the PNR using the PNRRead message and then send the above request to delete the Remark.
+The Remarks group as well as the Remark element are identical to the structure they have in the PNRRead response XML.
+
+
+Insert example: request is to "insert" a Remark in Remarks group:
+
+<Position XPath="OTA_TravelItineraryRQ/OTA_AirBookRQ/TravelerInfo/SpecialReqDetails/Remarks">
+<Element Operation="insert" Child="Remarks">
+<Remarks>
+<Remark>*PR*** TRIPXML AIR BOOKING ENGINE</Remark>
+</Remarks>
+</Element>
+</Position>
+
+
+The Remarks group as well as the Remark element are identical to the structure they have in the TravelBuild request XML.
+
+
+Modify example: request is to "modify" a Remark in Remarks group (replace an existing Remark value with a new value)"
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/ItineraryInfo/SpecialRequestDetails/Remarks">
+<Element Operation="modify" Child="Remarks"> <!-Remark to modify -->
+<Remarks>
+<Remark>*PR*** ANOTHER AIR BOOKING ENGINE</Remark>
+</Remarks>
+</Element>
+<Element Operation="modify" Child="Remarks"> <!-Remark to modify with -->
+<Remarks>
+<Remark>*PR*** TRIPXML AIR BOOKING ENGINE</Remark>
+</Remarks>
+</Element>
+</Position>
+The update Remark will show in the PNR response:
+<Remarks>
+<Remark>*PR*** TRIPXML AIR BOOKING ENGINE</Remark>
+</Remarks>
+
+The client application will typically reatrieve the PNR using the PNRRead message and then send the above request to modify the Remark.
+The Remarks group as well as the Remark element are identical to the structure they have in the PNRRead response XML.
+
+The first Element group is the one to be modified, the second Element group is the one to be modified with.
+
+5.4 Update Request message elements - insert option
+
+Example 1:
+Insert a Telephone and an Email elements.
+
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRQ/TPA_Extensions/PNRData">
+<Element Operation="insert" Child="PNRData">
+<PNRData>
+               <Telephone PhoneLocationType="Business" CountryAccessCode="1" AreaCityCode="MIA" PhoneNumber="305-670-1561"/>
+<Email>info@Amadeus.com</Email>
+</PNRData>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+Example 2:
+Insert billing and delivery addresses.
+
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRQ/OTA_AirBookRQ/Fulfillment">
+<Element Operation="insert" Child="Fulfillment">
+<Fulfillment>
+<PaymentDetails>
+<PaymentDetail>
+<PaymentCard>
+<Address>
+<StreetNmbr>123 SW 1st ST</StreetNmbr>
+<CityName>MIAMI</CityName>
+<PostalCode>33123</PostalCode>
+<StateProv StateCode="FL"/>
+<CountryName Code="US"/>
+</Address>
+</PaymentCard>
+</PaymentDetail>
+</PaymentDetails>
+<DeliveryAddress>
+<StreetNmbr>123 SW 1st ST</StreetNmbr>
+<CityName>Hallandale Bch</CityName>
+<PostalCode>33009</PostalCode>
+<StateProv StateCode="FL"/>
+<CountryName Code="US"/>
+</DeliveryAddress>
+</Fulfillment>
+
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+Example 3:
+Insert a Customer Loyalty (frequent flyer) element.
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRQ/TPA_Extensions/PNRData">
+<Element Operation="insert" Child="PNRData">
+<PNRData>
+<Traveler>
+<CustLoyalty ProgramID="JJ" MembershipID="26450100"/>
+<TravelerRefNumber RPH="1"/>
+</Traveler>
+</PNRData>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+Example 4:
+Insert a Seat, special service request, other service information, remarks and special remarks elements.
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRQ/OTA_AirBookRQ/TravelerInfo/SpecialReqDetails/SeatRequests">
+<Element Operation="insert" Child="SeatRequests">
+<SeatRequests>
+               <SeatRequest SeatPreference="W" SmokingAllowed="false" TravelerRefNumberRPHList="1" FlightRefNumberRPHList="12"/>
+</SeatRequests>
+</Element>
+</Position>
+    <Position XPath="OTA_TravelItineraryRQ/OTA_AirBookRQ/TravelerInfo/SpecialReqDetails/SpecialServiceRequests">
+<Element Operation="insert" Child="SpecialServiceRequests">
+<SpecialServiceRequests>
+
+               <SpecialServiceRequest SSRCode="VGML" FlightRefNumberRPHList="12" TravelerRefNumberRPHList="1"/>
+               <SpecialServiceRequest SSRCode="OTHS" FlightRefNumberRPHList="12" TravelerRefNumberRPHList="1">
+<Text>DOES NOT SPEAK ENGLISH</Text>
+</SpecialServiceRequest>
+</SpecialServiceRequests>
+</Element>
+</Position>
+    <Position XPath="OTA_TravelItineraryRQ/OTA_AirBookRQ/TravelerInfo/SpecialReqDetails/OtherServiceInformations">
+<Element Operation="insert" Child="OtherServiceInformations">
+<OtherServiceInformations>
+<OtherServiceInformation>
+<Airline Code="AA"/>
+<Text>THIS IS AN OSI</Text>
+</OtherServiceInformation>
+</OtherServiceInformations>
+</Element>
+</Position>
+<Position XPath="OTA_TravelItineraryRQ/OTA_AirBookRQ/TravelerInfo/SpecialReqDetails/Remarks">
+<Element Operation="insert" Child="Remarks">
+<Remarks>
+<Remark>*PR*** TRIPXML AIR BOOKING ENGINE</Remark>
+</Remarks>
+</Element>
+</Position>
+<Position XPath="OTA_TravelItineraryRQ/OTA_AirBookRQ/TravelerInfo/SpecialReqDetails/SpecialRemarks">
+<Element Operation="insert" Child="SpecialRemarks">
+<SpecialRemarks>
+<SpecialRemark RemarkType="I">
+<Text>AGENCY TRAVEL</Text>
+</SpecialRemark>
+<SpecialRemark RemarkType="T">
+<Text>USD689.7</Text>
+</SpecialRemark>
+</SpecialRemarks>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+Example 5:
+Insert a form of payment element.
+
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRQ/OTA_AirBookRQ/Fulfillment">
+<Element Operation="insert" Child="Fulfillment">
+<Fulfillment>
+<PaymentDetails>
+<PaymentDetail>
+<PaymentCard CardCode="VI" CardNumber="4444333322221111" ExpireDate="1208">
+<CardHolderName>JOHN/SMITH</CardHolderName>
+</PaymentCard>
+</PaymentDetail>
+
+</PaymentDetails>
+</Fulfillment>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+Example 6:
+Insert a form of payment element with payment amount
+
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRQ/OTA_AirBookRQ/Fulfillment">
+<Element Operation="insert" Child="Fulfillment">
+<Fulfillment>
+<PaymentDetails>
+<PaymentDetail>
+<PaymentCard CardCode="VI" CardNumber="4444333322221111" ExpireDate="1208">
+<CardHolderName>JOHN/SMITH</CardHolderName>
+</PaymentCard>
+<PaymentAmount Amount="12000" CurrencyCode="USD" DecimalPlaces="2" />
+</PaymentDetail>
+</PaymentDetails>
+</Fulfillment>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+Example 7:
+Insert a form of payment element with payment amount and confirmation number
+
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRQ/OTA_AirBookRQ/Fulfillment">
+<Element Operation="insert" Child="Fulfillment">
+<Fulfillment>
+<PaymentDetails>
+<PaymentDetail>
+<PaymentCard CardCode="VI" CardNumber="4444333322221111" ExpireDate="1208">
+<CardHolderName>JOHN/SMITH</CardHolderName>
+
+</PaymentCard>
+<TPA_Extensions ConfirmationNumber="N123456" />
+<PaymentAmount Amount="12000" CurrencyCode="USD" DecimalPlaces="2" />
+</PaymentDetail>
+</PaymentDetails>
+</Fulfillment>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+
+Example 8:
+Insert flight elements.
+
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRQ/OTA_AirBookRQ/AirItinerary/OriginDestinationOptions">
+<Element Operation="insert" Child="OriginDestinationOptions">
+<OriginDestinationOptions>
+<OriginDestinationOption>
+                   <FlightSegment DepartureDateTime="2008-05-07T23:30:00" RPH="1" FlightNumber="811" ResBookDesigCode="Q" NumberInParty="1">
+<DepartureAirport LocationCode="LAX"/>
+<ArrivalAirport LocationCode="NAN"/>
+<MarketingAirline Code="FJ"/>
+</FlightSegment>
+                   <FlightSegment DepartureDateTime="2008-05-14T22:00:00" RPH="2" FlightNumber="810" ResBookDesigCode="Q" NumberInParty="1">
+<DepartureAirport LocationCode="NAN"/>
+<ArrivalAirport LocationCode="LAX"/>
+<MarketingAirline Code="FJ"/>
+</FlightSegment>
+</OriginDestinationOption>
+</OriginDestinationOptions>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+
+5.5 Update Request message elements - delete option
+
+Example 1:
+Delete Telephone and Email elements.
+
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/CustomerInfos/CustomerInfo">
+<Element Operation="delete" Child="CustomerInfo">
+<CustomerInfo RPH="1">
+<Customer>
+<Telephone PhoneNumber="MIA305-444-4444" PhoneUseType="H"/>
+<Email>INFO@AMADEUS.COM</Email>
+</Customer>
+</CustomerInfo>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+Example 2:
+Delete billing and mailing addresses and customer loyalty elements.
+
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/CustomerInfos/CustomerInfo">
+<Element Operation="delete" Child="CustomerInfo">
+<CustomerInfo RPH="1">
+<Customer>
+<Address UseType="Billing">
+<AddressLine>TATIANA/T/CAJAIBA</AddressLine>
+</Address>
+<Address UseType="Billing">
+<AddressLine>RUA RENE ZANLUTTI 85 APTO 101</AddressLine>
+</Address>
+<Address UseType="Billing">
+<AddressLine>SAO PAULO SP 04116260 BR</AddressLine>
+</Address>
+<Address UseType="Mailing">
+<StreetNmbr>400 LESLIE DRIVE APTO 310</StreetNmbr>
+<CityName>HALLANDALE BCH</CityName>
+<PostalCode>33009</PostalCode>
+<StateProv StateCode="FL"/>
+<CountryName Code="US"/>
+</Address>
+<CustLoyalty ProgramID="JJ" MembershipID="26450100"/>
+</Customer>
+</CustomerInfo>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+Example 3:
+Delete seats, special services, remarks and special remarks elements.
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/ItineraryInfo/SpecialRequestDetails/SeatRequests">
+<Element Operation="delete" Child="SeatRequests">
+<SeatRequests>
+               <SeatRequest SeatPreference="W" SmokingAllowed="false" Status="HN" TravelerRefNumberRPHList="1" FlightRefNumberRPHList="2">
+<DepartureAirport LocationCode="MIA"/>
+<ArrivalAirport LocationCode="GRU"/>
+</SeatRequest>
+</SeatRequests>
+</Element>
+</Position>
+    <Position XPath="OTA_TravelItineraryRS/TravelItinerary/ItineraryInfo/SpecialRequestDetails/SpecialServiceRequests">
+<Element Operation="delete" Child="SpecialServiceRequests">
+<SpecialServiceRequests>
+<SpecialServiceRequest SSRCode="FQTV" TravelerRefNumberRPHList="1">
+<Airline Code="JJ"/>
+<Text>26450100</Text>
+</SpecialServiceRequest>
+</SpecialServiceRequests>
+</Element>
+</Position>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/ItineraryInfo/SpecialRequestDetails/Remarks">
+<Element Operation="delete" Child="Remarks">
+<Remarks>
+<Remark>*PR*** TRIPXML AIR BOOKING ENGINE</Remark>
+<Remark>*PR*** AGENCY</Remark>
+<Remark>*PR*** COSTAMAR TRAVEL</Remark>
+</Remarks>
+</Element>
+</Position>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/ItineraryInfo/SpecialRequestDetails/SpecialRemarks">
+<Element Operation="delete" Child="SpecialRemarks">
+<SpecialRemarks>
+<SpecialRemark RemarkType="Endorsement">
+<TravelerRefNumber RPH="1"/>
+<FlightRefNumber RPH="2 3"/>
+<Text>PAX NONEND/CHG SUBJ TO FEE</Text>
+</SpecialRemark>
+</SpecialRemarks>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+Example 4:
+Delete traveler element.
+
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/CustomerInfos">
+<Element Operation="delete" Child="CustomerInfos">
+<CustomerInfos>
+<CustomerInfo RPH="1">
+<Customer>
+<PersonName NameType="ADT">
+<GivenName>JOHN</GivenName>
+<Surname>SMITH</Surname>
+</PersonName>
+</Customer>
+</CustomerInfo>
+</CustomerInfos>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+Example 5:
+Delete flight element.
+
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/ItineraryInfo/ReservationItems">
+<Element Operation="delete" Child="ReservationItems">
+<ReservationItems>
+<Item ItinSeqNumber="3">
+                   <Air DepartureDateTime="2008-05-05T17:40:00" ArrivalDateTime="2008-05-06T08:10:00" StopQuantity="0" RPH="1" FlightNumber="95" ResBookDesigCode="T" NumberInParty="2" Status="HK" E_TicketEligibility="Eligible" DepartureDay="Mon">
+<DepartureAirport LocationCode="MIA">Miami International, FL, US</DepartureAirport>
+<ArrivalAirport LocationCode="CDG">Paris-Charles de Gaulle, FR</ArrivalAirport>
+<Equipment AirEquipType="744">BOEING 747-400 JET</Equipment>
+<MarketingAirline Code="AF">AIR FRANCE</MarketingAirline>
+<TPA_Extensions ConfirmationNumber=""/>
+</Air>
+</Item>
+<Item ItinSeqNumber="4">
+                   <Air DepartureDateTime="2008-05-06T10:30:00" ArrivalDateTime="2008-05-06T11:50:00" StopQuantity="0" RPH="2" FlightNumber="6208" ResBookDesigCode="K" NumberInParty="2" Status="HK" E_TicketEligibility="Eligible" DepartureDay="Tue">
+<DepartureAirport LocationCode="ORY" Terminal="W">Paris- Orly, FR</DepartureAirport>
+<ArrivalAirport LocationCode="NCE">Nice, FR</ArrivalAirport>
+<Equipment AirEquipType="320">AIRBUS INDUSTRIE A320-100/200 JET</Equipment>
+<MarketingAirline Code="AF">AIR FRANCE</MarketingAirline>
+
+<TPA_Extensions ConfirmationNumber=""/>
+</Air>
+</Item>
+</ReservationItems>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+5.6 Update Request message elements - modify option
+
+Example 1:
+Modify Telephone and Email elements.
+The first Telephone element in the first Element group will be modified by the first Telephone element in the second Element group. The second Telephone element in the first Element group will be modified by the second Telephone element in the second Element group, etc...
+
+
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/CustomerInfos/CustomerInfo">
+<Element Operation="modify" Child="CustomerInfo">
+<CustomerInfo RPH="1">
+<Customer>
+<Telephone PhoneNumber="2123456789"/>
+<Telephone PhoneNumber="1111111111"/>
+<Email>INFO@AMADEUS.COM</Email>
+<Email>TOTO@AMADEUS.COM</Email>
+</Customer>
+</CustomerInfo>
+</Element>
+<Element Operation="modify" Child="CustomerInfo">
+<CustomerInfo RPH="1">
+<Customer>
+<Telephone PhoneNumber="9999999999"/>
+<Telephone PhoneNumber="8888888888"/>
+<Email>JOHN@AMADEUS.COM</Email>
+<Email>JANE@AMADEUS.COM</Email>
+</Customer>
+</CustomerInfo>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+Example 2:
+Modify billing and mailing address elements.
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/CustomerInfos/CustomerInfo">
+<Element Operation="modify" Child="CustomerInfo">
+<CustomerInfo RPH="1">
+<Customer>
+<Address UseType="Billing">
+<AddressLine>TATIANA/CAJAIBA</AddressLine>
+</Address>
+<Address UseType="Billing">
+<AddressLine>RUA RENE ZANLUTTI 85 APTO 101</AddressLine>
+</Address>
+<Address UseType="Billing">
+<AddressLine>SAO PAULO SP 04116260 BR</AddressLine>
+</Address>
+<Address UseType="Mailing">
+<StreetNmbr>400 LESLIE DRIVE APTO 310</StreetNmbr>
+<CityName>HALLANDALE BCH</CityName>
+<PostalCode>33009</PostalCode>
+<StateProv StateCode="FL"/>
+<CountryName Code="US"/>
+</Address>
+</Customer>
+</CustomerInfo>
+</Element>
+<Element Operation="modify" Child="CustomerInfo">
+<CustomerInfo RPH="1">
+<Customer>
+<Address UseType="Billing">
+<AddressLine>JOHN/SMITH</AddressLine>
+</Address>
+<Address UseType="Billing">
+<AddressLine>123 SW 12TH ST</AddressLine>
+</Address>
+<Address UseType="Billing">
+<AddressLine>MIAMI FL 33123 US</AddressLine>
+</Address>
+<Address UseType="Mailing">
+<StreetNmbr>45 NW 14TH ST</StreetNmbr>
+<CityName>NEW YORK</CityName>
+<PostalCode>10111</PostalCode>
+<StateProv StateCode="NY"/>
+<CountryName Code="US"/>
+</Address>
+</Customer>
+</CustomerInfo>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+Example 3:
+Modify remark and special remark elements.
+
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/ItineraryInfo/SpecialRequestDetails/Remarks">
+<Element Operation="modify" Child="Remarks">
+<Remarks>
+<Remark>*PR*** ANOTHER AIR BOOKING ENGINE</Remark>
+</Remarks>
+</Element>
+<Element Operation="modify" Child="Remarks">
+<Remarks>
+<Remark>*PR*** TRIPXML AIR BOOKING ENGINE</Remark>
+</Remarks>
+</Element>
+</Position>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/ItineraryInfo/SpecialRequestDetails/SpecialRemarks">
+<Element Operation="modify" Child="SpecialRemarks">
+<SpecialRemarks>
+<SpecialRemark RemarkType="T">
+<Text>USD689.7</Text>
+</SpecialRemark>
+<SpecialRemark RemarkType="I">
+<Text>MYAGENCY TRAVEL</Text>
+</SpecialRemark>
+</SpecialRemarks>
+</Element>
+<Element Operation="modify" Child="SpecialRemarks">
+<SpecialRemarks>
+<SpecialRemark RemarkType="T">
+<Text>USD1789.00</Text>
+</SpecialRemark>
+<SpecialRemark RemarkType="I">
+<Text>NEWAGENCY TRAVEL</Text>
+</SpecialRemark>
+</SpecialRemarks>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+Example 4:
+Modify a credit card data by appending a credit card approval code to the form of payment element.
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/TravelCost/FormOfPayment">
+
+<Element Operation="modify" Child="FormOfPayment">
+<FormOfPayment RPH="1">
+<PaymentCard CardCode="VI" CardNumber="xxxxxxxxxxxx1111" ExpireDate="1009"/>
+<TPA_Extensions FOPType="CC"/>
+</FormOfPayment>
+</Element>
+<Element Operation="modify" Child="FormOfPayment">
+<FormOfPayment RPH="1">
+<PaymentCard CardCode="VI" CardNumber="xxxxxxxxxxxx1111" ExpireDate="1009"/>
+<TPA_Extensions FOPType="CC" ConfirmationNumber="N123456"/>
+</FormOfPayment>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+Example 5:
+Modify a credit card data by addinig the payment amount and the credit card approval code to the form of payment element.
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/TravelCost/FormOfPayment">
+<Element Operation="modify" Child="FormOfPayment">
+<FormOfPayment RPH="1">
+<PaymentCard CardCode="VI" CardNumber="xxxxxxxxxxxx1111" ExpireDate="1009"/>
+<TPA_Extensions FOPType="CC"/>
+</FormOfPayment>
+</Element>
+<Element Operation="modify" Child="FormOfPayment">
+<FormOfPayment RPH="1">
+<PaymentCard CardCode="VI" CardNumber="xxxxxxxxxxxx1111" ExpireDate="1009"/>
+<TPA_Extensions FOPType="CC" ConfirmationNumber="N123456"/>
+<PaymentAmount Amount="12000" CurrencyCode="USD" DecimalPlaces="2" />
+</FormOfPayment>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+Example 6:
+Modify a traveler's name. This is not considered as a change of Traveler on the itinerary but rather a correction of the name (correction of a spelling mistake for example).
+
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/CustomerInfos">
+<Element Operation="modify" Child="CustomerInfos">
+<CustomerInfos>
+<CustomerInfo RPH="1">
+<Customer>
+<PersonName NameType="ADT">
+<GivenName>BOB</GivenName>
+<Surname>SMITH</Surname>
+</PersonName>
+</Customer>
+</CustomerInfo>
+</CustomerInfos>
+</Element>
+<Element Operation="modify" Child="CustomerInfos">
+<CustomerInfos>
+<CustomerInfo RPH="1">
+<Customer>
+<PersonName NameType="ADT">
+<GivenName>ROBERT</GivenName>
+<Surname>SMITH</Surname>
+</PersonName>
+</Customer>
+</CustomerInfo>
+</CustomerInfos>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+
+
+6.7 Update Request message elements - insert, delete and modify options in the same request
+
+Example 1:
+Insert a form of payment, delete a customer loyalty and change the email.
+<OTA_UpdateRQ Version="1.0">
+<UniqueID Type="21" ID="AAABBB"/>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>userid</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Position XPath="OTA_TravelItineraryRQ/OTA_AirBookRQ/Fulfillment">
+<Element Operation="insert" Child="Fulfillment">
+<Fulfillment>
+<PaymentDetails>
+<PaymentDetail>
+<PaymentCard CardCode="VI" CardNumber="4444333322221111" ExpireDate="1208">
+<CardHolderName>JOHN/SMITH</CardHolderName>
+</PaymentCard>
+</PaymentDetail>
+
+</PaymentDetails>
+</Fulfillment>
+</Element>
+</Position>
+    <Position XPath="OTA_TravelItineraryRS/TravelItinerary/ItineraryInfo/SpecialRequestDetails/SpecialServiceRequests">
+<Element Operation="delete" Child="SpecialServiceRequests">
+<SpecialServiceRequests>
+<SpecialServiceRequest SSRCode="FQTV" TravelerRefNumberRPHList="1">
+<Airline Code="AA"/>
+<Text>11111111111</Text>
+</SpecialServiceRequest>
+</SpecialServiceRequests>
+</Element>
+</Position>
+<Position XPath="OTA_TravelItineraryRS/TravelItinerary/CustomerInfos/CustomerInfo">
+<Element Operation="modify" Child="CustomerInfo">
+<CustomerInfo RPH="1">
+<Customer>
+<Email>INFO@AMADEUS.COM</Email>
+</Customer>
+</CustomerInfo>
+</Element>
+<Element Operation="modify" Child="CustomerInfo">
+<CustomerInfo RPH="1">
+<Customer>
+<Email>JOHN@AMADEUS.COM</Email>
+</Customer>
+</CustomerInfo>
+</Element>
+</Position>
+</OTA_UpdateRQ>
+
+6 IssueTicketRQ/RS
+
+6.1 References
+Web service URL: http://amadeusws.tripxml.com/TripXML/wsIssueTicket.asmx
+
+WSDL: http://amadeusws.tripxml.com/TripXML/wsIssueTicket?WSDL
+
+6.2 Definition
+The Issue Ticket method allows users to request issuing of tickets. With the issue ticket message it is possible to:
+o Issue E-ticket alone
+o Issue MCO (Miscellaneous Charge Order) alone
+o Issue ET and MCO at the same time
+o Issue E-ticket and send a notification to the email address stored in the PNR (Amadeus APE element)
+o Issue E-ticket and send a notification to the email address stored in the PNR (Amadeus APF element)
+
+
+6.3 IssueTicket Request message element
+Example 1:
+Issue e-ticket only (Amadeus TTP/ET entry).
+
+<TT_IssueTicketRQ>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>Amadeus</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<UniqueID ID="Z5IG42"/>
+<Ticketing TicketType="eTicket"/>
+</TT_IssueTicketRQ>
+
+
+Example 2:
+Issue MCO only (Amadeus TTP/TTM entry).
+<TT_IssueTicketRQ>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>Amadeus</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<UniqueID ID="Z5IG42"/>
+<Ticketing IssueMCO="true"/>
+</TT_IssueTicketRQ>
+
+
+Example 3:
+Issue e-ticket and MCO (Amadeus TTP/ET/TTM entry).
+<TT_IssueTicketRQ>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>Amadeus</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<UniqueID ID="Z5IG42"/>
+<Ticketing TicketType="eTicket" IssueMCO="true"/>
+</TT_IssueTicketRQ>
+
+Example 4:
+Issue e-ticket and send an e-ticket receipt to the email address noted in the APE field of the PNR (Amadeus TP/ITR-EMLA/ET entry).
+<TT_IssueTicketRQ>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>Amadeus</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<UniqueID ID="Z5IG42"/>
+<Ticketing TicketType="eTicket">
+<Notification ByEmail="true"/>
+</Ticketing>
+</TT_IssueTicketRQ>
+
+Example 5:
+Issue e-ticket and send a fax to the number in the APF field of the PNR (Amadeus TTP/ITR-FAXA/ET entry).
+<TT_IssueTicketRQ>
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Training</System>
+<Userid>Amadeus</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<UniqueID ID="Z5IG42"/>
+<Ticketing TicketType="eTicket">
+<Notification ByFax="true"/>
+</Ticketing>
+</TT_IssueTicketRQ>
+
+
+
+
+6.4 IssueTicket Response message elements
+Example 1:
+Successful response.
+
+<TT_IssueTicketRS>
+<TicketingControl Type="OK"/>
+</TT_IssueTicketRS>
+
+
+Example 2:
+Response with error.
+<TT_IssueTicketRS>
+<Errors>
+<Error>CANNOT PRINT TICKET</Error>
+</Errors>
+</TT_IssueTicketRS>
+
+7 VoidTicketRQ/RS
+
+7.1 References
+Web service URL: http://amadeusws.tripxml.com/TripXML/wsVoidTicket.asmx
+
+WSDL: http://amadeusws.tripxml.com/TripXML/wsVoidTicket?WSDL
+
+7.2 Definition
+The Void Ticket method allows users to void tickets that have been already issued.With the Void ticket message it is possible to void one ticket or multiple tickets in one message.
+
+
+7.3 VoidTicket Request message element
+Example 1:
+Void one e-ticket.
+
+<TT_VoidTicketRQ Version="1.0">
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Test</System>
+<Userid>Amadeus</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+</POS>
+<Tickets>
+<TicketNumber>001-1234567890</TicketNumber>
+</Tickets>
+</TT_VoidTicketRQ>
+
+
+Example 2:
+Void multiple tickets.
+
+<TT_VoidTicketRQ Version="1.0">
+<POS>
+<Source PseudoCityCode="JNBZA2222">
+<RequestorID Type="21" ID="Amadeus"/>
+</Source>
+<TPA_Extensions>
+<Provider>
+<Name>Amadeus</Name>
+<System>Test</System>
+<Userid>Amadeus</Userid>
+<Password>password</Password>
+</Provider>
+</TPA_Extensions>
+
+</POS>
+<Tickets>
+<TicketNumber>001-1234567890</TicketNumber>
+<TicketNumber>001-0987654321</TicketNumber>
+</Tickets>
+</TT_VoidTicketRQ>
+
+
+
+
+7.4 VoidTicket Response message elements
+Example 1:
+Successful response.
+
+<TT_VoidTicketRS Version="1.0">
+<Success />
+<Ticket Number="001-1234567890" Status="Void" AuthorizationCode="0571303092656" />
+<Ticket Number="001-0987654321" Status="NotVoid" />
+</TT_VoidTicketRS>
+
+
+Example 2:
+Response with one ticket not voided.
+<TT_VoidTicketRS Version="1.0">
+<Success />
+<Ticket Number="001-1234567890" Status="Void" AuthorizationCode="0571303092656" />
+<Ticket Number="001-0987654321" Status="NotVoid" />
+</TT_VoidTicketRS>
+
+

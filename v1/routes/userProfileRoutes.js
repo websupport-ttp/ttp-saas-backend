@@ -6,10 +6,10 @@ const {
   uploadProfilePicture,
   deleteProfilePicture
 } = require('../controllers/userProfileController');
-const { protect } = require('../middleware/authMiddleware');
+const { authenticateUser } = require('../middleware/authMiddleware');
 
 // All routes require authentication
-router.use(protect);
+router.use(authenticateUser);
 
 // Profile routes
 router.route('/profile')

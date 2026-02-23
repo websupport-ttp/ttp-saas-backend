@@ -99,5 +99,6 @@ router.use('/car-hire', carHireRoutes); // Car hire endpoints
 router.use('/dashboard', dashboardRoutes); // Dashboard statistics endpoints
 router.use('/visa-assistance', visaAssistanceRoutes); // Visa assistance endpoints
 router.use('/cms', cmsRoutes); // CMS endpoints for content management
+router.use('/health', require('./healthRoutes')); // Health check endpoints
 
 module.exports = router;

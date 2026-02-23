@@ -8,6 +8,7 @@ const {
   updateCar,
   deleteCar,
   bookCar,
+  verifyCarPayment,
   getMyBookings,
   getAllBookings,
   processBooking,
@@ -77,6 +78,7 @@ router.get('/', getAllCars);
 
 // User routes (must be before /:id to avoid conflicts)
 router.post('/book', bookCar); // Allow guest bookings
+router.post('/verify-payment', verifyCarPayment); // Public - verify payment
 router.get('/my-bookings', authenticateUser, getMyBookings);
 
 // Admin and Staff routes (must be before /:id to avoid conflicts)

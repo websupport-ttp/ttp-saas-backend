@@ -207,9 +207,245 @@ const getManagerStats = asyncHandler(async (req, res) => {
   );
 });
 
+/**
+ * @desc    Get financial statistics for management (expenses & profit)
+ * @route   GET /api/v1/dashboard/management/financial-stats
+ * @access  Private (Management only - Admin, Executive, Manager, Department Heads)
+ */
+const getManagementFinancialStats = asyncHandler(async (req, res) => {
+  const Ledger = require('../models/ledgerModel');
+  
+  // Get date range from query params (default to last 30 days)
+  const { startDate, endDate, period = '30days' } = req.query;
+  
+  let dateFilter = {};
+  const now = new Date();
+  
+  if (startDate && endDate) {
+    dateFilter = {
+      createdAt: {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      }
+    };
+  } else {
+    // Default periods
+    const periodDays = {
+      '7days': 7,
+      '30days': 30,
+      '90days': 90,
+      '365days': 365
+    };
+    
+    const days = periodDays[period] || 30;
+    const startPeriod = new Date();
+    startPeriod.setDate(startPeriod.getDate() - days);
+    
+    dateFilter = {
+      createdAt: { $gte: startPeriod }
+    };
+  }
+
+  // Get total revenue (completed transactions)
+  const revenueData = await Ledger.aggregate([
+    {
+      $match: {
+        ...dateFilter,
+        status: 'Completed'
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalRevenue: { $sum: '$totalAmountPaid' },
+        totalProfit: { $sum: '$profitMargin' },
+        totalServiceCharge: { $sum: '$serviceCharge' },
+        totalMarkup: { $sum: '$markupApplied' },
+        transactionCount: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const revenue = revenueData[0] || {
+    totalRevenue: 0,
+    totalProfit: 0,
+    totalServiceCharge: 0,
+    totalMarkup: 0,
+    transactionCount: 0
+  };
+
+  // Calculate expenses (this is a simplified calculation)
+  // In a real system, you'd have an Expenses model
+  const estimatedExpenses = revenue.totalRevenue * 0.3; // Assume 30% operational costs
+  const netProfit = revenue.totalProfit - estimatedExpenses;
+  const profitMargin = revenue.totalRevenue > 0 
+    ? ((netProfit / revenue.totalRevenue) * 100).toFixed(2) 
+    : 0;
+
+  // Revenue by service type
+  const revenueByService = await Ledger.aggregate([
+    {
+      $match: {
+        ...dateFilter,
+        status: 'Completed'
+      }
+    },
+    {
+      $group: {
+        _id: '$itemType',
+        revenue: { $sum: '$totalAmountPaid' },
+        profit: { $sum: '$profitMargin' },
+        count: { $sum: 1 }
+      }
+    },
+    {
+      $sort: { revenue: -1 }
+    }
+  ]);
+
+  // Monthly trends (last 12 months)
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+  const monthlyTrends = await Ledger.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: twelveMonthsAgo },
+        status: 'Completed'
+      }
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' }
+        },
+        revenue: { $sum: '$totalAmountPaid' },
+        profit: { $sum: '$profitMargin' },
+        transactions: { $sum: 1 }
+      }
+    },
+    {
+      $sort: { '_id.year': 1, '_id.month': 1 }
+    },
+    {
+      $project: {
+        _id: 0,
+        month: {
+          $concat: [
+            { $toString: '$_id.year' },
+            '-',
+            {
+              $cond: [
+                { $lt: ['$_id.month', 10] },
+                { $concat: ['0', { $toString: '$_id.month' }] },
+                { $toString: '$_id.month' }
+              ]
+            }
+          ]
+        },
+        revenue: 1,
+        profit: 1,
+        expenses: { $multiply: ['$revenue', 0.3] }, // Estimated expenses
+        transactions: 1
+      }
+    }
+  ]);
+
+  // Top performing services
+  const topPerformingServices = revenueByService.slice(0, 5).map(service => ({
+    service: service._id,
+    revenue: service.revenue,
+    profit: service.profit,
+    transactions: service.count,
+    profitMargin: service.revenue > 0 
+      ? ((service.profit / service.revenue) * 100).toFixed(2) 
+      : 0
+  }));
+
+  // Recent high-value transactions
+  const recentTransactions = await Ledger.find({
+    ...dateFilter,
+    status: 'Completed'
+  })
+    .sort({ totalAmountPaid: -1 })
+    .limit(10)
+    .populate('userId', 'firstName lastName email')
+    .select('transactionReference itemType totalAmountPaid profitMargin createdAt customerSegment');
+
+  // Revenue by customer segment
+  const revenueBySegment = await Ledger.aggregate([
+    {
+      $match: {
+        ...dateFilter,
+        status: 'Completed'
+      }
+    },
+    {
+      $group: {
+        _id: '$customerSegment',
+        revenue: { $sum: '$totalAmountPaid' },
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  // Revenue by booking channel
+  const revenueByChannel = await Ledger.aggregate([
+    {
+      $match: {
+        ...dateFilter,
+        status: 'Completed'
+      }
+    },
+    {
+      $group: {
+        _id: '$bookingChannel',
+        revenue: { $sum: '$totalAmountPaid' },
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const stats = {
+    summary: {
+      totalRevenue: revenue.totalRevenue,
+      totalExpenses: estimatedExpenses,
+      netProfit,
+      profitMargin: parseFloat(profitMargin),
+      totalTransactions: revenue.transactionCount,
+      averageTransactionValue: revenue.transactionCount > 0 
+        ? (revenue.totalRevenue / revenue.transactionCount).toFixed(2) 
+        : 0
+    },
+    revenueByService: revenueByService.reduce((acc, item) => {
+      acc[item._id.toLowerCase()] = {
+        revenue: item.revenue,
+        profit: item.profit,
+        count: item.count
+      };
+      return acc;
+    }, {}),
+    expensesByCategory: {
+      operations: estimatedExpenses * 0.4,
+      marketing: estimatedExpenses * 0.25,
+      salaries: estimatedExpenses * 0.25,
+      infrastructure: estimatedExpenses * 0.1
+    },
+    monthlyTrends,
+    topPerformingServices,
+    recentTransactions,
+    revenueBySegment,
+    revenueByChannel
+  };
+
+  ApiResponse.success(res, StatusCodes.OK, 'Management financial statistics retrieved successfully', stats);
+});
+
 module.exports = {
   getUserStats,
   getStaffStats,
   getAdminStats,
-  getManagerStats
+  getManagerStats,
+  getManagementFinancialStats
 };

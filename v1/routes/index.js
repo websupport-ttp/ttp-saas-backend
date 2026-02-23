@@ -16,6 +16,8 @@ const referenceDataRoutes = require('./referenceDataRoutes');
 const airportDbRoutes = require('./airportDbRoutes');
 const carHireRoutes = require('./carHireRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
+const visaAssistanceRoutes = require('./visaAssistanceRoutes');
+const cmsRoutes = require('./cmsRoutes');
 
 // Import security middleware
 const { 
@@ -72,6 +74,8 @@ router.use('/qr-codes', qrCodeLimiter); // QR code specific rate limiting
 router.use('/reference', apiLimiter); // Reference data with standard rate limiting
 router.use('/car-hire', paymentLimiter); // Car hire involves payments
 router.use('/dashboard', apiLimiter); // Dashboard stats with standard rate limiting
+router.use('/visa-assistance', paymentLimiter); // Visa assistance involves payments
+router.use('/cms', apiLimiter); // CMS with standard rate limiting
 
 // Define base routes for each module
 router.use('/auth', authRoutes);
@@ -90,5 +94,7 @@ router.use('/reference', referenceDataRoutes);
 router.use('/airportdb', airportDbRoutes); // AirportDB endpoints for autocomplete
 router.use('/car-hire', carHireRoutes); // Car hire endpoints
 router.use('/dashboard', dashboardRoutes); // Dashboard statistics endpoints
+router.use('/visa-assistance', visaAssistanceRoutes); // Visa assistance endpoints
+router.use('/cms', cmsRoutes); // CMS endpoints for content management
 
 module.exports = router;

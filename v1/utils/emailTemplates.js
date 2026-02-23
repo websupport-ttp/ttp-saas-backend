@@ -995,9 +995,213 @@ const getFlightConfirmationEmail = (data) => {
   return getBaseTemplate(content, 'Flight Booking Confirmed');
 };
 
+/**
+ * Car Hire Confirmation Email - Modern Design
+ */
+const getCarHireConfirmationEmail = (data) => {
+  const {
+    bookingReference,
+    carName,
+    carBrand,
+    carImage,
+    pickupLocation,
+    returnLocation,
+    pickupDate,
+    returnDate,
+    totalAmount,
+    driverName,
+    driverEmail,
+    transmission,
+    capacity,
+    pricePerDay
+  } = data;
+
+  // Calculate rental duration
+  const pickup = new Date(pickupDate);
+  const returnD = new Date(returnDate);
+  const days = Math.max(1, Math.ceil((returnD - pickup) / (1000 * 60 * 60 * 24)));
+
+  // Format dates
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-NG', { 
+      weekday: 'short',
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  const formatTime = (date) => {
+    return new Date(date).toLocaleTimeString('en-NG', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const content = `
+    <div class="header">
+      <div class="header-content">
+        <div class="brand">
+          <div class="brand-icon">
+            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">directions_car</span>
+          </div>
+          <div class="brand-text">
+            <p class="brand-name">THE TRAVEL PLACE</p>
+            <p class="brand-tagline">Booking Confirmed</p>
+          </div>
+        </div>
+        <div class="booking-ref-badge">
+          <p class="booking-ref-label">BOOKING REFERENCE</p>
+          <p class="booking-ref-value">${bookingReference}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1 class="greeting">Your car is ready, ${driverName || 'Driver'}!</h1>
+      <p class="subtext">Your car hire booking has been confirmed. Get ready to hit the road!</p>
+
+      <div class="info-card">
+        <div class="info-card-header">
+          <span class="material-icons-outlined info-card-icon">directions_car</span>
+          <h3 class="info-card-title">Vehicle Details</h3>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Vehicle</span>
+          <span class="info-value">${carBrand || ''} ${carName || 'N/A'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Transmission</span>
+          <span class="info-value">${transmission || 'Automatic'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Capacity</span>
+          <span class="info-value">${capacity || 5} Passengers</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Daily Rate</span>
+          <span class="info-value">₦${pricePerDay?.toLocaleString() || '0'}/day</span>
+        </div>
+      </div>
+
+      <div class="timeline-card">
+        <div class="info-card-header">
+          <span class="material-icons-outlined info-card-icon">event</span>
+          <h3 class="info-card-title">Rental Period</h3>
+        </div>
+        
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-line"></div>
+          <p class="timeline-time">${formatTime(pickup)}</p>
+          <p class="timeline-location">${pickupLocation || 'Pickup Location'}</p>
+          <p class="timeline-details">${formatDate(pickup)}</p>
+        </div>
+
+        <div class="duration-badge">
+          <p class="duration-text">
+            <span class="material-icons-outlined" style="font-size: 16px;">schedule</span>
+            ${days} Day${days > 1 ? 's' : ''} Rental
+          </p>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <p class="timeline-time">${formatTime(returnD)}</p>
+          <p class="timeline-location">${returnLocation || 'Return Location'}</p>
+          <p class="timeline-details">${formatDate(returnD)}</p>
+        </div>
+      </div>
+
+      <div style="margin: 32px 0;">
+        <h3 style="font-size: 14px; font-weight: 600; color: ${BRAND_COLORS.gray900}; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">What to do next</h3>
+        <div class="action-cards">
+          <div class="action-card">
+            <span class="material-icons-outlined action-icon">badge</span>
+            <p class="action-title">Required Documents</p>
+            <p class="action-desc">Valid driver's license and ID</p>
+            <a href="#" class="action-link">View List</a>
+          </div>
+          <div class="action-card">
+            <span class="material-icons-outlined action-icon">location_on</span>
+            <p class="action-title">Pickup Location</p>
+            <p class="action-desc">Get directions to pickup point</p>
+            <a href="#" class="action-link">View Map</a>
+          </div>
+          <div class="action-card">
+            <span class="material-icons-outlined action-icon">phone</span>
+            <p class="action-title">Contact Us</p>
+            <p class="action-desc">Questions about your rental?</p>
+            <a href="#" class="action-link">Get Help</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert-box">
+        <p class="alert-title">
+          <span class="material-icons-outlined" style="font-size: 18px;">info</span>
+          Important Pickup Information
+        </p>
+        <ul class="alert-list">
+          <li>Bring your valid driver's license and a government-issued ID</li>
+          <li>Arrive at the pickup location at your scheduled time</li>
+          <li>Vehicle inspection will be done before handover</li>
+          <li>Fuel policy: Return with the same fuel level as pickup</li>
+          <li>Keep this booking reference handy: ${bookingReference}</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="dark-section">
+      <h3 class="dark-section-title">Booking Information</h3>
+      <div class="dark-info-grid">
+        <div class="dark-info-item">
+          <p class="dark-info-label">Driver Name</p>
+          <p class="dark-info-value">${driverName || 'Driver'}</p>
+        </div>
+        <div class="dark-info-item">
+          <p class="dark-info-label">Email</p>
+          <p class="dark-info-value">${driverEmail || 'N/A'}</p>
+        </div>
+        <div class="dark-info-item">
+          <p class="dark-info-label">Rental Duration</p>
+          <p class="dark-info-value">${days} Day${days > 1 ? 's' : ''}</p>
+        </div>
+        <div class="dark-info-item">
+          <p class="dark-info-label">Payment Status</p>
+          <p class="dark-info-value" style="color: ${BRAND_COLORS.green};">Paid</p>
+        </div>
+      </div>
+      <div class="price-section">
+        <p class="price-label">Total Paid</p>
+        <p class="price-value">₦${totalAmount?.toLocaleString() || '0'}</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-brand">
+        <span class="material-icons-outlined footer-brand-icon">directions_car</span>
+        <span class="footer-brand-name">THE TRAVEL PLACE</span>
+      </div>
+      <p class="footer-text">This is an automated email for your car hire booking.<br>Please keep this for your records and present it at pickup.</p>
+      <div class="footer-links">
+        <a href="http://localhost:3000" class="footer-link">Help Center</a>
+        <a href="http://localhost:3000/contact" class="footer-link">Contact Us</a>
+        <a href="http://localhost:3000" class="footer-link">Manage Booking</a>
+        <a href="http://localhost:3000" class="footer-link">Terms of Use</a>
+      </div>
+      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
+    </div>
+  `;
+
+  return getBaseTemplate(content, 'Car Hire Booking Confirmed');
+};
+
 module.exports = {
   getTravelInsuranceConfirmationEmail,
   getHotelConfirmationEmail,
   getFlightConfirmationEmail,
+  getCarHireConfirmationEmail,
   BRAND_COLORS
 };

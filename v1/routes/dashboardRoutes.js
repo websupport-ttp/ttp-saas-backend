@@ -4,7 +4,8 @@ const {
   getUserStats,
   getStaffStats,
   getAdminStats,
-  getManagerStats
+  getManagerStats,
+  getManagementFinancialStats
 } = require('../controllers/dashboardController');
 const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 
@@ -19,5 +20,8 @@ router.get('/admin/stats', authenticateUser, authorizeRoles('Admin'), getAdminSt
 
 // Manager dashboard stats
 router.get('/manager/stats', authenticateUser, authorizeRoles('Manager', 'Executive', 'Admin'), getManagerStats);
+
+// Management financial stats (expenses & profit)
+router.get('/management/financial-stats', authenticateUser, authorizeRoles('Admin', 'Executive', 'Manager'), getManagementFinancialStats);
 
 module.exports = router;

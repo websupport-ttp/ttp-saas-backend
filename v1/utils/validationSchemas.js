@@ -2,12 +2,16 @@
 const { z } = require('zod');
 
 // Common validation patterns
-const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+// More flexible phone regex that accepts:
+// - International format: +2348012345678
+// - Local format with leading zero: 08012345678
+// - Without country code: 8012345678
+const phoneRegex = /^\+?[0-9]{7,15}$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
 
 // Base schemas for reuse
 const emailSchema = z.string().email('Invalid email address').max(255, 'Email cannot exceed 255 characters');
-const phoneSchema = z.string().regex(phoneRegex, 'Invalid phone number format (E.164)').min(7, 'Phone number must be at least 7 digits').max(15, 'Phone number cannot exceed 15 digits');
+const phoneSchema = z.string().regex(phoneRegex, 'Invalid phone number format. Use format: +2348012345678 or 08012345678').min(7, 'Phone number must be at least 7 digits').max(15, 'Phone number cannot exceed 15 digits');
 const nameSchema = z.string().min(2, 'Name must be at least 2 characters long').max(50, 'Name cannot exceed 50 characters').regex(/^[a-zA-Z\s'-]+$/, 'Name can only contain letters, spaces, hyphens, and apostrophes');
 const strongPasswordSchema = z.string().min(8, 'Password must be at least 8 characters long').max(128, 'Password cannot exceed 128 characters').regex(passwordRegex, 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character');
 
@@ -20,7 +24,7 @@ const registerSchema = z.object({
     email: emailSchema,
     phoneNumber: phoneSchema,
     password: strongPasswordSchema,
-    role: z.enum(['User', 'Business', 'Staff', 'Manager', 'Executive', 'Admin']).default('User'),
+    role: z.enum(['Customer', 'Business', 'Staff', 'Vendor', 'Agent', 'Manager', 'Executive', 'Admin']).default('Customer'),
   }),
   query: z.object({}).optional(),
   params: z.object({}).optional(),

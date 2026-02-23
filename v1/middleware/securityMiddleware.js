@@ -105,9 +105,15 @@ const validateCommonInputs = asyncHandler(async (req, res, next) => {
     errors.push('Invalid email format');
   }
 
-  // Validate phone number if present
-  if (req.body.phoneNumber && !validator.isMobilePhone(req.body.phoneNumber, 'any', { strictMode: false })) {
-    errors.push('Invalid phone number format');
+  // Validate phone number if present - more flexible validation
+  if (req.body.phoneNumber) {
+    const phoneNumber = req.body.phoneNumber.trim();
+    // Allow formats: +2348012345678, 08012345678, 2348012345678
+    // Must be 7-15 digits, optionally starting with +
+    const phoneRegex = /^\+?[0-9]{7,15}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+      errors.push('Invalid phone number format');
+    }
   }
 
   // Validate URLs if present

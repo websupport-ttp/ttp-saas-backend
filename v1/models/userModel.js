@@ -2,7 +2,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { UserRoles, StaffClearanceLevel } = require('../utils/constants');
+const { UserRoles, StaffTier, Departments, StaffDesignation } = require('../utils/constants');
 
 /**
  * @description Mongoose schema for the User model.
@@ -41,8 +41,8 @@ const UserSchema = new mongoose.Schema({
     sparse: true, // Allows null values to be unique
     trim: true,
     match: [
-      /^\+?[1-9]\d{1,14}$/, // E.164 format
-      'Please add a valid phone number',
+      /^\+?[0-9]{7,15}$/, // Flexible format: +2348012345678, 08012345678, or 2348012345678
+      'Please add a valid phone number (7-15 digits)',
     ],
   },
   password: {
@@ -54,35 +54,126 @@ const UserSchema = new mongoose.Schema({
   role: {
     type: String,
     enum: Object.values(UserRoles),
-    default: UserRoles.USER,
+    default: UserRoles.CUSTOMER,
   },
-  // Staff clearance level (only applicable when role is 'Staff')
+  
+  // Staff-specific fields (new organizational structure)
+  staffDetails: {
+    department: {
+      type: String,
+      enum: Object.values(Departments),
+    },
+    tier: {
+      type: Number,
+      enum: Object.values(StaffTier),
+    },
+    designation: {
+      type: String,
+      enum: Object.values(StaffDesignation),
+    },
+    employeeId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    managerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    hireDate: Date,
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  
+  // Vendor-specific fields
+  vendorDetails: {
+    businessName: {
+      type: String,
+      trim: true,
+    },
+    businessRegistration: {
+      type: String,
+      trim: true,
+    },
+    bankDetails: {
+      bankName: String,
+      accountNumber: String,
+      accountName: String,
+    },
+    commissionRate: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 15, // 15% default commission
+    },
+    isApproved: {
+      type: Boolean,
+      default: false,
+    },
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    approvedAt: Date,
+    totalEarnings: {
+      type: Number,
+      default: 0,
+    },
+    totalBookings: {
+      type: Number,
+      default: 0,
+    },
+  },
+  
+  // Agent-specific fields
+  agentDetails: {
+    agencyName: {
+      type: String,
+      trim: true,
+    },
+    agentCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+    commissionRate: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 10, // 10% default commission
+    },
+    isApproved: {
+      type: Boolean,
+      default: false,
+    },
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    approvedAt: Date,
+    totalEarnings: {
+      type: Number,
+      default: 0,
+    },
+    totalBookings: {
+      type: Number,
+      default: 0,
+    },
+  },
+  
+  // Legacy staff fields (for backward compatibility)
   staffClearanceLevel: {
     type: Number,
-    enum: Object.values(StaffClearanceLevel),
     default: null,
-    validate: {
-      validator: function(value) {
-        // If role is Staff, clearance level is required
-        if (this.role === UserRoles.STAFF && !value) {
-          return false;
-        }
-        // If role is not Staff, clearance level should be null
-        if (this.role !== UserRoles.STAFF && value !== null) {
-          return false;
-        }
-        return true;
-      },
-      message: 'Staff clearance level is required for staff members and should be null for non-staff users'
-    }
   },
-  // Staff department/position (optional, for additional context)
   staffDepartment: {
     type: String,
     trim: true,
     default: null,
   },
-  // Staff employee ID (optional)
   staffEmployeeId: {
     type: String,
     trim: true,
@@ -244,10 +335,22 @@ UserSchema.index({ lastPurchaseAt: -1 });
 UserSchema.index({ staffClearanceLevel: 1 });
 UserSchema.index({ staffEmployeeId: 1 });
 
+// New indexes for organizational structure
+UserSchema.index({ 'staffDetails.department': 1 });
+UserSchema.index({ 'staffDetails.tier': 1 });
+UserSchema.index({ 'staffDetails.designation': 1 });
+UserSchema.index({ 'staffDetails.employeeId': 1 });
+UserSchema.index({ 'staffDetails.managerId': 1 });
+UserSchema.index({ 'vendorDetails.isApproved': 1 });
+UserSchema.index({ 'agentDetails.isApproved': 1 });
+UserSchema.index({ 'agentDetails.agentCode': 1 });
+
 // Compound indexes for analytics
 UserSchema.index({ customerSegment: 1, totalSpent: -1 });
 UserSchema.index({ role: 1, createdAt: -1 });
 UserSchema.index({ role: 1, staffClearanceLevel: 1 });
+UserSchema.index({ role: 1, 'staffDetails.department': 1 });
+UserSchema.index({ 'staffDetails.department': 1, 'staffDetails.tier': 1 });
 
 // Method to update customer behavior after login
 UserSchema.methods.updateLoginActivity = function() {
@@ -289,6 +392,11 @@ UserSchema.methods.hasMinimumClearance = function(requiredLevel) {
   if (this.role !== UserRoles.STAFF) {
     return false;
   }
+  // Check new structure first
+  if (this.staffDetails && this.staffDetails.tier) {
+    return this.staffDetails.tier >= requiredLevel;
+  }
+  // Fallback to legacy structure
   return this.staffClearanceLevel >= requiredLevel;
 };
 
@@ -297,13 +405,72 @@ UserSchema.methods.isStaff = function() {
   return this.role === UserRoles.STAFF;
 };
 
+// Method to check if user is vendor
+UserSchema.methods.isVendor = function() {
+  return this.role === UserRoles.VENDOR;
+};
+
+// Method to check if user is agent
+UserSchema.methods.isAgent = function() {
+  return this.role === UserRoles.AGENT;
+};
+
+// Method to check if user is admin
+UserSchema.methods.isAdmin = function() {
+  return this.role === UserRoles.ADMIN;
+};
+
+// Method to check if user is department head
+UserSchema.methods.isDepartmentHead = function() {
+  if (this.role !== UserRoles.STAFF || !this.staffDetails) {
+    return false;
+  }
+  return this.staffDetails.tier === StaffTier.TIER_3;
+};
+
+// Method to check if user belongs to a specific department
+UserSchema.methods.isInDepartment = function(department) {
+  if (this.role !== UserRoles.STAFF || !this.staffDetails) {
+    return false;
+  }
+  return this.staffDetails.department === department;
+};
+
+// Method to check if user has specific designation
+UserSchema.methods.hasDesignation = function(designation) {
+  if (this.role !== UserRoles.STAFF || !this.staffDetails) {
+    return false;
+  }
+  return this.staffDetails.designation === designation;
+};
+
+// Method to check if vendor/agent is approved
+UserSchema.methods.isApproved = function() {
+  if (this.role === UserRoles.VENDOR && this.vendorDetails) {
+    return this.vendorDetails.isApproved;
+  }
+  if (this.role === UserRoles.AGENT && this.agentDetails) {
+    return this.agentDetails.isApproved;
+  }
+  return false;
+};
+
 // Method to get clearance level description
 UserSchema.methods.getClearanceDescription = function() {
-  if (this.role !== UserRoles.STAFF || !this.staffClearanceLevel) {
+  if (this.role !== UserRoles.STAFF) {
     return null;
   }
-  const { StaffClearanceDescription } = require('../utils/constants');
-  return StaffClearanceDescription[this.staffClearanceLevel];
+  // Check new structure first
+  if (this.staffDetails && this.staffDetails.tier) {
+    const { StaffTierDescription } = require('../utils/constants');
+    return StaffTierDescription[this.staffDetails.tier];
+  }
+  // Fallback to legacy structure
+  if (this.staffClearanceLevel) {
+    const { StaffClearanceDescription } = require('../utils/constants');
+    return StaffClearanceDescription[this.staffClearanceLevel];
+  }
+  return null;
 };
 
 // Static method to get customer analytics

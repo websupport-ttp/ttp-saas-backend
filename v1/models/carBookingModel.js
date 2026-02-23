@@ -60,15 +60,18 @@ const CarBookingSchema = new mongoose.Schema({
     },
     licenseNumber: {
       type: String,
-      required: true,
+      required: false, // Optional - user may not be the driver
+      default: '',
     },
     licenseCountry: {
       type: String,
-      required: true,
+      required: false, // Optional - user may not be the driver
+      default: '',
     },
     licenseExpiryDate: {
       type: Date,
-      required: true,
+      required: false, // Optional - user may not be the driver
+      default: null,
     },
   },
   emergencyContact: {

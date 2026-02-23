@@ -199,6 +199,41 @@ const VisaApplicationSchema = new mongoose.Schema({
     uppercase: true,
     required: false,
   },
+  // Officer assignment and follow-up
+  assignedOfficer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  assignedAt: Date,
+  followUpHistory: [{
+    note: {
+      type: String,
+      required: true,
+    },
+    contactMethod: {
+      type: String,
+      enum: ['email', 'phone', 'sms', 'whatsapp'],
+    },
+    contactedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    addedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    nextAction: String,
+    nextActionDate: Date,
+  }],
+  paymentLink: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PaymentLink',
+  },
+  paymentLinkSentAt: Date,
+  paymentLinkSentVia: [{
+    type: String,
+    enum: ['email', 'sms', 'whatsapp'],
+  }],
 }, {
   timestamps: true,
 });

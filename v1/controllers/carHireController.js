@@ -6,6 +6,10 @@ const { ApiError } = require('../utils/apiError');
 const ApiResponse = require('../utils/apiResponse');
 const asyncHandler = require('../middleware/asyncHandler');
 const crypto = require('crypto');
+const { initializePayment } = require('../services/paystackService');
+const logger = require('../utils/logger');
+const { sendEmail } = require('../utils/emailService');
+const { getCarHireConfirmationEmail } = require('../utils/emailTemplates');
 
 /**
  * @description Get all cars (public)
@@ -127,6 +131,11 @@ const bookCar = asyncHandler(async (req, res) => {
     specialRequests,
   } = req.body;
 
+  // Validate required fields
+  if (!carId || !pickupLocation || !returnLocation || !pickupDate || !returnDate || !driverInfo || !emergencyContact) {
+    throw new ApiError('Missing required fields', StatusCodes.BAD_REQUEST);
+  }
+
   // Verify car exists and is available
   const car = await Car.findById(carId);
   if (!car || !car.isActive || !car.availability) {
@@ -141,6 +150,15 @@ const bookCar = asyncHandler(async (req, res) => {
   const bookingReference = `CAR-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
   const paymentReference = `PAY-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
+  // Convert date strings to Date objects for driverInfo
+  const processedDriverInfo = {
+    ...driverInfo,
+    dateOfBirth: new Date(driverInfo.dateOfBirth),
+    licenseExpiryDate: driverInfo.licenseExpiryDate && driverInfo.licenseExpiryDate !== '' 
+      ? new Date(driverInfo.licenseExpiryDate) 
+      : null,
+  };
+
   // Create booking (user field is optional for guest bookings)
   const bookingData = {
     bookingReference,
@@ -149,7 +167,7 @@ const bookCar = asyncHandler(async (req, res) => {
     returnLocation,
     pickupDate: new Date(pickupDate),
     returnDate: new Date(returnDate),
-    driverInfo,
+    driverInfo: processedDriverInfo,
     emergencyContact,
     extras: extras || [],
     specialRequests: specialRequests || '',
@@ -164,15 +182,134 @@ const bookCar = asyncHandler(async (req, res) => {
 
   const booking = await CarBooking.create(bookingData);
 
-  // TODO: Initialize Paystack payment
-  const authorizationUrl = `https://checkout.paystack.com/pay/${paymentReference}`;
+  // Initialize Paystack payment
+  try {
+    const paystackResponse = await initializePayment({
+      email: driverInfo.email,
+      amount: totalAmount * 100, // Paystack expects amount in kobo (smallest currency unit)
+      reference: paymentReference,
+      callback_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/car-hire/payment/verify?reference=${paymentReference}`,
+      metadata: {
+        bookingReference,
+        carId,
+        carName: car.name,
+        pickupDate,
+        returnDate,
+        pickupLocation,
+        type: 'car_hire'
+      }
+    });
 
-  ApiResponse.success(res, StatusCodes.CREATED, 'Booking created successfully', {
-    booking,
-    bookingReference,
-    paymentReference,
-    authorizationUrl,
-  });
+    const authorizationUrl = paystackResponse.data.authorization_url;
+
+    ApiResponse.success(res, StatusCodes.CREATED, 'Booking created successfully', {
+      booking,
+      bookingReference,
+      paymentReference,
+      authorizationUrl,
+    });
+  } catch (paystackError) {
+    // If Paystack initialization fails, still return the booking but with error info
+    logger.error('Paystack initialization failed:', paystackError);
+    
+    ApiResponse.success(res, StatusCodes.CREATED, 'Booking created but payment initialization failed', {
+      booking,
+      bookingReference,
+      paymentReference,
+      authorizationUrl: null,
+      paymentError: 'Payment gateway temporarily unavailable. Please contact support with your booking reference.',
+    });
+  }
+});
+
+/**
+ * @description Verify car hire payment
+ * @route POST /api/v1/car-hire/verify-payment
+ * @access Public
+ */
+const verifyCarPayment = asyncHandler(async (req, res) => {
+  const { reference } = req.body;
+
+  if (!reference) {
+    throw new ApiError('Payment reference is required', StatusCodes.BAD_REQUEST);
+  }
+
+  // Import verifyPayment from Paystack service
+  const { verifyPayment } = require('../services/paystackService');
+
+  // Verify payment with Paystack
+  const paymentData = await verifyPayment(reference);
+
+  if (!paymentData || !paymentData.data) {
+    throw new ApiError('Payment verification failed', StatusCodes.BAD_REQUEST);
+  }
+
+  const { status, amount, metadata } = paymentData.data;
+
+  // Find booking by payment reference
+  const booking = await CarBooking.findOne({ paymentReference: reference }).populate('car');
+
+  if (!booking) {
+    throw new ApiError('Booking not found', StatusCodes.NOT_FOUND);
+  }
+
+  // Update booking payment status
+  if (status === 'success') {
+    booking.paymentStatus = 'paid';
+    booking.status = 'confirmed';
+    await booking.save();
+
+    // Send confirmation email
+    try {
+      const emailHtml = getCarHireConfirmationEmail({
+        bookingReference: booking.bookingReference,
+        carName: booking.car.name,
+        carBrand: booking.car.brand,
+        carImage: booking.car.images?.[0],
+        pickupLocation: booking.pickupLocation,
+        returnLocation: booking.returnLocation,
+        pickupDate: booking.pickupDate,
+        returnDate: booking.returnDate,
+        totalAmount: booking.totalAmount,
+        driverName: `${booking.driverInfo.firstName} ${booking.driverInfo.lastName}`,
+        driverEmail: booking.driverInfo.email,
+        transmission: booking.car.transmission,
+        capacity: booking.car.capacity,
+        pricePerDay: booking.car.pricePerDay,
+      });
+
+      await sendEmail({
+        to: booking.driverInfo.email,
+        subject: `Car Hire Booking Confirmed - ${booking.bookingReference}`,
+        html: emailHtml,
+      });
+
+      logger.info(`Confirmation email sent for booking ${booking.bookingReference}`);
+    } catch (emailError) {
+      // Log error but don't fail the request
+      logger.error('Failed to send confirmation email:', emailError);
+    }
+
+    ApiResponse.success(res, StatusCodes.OK, 'Payment verified successfully', {
+      bookingReference: booking.bookingReference,
+      paymentReference: reference,
+      amount,
+      status: 'success',
+      booking: {
+        id: booking._id,
+        bookingReference: booking.bookingReference,
+        car: booking.car,
+        pickupDate: booking.pickupDate,
+        returnDate: booking.returnDate,
+        totalAmount: booking.totalAmount,
+      },
+    });
+  } else {
+    booking.paymentStatus = 'failed';
+    await booking.save();
+
+    throw new ApiError('Payment was not successful', StatusCodes.BAD_REQUEST);
+  }
 });
 
 /**
@@ -252,6 +389,7 @@ module.exports = {
   updateCar,
   deleteCar,
   bookCar,
+  verifyCarPayment,
   getMyBookings,
   getAllBookings,
   processBooking,

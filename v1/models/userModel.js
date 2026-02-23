@@ -199,6 +199,16 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     sparse: true,
   },
+  profilePicture: {
+    url: {
+      type: String,
+      default: null,
+    },
+    publicId: {
+      type: String,
+      default: null,
+    },
+  },
   // Customer behavior tracking fields for analytics
   lastLoginAt: {
     type: Date,

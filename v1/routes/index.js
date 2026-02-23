@@ -2,6 +2,7 @@
 const express = require('express');
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
+const userProfileRoutes = require('./userProfileRoutes');
 const productRoutes = require('./productRoutes');
 const bookingRoutes = require('./bookingRoutes');
 const messageRoutes = require('./messageRoutes');
@@ -61,6 +62,7 @@ router.use(preventParameterPollution);
 // Apply rate limiting based on route sensitivity
 router.use('/auth', authLimiter);
 router.use('/users', apiLimiter);
+router.use('/user', uploadLimiter); // User profile with upload rate limiting
 router.use('/products', paymentLimiter); // Products involve payments
 router.use('/bookings', paymentLimiter); // Bookings involve payments
 router.use('/messages', apiLimiter);
@@ -80,6 +82,7 @@ router.use('/cms', apiLimiter); // CMS with standard rate limiting
 // Define base routes for each module
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
+router.use('/user', userProfileRoutes); // User profile endpoints
 router.use('/products', productRoutes);
 router.use('/bookings', bookingRoutes);
 router.use('/messages', messageRoutes);

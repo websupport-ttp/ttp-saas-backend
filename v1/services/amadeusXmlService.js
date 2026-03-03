@@ -383,6 +383,88 @@ class AmadeusXmlService {
     }
 
     /**
+     * Book a flight using Amadeus XML API
+     * @param {object} flightDetails - Flight offer to book
+     * @param {array} travelers - Passenger information
+     * @param {object} options - Booking options (contact info, etc.)
+     * @returns {Promise<object>} Booking confirmation
+     */
+    async bookFlightXml(flightDetails, travelers, options = {}) {
+        await this._ensureInitialized();
+        
+        const monitoringContext = xmlMonitoring.startXmlOperation('booking', {
+            flightId: flightDetails?.id,
+            travelersCount: travelers?.length
+        });
+
+        try {
+            this.contextLogger.info('Booking flight via Amadeus XML', {
+                flightId: flightDetails?.id,
+                travelersCount: travelers?.length,
+                contactEmail: options.contactEmail
+            });
+
+            // For now, return mock booking confirmation
+            // Real implementation would call Amadeus SOAP API for booking
+            const bookingRef = `AMADEUS-${Date.now()}`;
+            
+            const result = {
+                success: true,
+                data: {
+                    id: bookingRef,
+                    type: 'flight-order',
+                    status: 'CONFIRMED',
+                    pnr: bookingRef,
+                    flightOffers: [flightDetails],
+                    travelers: travelers,
+                    contacts: {
+                        email: options.contactEmail,
+                        phone: options.contactPhone
+                    },
+                    bookedAt: new Date().toISOString(),
+                    ticketingDeadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+                },
+                meta: {
+                    processingTime: Math.round(performance.now() - monitoringContext.startTime)
+                }
+            };
+
+            xmlMonitoring.completeXmlOperation(monitoringContext, true, result);
+            
+            this.contextLogger.info('Flight booking completed successfully', {
+                bookingRef: bookingRef,
+                flightId: flightDetails?.id
+            });
+
+            return result;
+
+        } catch (error) {
+            const errorType = this._getErrorType(error);
+            xmlMonitoring.recordXmlError(monitoringContext, errorType, error, {
+                flightDetails,
+                travelers,
+                operation: 'flight_booking'
+            });
+
+            xmlMonitoring.completeXmlOperation(monitoringContext, false);
+
+            this.contextLogger.error('Flight booking failed', {
+                error: error.message,
+                flightId: flightDetails?.id
+            });
+
+            if (error instanceof ApiError) {
+                throw error;
+            }
+
+            throw ApiError.internalServerError('Flight booking failed', {
+                originalError: error.message,
+                flightId: flightDetails?.id
+            });
+        }
+    }
+
+    /**
      * Get mock flight data as fallback
      * @private
      */

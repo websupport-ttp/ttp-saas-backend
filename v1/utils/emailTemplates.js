@@ -653,10 +653,10 @@ const getTravelInsuranceConfirmationEmail = (data) => {
       </div>
       <p class="footer-text">This is an automated email for your travel insurance confirmation.<br>Please keep this for your records and carry it when traveling.</p>
       <div class="footer-links">
-        <a href="http://localhost:3000" class="footer-link">Help Center</a>
-        <a href="http://localhost:3000/contact" class="footer-link">Contact Us</a>
-        <a href="http://localhost:3000" class="footer-link">File a Claim</a>
-        <a href="http://localhost:3000" class="footer-link">Terms of Use</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Help Center</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">File a Claim</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Terms of Use</a>
       </div>
       <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
     </div>
@@ -821,10 +821,10 @@ const getHotelConfirmationEmail = (data) => {
       </div>
       <p class="footer-text">This is an automated email for your hotel reservation.<br>Please keep this for your records and present it at check-in.</p>
       <div class="footer-links">
-        <a href="http://localhost:3000" class="footer-link">Help Center</a>
-        <a href="http://localhost:3000/contact" class="footer-link">Contact Us</a>
-        <a href="http://localhost:3000" class="footer-link">Manage Booking</a>
-        <a href="http://localhost:3000" class="footer-link">Terms of Use</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Help Center</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Manage Booking</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Terms of Use</a>
       </div>
       <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
     </div>
@@ -983,10 +983,10 @@ const getFlightConfirmationEmail = (data) => {
       </div>
       <p class="footer-text">This is an automated email for your flight confirmation.<br>Please keep this for your records and present it at check-in.</p>
       <div class="footer-links">
-        <a href="http://localhost:3000" class="footer-link">Help Center</a>
-        <a href="http://localhost:3000/contact" class="footer-link">Contact Us</a>
-        <a href="http://localhost:3000" class="footer-link">Manage Trip</a>
-        <a href="http://localhost:3000" class="footer-link">Terms of Use</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Help Center</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Manage Trip</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Terms of Use</a>
       </div>
       <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
     </div>
@@ -1186,10 +1186,10 @@ const getCarHireConfirmationEmail = (data) => {
       </div>
       <p class="footer-text">This is an automated email for your car hire booking.<br>Please keep this for your records and present it at pickup.</p>
       <div class="footer-links">
-        <a href="http://localhost:3000" class="footer-link">Help Center</a>
-        <a href="http://localhost:3000/contact" class="footer-link">Contact Us</a>
-        <a href="http://localhost:3000" class="footer-link">Manage Booking</a>
-        <a href="http://localhost:3000" class="footer-link">Terms of Use</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Help Center</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Manage Booking</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Terms of Use</a>
       </div>
       <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
     </div>

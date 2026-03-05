@@ -163,7 +163,8 @@ const attachCookiesToResponse = (res, user, sessionInfo = {}) => {
   
   // Determine secure flag based on environment
   const isSecure = process.env.NODE_ENV === 'production';
-  const sameSite = process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax';
+  // Use 'None' for cross-domain cookies in production (frontend and backend on different subdomains)
+  const sameSite = process.env.NODE_ENV === 'production' ? 'None' : 'Lax';
 
   // Access token cookie (shorter expiration)
   res.cookie('accessToken', tokenPair.accessToken, {
@@ -213,7 +214,7 @@ const clearAuthCookies = (res) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     signed: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
   };
 
   res.clearCookie('accessToken', cookieOptions);

@@ -472,14 +472,20 @@ const verifyEmail = asyncHandler(async (req, res) => {
   const user = await User.findOne({ emailVerificationToken: verificationToken });
 
   if (!user) {
-    throw new ApiError('Invalid or expired email verification token', StatusCodes.BAD_REQUEST);
+    // Redirect to frontend with error
+    const frontendUrl = process.env.FRONTEND_URL || 'https://test.ttp.ng';
+    return res.redirect(`${frontendUrl}/auth/verify?status=error&message=Invalid or expired verification link`);
   }
 
   user.isEmailVerified = true;
   user.emailVerificationToken = undefined;
   await user.save({ validateBeforeSave: false });
 
-  ApiResponse.success(res, StatusCodes.OK, 'Email verified successfully');
+  logger.info(`Email verified successfully for user: ${user.email}`);
+
+  // Redirect to frontend with success
+  const frontendUrl = process.env.FRONTEND_URL || 'https://test.ttp.ng';
+  res.redirect(`${frontendUrl}/auth/verify?status=success&message=Email verified successfully! You can now login.`);
 });
 
 /**

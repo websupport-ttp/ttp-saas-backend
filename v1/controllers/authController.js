@@ -32,19 +32,21 @@ const register = asyncHandler(async (req, res) => {
   // Check if email or phone number already exists
   const existingUser = await User.findOne({ $or: [{ email }, { phoneNumber }] });
   if (existingUser) {
+    const duplicateField = existingUser.email === email ? 'email' : 'phoneNumber';
+    
     logger.logSecurityEvent('USER_REGISTRATION_DUPLICATE', {
       email: email || 'not_provided',
       phoneNumber: phoneNumber || 'not_provided',
       ip: req.ip,
       userAgent: req.get('User-Agent'),
-      duplicateField: existingUser.email === email ? 'email' : 'phoneNumber',
+      duplicateField,
     }, 'medium');
 
     if (existingUser.email === email) {
-      throw new ApiError('Email already registered', StatusCodes.CONFLICT);
+      throw new ApiError('An account with this email already exists. Please use a different email or login.', StatusCodes.CONFLICT);
     }
     if (existingUser.phoneNumber === phoneNumber) {
-      throw new ApiError('Phone number already registered', StatusCodes.CONFLICT);
+      throw new ApiError('An account with this phone number already exists. Please use a different phone number or login.', StatusCodes.CONFLICT);
     }
   }
 

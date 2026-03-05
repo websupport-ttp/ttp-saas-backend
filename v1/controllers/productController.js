@@ -1390,11 +1390,14 @@ const sendFlightBookingNotifications = async (notificationData) => {
     if (customerPhone) {
       const smsMessage = `Flight booking confirmed! Reference: ${bookingReference}. Amount: ${currency} ${totalAmount.toLocaleString()}. Status: ${bookingStatus}. Thank you for choosing The Travel Place!`;
       
-      await smsService.sendSMS({
-        to: customerPhone,
-        message: smsMessage
-      });
-      logger.info('Flight booking confirmation SMS sent', { phone: customerPhone, reference: bookingReference });
+      // Ensure phone number is a string (not an object)
+      const phoneNumber = typeof customerPhone === 'string' 
+        ? customerPhone 
+        : customerPhone?.number || customerPhone?.phoneNumber || String(customerPhone);
+      
+      // Call sendSMS with correct parameters: (to, body, options)
+      await smsService.sendSMS(phoneNumber, smsMessage);
+      logger.info('Flight booking confirmation SMS sent', { phone: phoneNumber, reference: bookingReference });
     }
 
   } catch (error) {

@@ -9,6 +9,7 @@ const {
   resetPassword,
   verifyEmail,
   verifyPhone,
+  resendVerification,
   resendEmailVerification,
   resendPhoneVerification,
 } = require('../controllers/authController');
@@ -340,6 +341,47 @@ router.get('/verify-email', validate(verifyEmailSchema), verifyEmail);
  *               $ref: '#/components/schemas/StandardErrorResponse'
  */
 router.post('/verify-phone', validate(verifyPhoneSchema), verifyPhone);
+
+/**
+ * @openapi
+ * /auth/resend-verification:
+ *   post:
+ *     summary: Resend verification email or SMS (public endpoint for login flow)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - emailOrPhone
+ *               - type
+ *             properties:
+ *               emailOrPhone:
+ *                 type: string
+ *                 description: User's email or phone number
+ *                 example: "user@example.com"
+ *               type:
+ *                 type: string
+ *                 enum: [email, phone]
+ *                 description: Type of verification to resend
+ *                 example: "email"
+ *     responses:
+ *       200:
+ *         description: Verification sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StandardSuccessResponse'
+ *       400:
+ *         description: Bad request or already verified
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StandardErrorResponse'
+ */
+router.post('/resend-verification', authLimiter, resendVerification);
 
 /**
  * @openapi

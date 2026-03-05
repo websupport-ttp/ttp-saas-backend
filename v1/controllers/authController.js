@@ -170,6 +170,45 @@ const login = asyncHandler(async (req, res) => {
     throw new ApiError('Invalid credentials', StatusCodes.UNAUTHORIZED);
   }
 
+  // Check verification status based on login method
+  if (emailOrPhone.includes('@')) {
+    // Email login - check email verification
+    if (!user.isEmailVerified) {
+      logger.logSecurityEvent('USER_LOGIN_BLOCKED', {
+        userId: user._id,
+        emailOrPhone,
+        reason: 'email_not_verified',
+        ip: req.ip,
+      }, 'low');
+      
+      return res.status(StatusCodes.FORBIDDEN).json({
+        success: false,
+        message: 'Please verify your email before logging in',
+        requiresVerification: true,
+        verificationType: 'email',
+        email: user.email
+      });
+    }
+  } else {
+    // Phone login - check phone verification
+    if (!user.isPhoneVerified) {
+      logger.logSecurityEvent('USER_LOGIN_BLOCKED', {
+        userId: user._id,
+        emailOrPhone,
+        reason: 'phone_not_verified',
+        ip: req.ip,
+      }, 'low');
+      
+      return res.status(StatusCodes.FORBIDDEN).json({
+        success: false,
+        message: 'Please verify your phone number before logging in',
+        requiresVerification: true,
+        verificationType: 'phone',
+        phoneNumber: user.phoneNumber
+      });
+    }
+  }
+
   // Enhanced session info for token generation
   const sessionInfo = {
     ip: req.ip,
@@ -471,6 +510,89 @@ const verifyPhone = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @description Resend verification (email or phone) - Public endpoint for login flow
+ * @route POST /api/v1/auth/resend-verification
+ * @access Public
+ */
+const resendVerification = asyncHandler(async (req, res) => {
+  const { emailOrPhone, type } = req.body;
+
+  if (!emailOrPhone || !type) {
+    throw new ApiError('Email/phone and verification type are required', StatusCodes.BAD_REQUEST);
+  }
+
+  // Find user by email or phone
+  let query = {};
+  if (emailOrPhone.includes('@')) {
+    query = { email: emailOrPhone };
+  } else {
+    query = { phoneNumber: emailOrPhone };
+  }
+
+  const user = await User.findOne(query);
+
+  if (!user) {
+    // For security, don't reveal if user exists
+    return ApiResponse.success(res, StatusCodes.OK, 'If a user with that contact exists, verification has been resent.');
+  }
+
+  if (type === 'email') {
+    if (user.isEmailVerified) {
+      throw new ApiError('Email is already verified', StatusCodes.BAD_REQUEST);
+    }
+    if (!user.email) {
+      throw new ApiError('User does not have an email to verify', StatusCodes.BAD_REQUEST);
+    }
+
+    const verificationToken = user.getEmailVerificationToken();
+    await user.save({ validateBeforeSave: false });
+
+    const verificationUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/verify-email?token=${verificationToken}`;
+    const message = `Please verify your email by clicking on this link: <a href="${verificationUrl}">${verificationUrl}</a>`;
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Email Verification for The Travel Place',
+        html: `<h4>Hello ${user.firstName},</h4><p>${message}</p>`,
+      });
+      logger.info(`Email verification link resent to ${user.email}`);
+    } catch (err) {
+      user.emailVerificationToken = undefined;
+      await user.save({ validateBeforeSave: false });
+      logger.error(`Error resending email verification to ${user.email}: ${err.message}`);
+      throw new ApiError('Failed to resend email verification. Please try again later.', StatusCodes.INTERNAL_SERVER_ERROR);
+    }
+  } else if (type === 'phone') {
+    if (user.isPhoneVerified) {
+      throw new ApiError('Phone number is already verified', StatusCodes.BAD_REQUEST);
+    }
+    if (!user.phoneNumber) {
+      throw new ApiError('User does not have a phone number to verify', StatusCodes.BAD_REQUEST);
+    }
+
+    const otp = user.getPhoneVerificationOtp();
+    await user.save({ validateBeforeSave: false });
+
+    const message = `Your OTP for phone verification at The Travel Place is: ${otp}. It expires in 5 minutes.`;
+    try {
+      await sendSMS(user.phoneNumber, message);
+      logger.info(`Phone verification OTP resent to ${user.phoneNumber}`);
+    } catch (err) {
+      user.phoneVerificationOtp = undefined;
+      user.phoneVerificationOtpExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+      logger.error(`Error resending SMS verification to ${user.phoneNumber}: ${err.message}`);
+      throw new ApiError('Failed to resend phone verification. Please try again later.', StatusCodes.INTERNAL_SERVER_ERROR);
+    }
+  } else {
+    throw new ApiError('Invalid verification type. Must be "email" or "phone"', StatusCodes.BAD_REQUEST);
+  }
+
+  ApiResponse.success(res, StatusCodes.OK, 'Verification sent successfully. Please check your email or phone.');
+});
+
+/**
  * @description Resend email verification link.
  * @route POST /api/v1/auth/resend-email-verification
  * @access Private (User must be logged in to resend for their own account)
@@ -553,6 +675,7 @@ module.exports = {
   resetPassword,
   verifyEmail,
   verifyPhone,
+  resendVerification,
   resendEmailVerification,
   resendPhoneVerification,
 };

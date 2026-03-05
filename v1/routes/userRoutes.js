@@ -5,6 +5,7 @@ const {
   updateMe,
   getAllUsers,
   getSingleUser,
+  updateUser,
   updateUserRole,
   makeUserStaff,
   updateStaffClearance,
@@ -246,7 +247,10 @@ router.get('/', authenticateUser, authorizeRoles(UserRoles.ADMIN), getAllUsers);
  *             schema:
  *               $ref: '#/components/schemas/StandardErrorResponse'
  */
-router.route('/:id').get(authenticateUser, authorizeRoles(UserRoles.ADMIN), getSingleUser).delete(authenticateUser, authorizeRoles(UserRoles.ADMIN), deleteUser);
+router.route('/:id')
+  .get(authenticateUser, authorizeRoles(UserRoles.ADMIN), getSingleUser)
+  .put(authenticateUser, authorizeRoles(UserRoles.ADMIN), updateUser)
+  .delete(authenticateUser, authorizeRoles(UserRoles.ADMIN), deleteUser);
 
 /**
  * @openapi

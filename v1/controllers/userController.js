@@ -297,11 +297,121 @@ const deleteUser = asyncHandler(async (req, res) => {
   ApiResponse.success(res, StatusCodes.OK, 'User deleted successfully');
 });
 
+/**
+ * @description Update user details including role and role-specific fields (Admin only).
+ * @route PUT /api/v1/users/:id
+ * @access Private/Admin
+ */
+const updateUser = asyncHandler(async (req, res) => {
+  const { role, isActive, staffDetails, vendorDetails, agentDetails } = req.body;
+
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    throw new ApiError(`No user with id of ${req.params.id}`, StatusCodes.NOT_FOUND);
+  }
+
+  // Update basic fields
+  if (role !== undefined) {
+    user.role = role;
+  }
+  
+  if (isActive !== undefined) {
+    user.isActive = isActive;
+  }
+
+  // Update staff details if role is Staff
+  if (role === UserRoles.STAFF && staffDetails) {
+    user.staffDetails = user.staffDetails || {};
+    
+    if (staffDetails.department) {
+      user.staffDetails.department = staffDetails.department;
+    }
+    if (staffDetails.tier) {
+      user.staffDetails.tier = staffDetails.tier;
+    }
+    if (staffDetails.designation) {
+      user.staffDetails.designation = staffDetails.designation;
+    }
+    if (staffDetails.employeeId) {
+      // Check if employee ID is already in use
+      const existingStaff = await User.findOne({
+        'staffDetails.employeeId': staffDetails.employeeId,
+        _id: { $ne: user._id }
+      });
+      if (existingStaff) {
+        throw new ApiError('Employee ID already in use', StatusCodes.CONFLICT);
+      }
+      user.staffDetails.employeeId = staffDetails.employeeId;
+    }
+    if (staffDetails.isActive !== undefined) {
+      user.staffDetails.isActive = staffDetails.isActive;
+    }
+  }
+
+  // Update vendor details if role is Vendor
+  if (role === UserRoles.VENDOR && vendorDetails) {
+    user.vendorDetails = user.vendorDetails || {};
+    
+    if (vendorDetails.businessName) {
+      user.vendorDetails.businessName = vendorDetails.businessName;
+    }
+    if (vendorDetails.commissionRate !== undefined) {
+      user.vendorDetails.commissionRate = vendorDetails.commissionRate;
+    }
+    if (vendorDetails.isApproved !== undefined) {
+      user.vendorDetails.isApproved = vendorDetails.isApproved;
+      if (vendorDetails.isApproved && !user.vendorDetails.approvedAt) {
+        user.vendorDetails.approvedAt = new Date();
+        user.vendorDetails.approvedBy = req.user.userId;
+      }
+    }
+  }
+
+  // Update agent details if role is Agent
+  if (role === UserRoles.AGENT && agentDetails) {
+    user.agentDetails = user.agentDetails || {};
+    
+    if (agentDetails.agencyName) {
+      user.agentDetails.agencyName = agentDetails.agencyName;
+    }
+    if (agentDetails.agentCode) {
+      // Check if agent code is already in use
+      const existingAgent = await User.findOne({
+        'agentDetails.agentCode': agentDetails.agentCode,
+        _id: { $ne: user._id }
+      });
+      if (existingAgent) {
+        throw new ApiError('Agent code already in use', StatusCodes.CONFLICT);
+      }
+      user.agentDetails.agentCode = agentDetails.agentCode;
+    }
+    if (agentDetails.commissionRate !== undefined) {
+      user.agentDetails.commissionRate = agentDetails.commissionRate;
+    }
+    if (agentDetails.isApproved !== undefined) {
+      user.agentDetails.isApproved = agentDetails.isApproved;
+      if (agentDetails.isApproved && !user.agentDetails.approvedAt) {
+        user.agentDetails.approvedAt = new Date();
+        user.agentDetails.approvedBy = req.user.userId;
+      }
+    }
+  }
+
+  await user.save();
+
+  // Return user without password
+  const updatedUser = await User.findById(user._id).select('-password');
+
+  ApiResponse.success(res, StatusCodes.OK, 'User updated successfully', { user: updatedUser });
+});
+
 module.exports = {
   getMe,
   updateMe,
   getAllUsers,
   getSingleUser,
+  updateUser,
   updateUserRole,
   makeUserStaff,
   updateStaffClearance,

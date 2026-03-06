@@ -117,16 +117,25 @@ const securityConfig = {
       if (!origin) return callback(null, true);
       
       if (process.env.NODE_ENV === 'production') {
+        // Default allowed origins for production
+        const defaultAllowedOrigins = [
+          'https://test.ttp.ng',
+          'https://www.test.ttp.ng',
+          'https://ttp.ng',
+          'https://www.ttp.ng'
+        ];
+        
         const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(o => o);
         
-        // If no allowed origins are configured, allow all (for testing)
-        if (allowedOrigins.length === 0) {
-          return callback(null, true);
-        }
+        // Merge default and configured origins
+        const allAllowedOrigins = allowedOrigins.length > 0 
+          ? [...defaultAllowedOrigins, ...allowedOrigins]
+          : defaultAllowedOrigins;
         
-        if (allowedOrigins.includes(origin)) {
+        if (allAllowedOrigins.includes(origin)) {
           return callback(null, true);
         } else {
+          console.warn(`CORS blocked origin: ${origin}`);
           return callback(new Error('Not allowed by CORS'));
         }
       } else {

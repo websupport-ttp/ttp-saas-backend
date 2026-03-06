@@ -114,15 +114,15 @@ const sendVerificationCodes = asyncHandler(async (req, res) => {
 });
 
 /**
- * @description Verify email and phone OTPs
+ * @description Verify email and phone OTPs (supports partial verification)
  * @route POST /api/v1/auth/verify-registration-codes
  * @access Public
  */
 const verifyRegistrationCodes = asyncHandler(async (req, res) => {
   const { email, phoneNumber, emailOtp, phoneOtp } = req.body;
 
-  if (!email || !phoneNumber || !emailOtp || !phoneOtp) {
-    throw new ApiError('Email, phone number, and both OTPs are required', StatusCodes.BAD_REQUEST);
+  if (!email || !phoneNumber) {
+    throw new ApiError('Email and phone number are required', StatusCodes.BAD_REQUEST);
   }
 
   // Find pending verification
@@ -132,50 +132,82 @@ const verifyRegistrationCodes = asyncHandler(async (req, res) => {
     throw new ApiError('No verification request found. Please request new codes.', StatusCodes.NOT_FOUND);
   }
 
-  // Verify email OTP
-  const emailResult = pending.verifyEmailOtp(emailOtp);
-  if (!emailResult.valid) {
-    await pending.save(); // Save attempt count
-    
-    if (emailResult.reason === 'expired') {
-      throw new ApiError('Email verification code has expired. Please request a new one.', StatusCodes.BAD_REQUEST);
+  let emailVerified = pending.isEmailVerified;
+  let phoneVerified = pending.isPhoneVerified;
+
+  // Verify email OTP if provided and not already verified
+  if (emailOtp && emailOtp !== '000000' && !pending.isEmailVerified) {
+    const emailResult = pending.verifyEmailOtp(emailOtp);
+    if (!emailResult.valid) {
+      await pending.save(); // Save attempt count
+      
+      if (emailResult.reason === 'expired') {
+        throw new ApiError('Email verification code has expired. Please request a new one.', StatusCodes.BAD_REQUEST);
+      }
+      if (emailResult.reason === 'max_attempts') {
+        throw new ApiError('Maximum verification attempts exceeded. Please request new codes.', StatusCodes.TOO_MANY_REQUESTS);
+      }
+      throw new ApiError('Invalid email verification code', StatusCodes.BAD_REQUEST);
     }
-    if (emailResult.reason === 'max_attempts') {
-      throw new ApiError('Maximum verification attempts exceeded. Please request new codes.', StatusCodes.TOO_MANY_REQUESTS);
-    }
-    throw new ApiError('Invalid email verification code', StatusCodes.BAD_REQUEST);
+    emailVerified = true;
   }
 
-  // Verify phone OTP
-  const phoneResult = pending.verifyPhoneOtp(phoneOtp);
-  if (!phoneResult.valid) {
-    await pending.save(); // Save attempt count
-    
-    if (phoneResult.reason === 'expired') {
-      throw new ApiError('Phone verification code has expired. Please request a new one.', StatusCodes.BAD_REQUEST);
+  // Verify phone OTP if provided and not already verified
+  if (phoneOtp && phoneOtp !== '000000' && !pending.isPhoneVerified) {
+    const phoneResult = pending.verifyPhoneOtp(phoneOtp);
+    if (!phoneResult.valid) {
+      await pending.save(); // Save attempt count
+      
+      if (phoneResult.reason === 'expired') {
+        throw new ApiError('Phone verification code has expired. Please request a new one.', StatusCodes.BAD_REQUEST);
+      }
+      if (phoneResult.reason === 'max_attempts') {
+        throw new ApiError('Maximum verification attempts exceeded. Please request new codes.', StatusCodes.TOO_MANY_REQUESTS);
+      }
+      throw new ApiError('Invalid phone verification code', StatusCodes.BAD_REQUEST);
     }
-    if (phoneResult.reason === 'max_attempts') {
-      throw new ApiError('Maximum verification attempts exceeded. Please request new codes.', StatusCodes.TOO_MANY_REQUESTS);
-    }
-    throw new ApiError('Invalid phone verification code', StatusCodes.BAD_REQUEST);
+    phoneVerified = true;
   }
 
-  // Both verified! Generate verification token
-  const verificationToken = pending.generateVerificationToken();
+  // Generate verification token only when both are verified
+  let verificationToken = pending.verificationToken;
+  if (emailVerified && phoneVerified && !verificationToken) {
+    verificationToken = pending.generateVerificationToken();
+  }
+
   await pending.save();
 
-  logger.info(`Verification successful for ${email} and ${phoneNumber}`);
+  logger.info(`Verification progress for ${email}: email=${emailVerified}, phone=${phoneVerified}`);
 
-  ApiResponse.success(
-    res,
-    StatusCodes.OK,
-    'Verification successful! You can now complete your registration.',
-    {
-      verificationToken,
-      email,
-      phoneNumber,
-    }
-  );
+  // Return appropriate response based on verification status
+  if (emailVerified && phoneVerified) {
+    ApiResponse.success(
+      res,
+      StatusCodes.OK,
+      'Verification successful! You can now complete your registration.',
+      {
+        verificationToken,
+        email,
+        phoneNumber,
+        emailVerified: true,
+        phoneVerified: true,
+      }
+    );
+  } else if (emailVerified) {
+    ApiResponse.success(
+      res,
+      StatusCodes.OK,
+      'Email verified successfully! Please verify your phone number.',
+      {
+        email,
+        phoneNumber,
+        emailVerified: true,
+        phoneVerified: false,
+      }
+    );
+  } else {
+    throw new ApiError('Please provide valid verification codes', StatusCodes.BAD_REQUEST);
+  }
 });
 
 /**

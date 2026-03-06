@@ -18,7 +18,7 @@ const crypto = require('crypto');
  * @access Public
  */
 const register = asyncHandler(async (req, res) => {
-  const { firstName, lastName, otherNames, email, phoneNumber, password, role } = req.body;
+  const { firstName, lastName, otherNames, email, phoneNumber, password, role, verificationToken } = req.body;
 
   // Log registration attempt
   logger.logSecurityEvent('USER_REGISTRATION_ATTEMPT', {
@@ -27,7 +27,32 @@ const register = asyncHandler(async (req, res) => {
     ip: req.ip,
     userAgent: req.get('User-Agent'),
     requestedRole: role || 'user',
+    hasVerificationToken: !!verificationToken,
   }, 'low');
+
+  // Check if verification token is provided and valid
+  let isPreVerified = false;
+  if (verificationToken) {
+    const PendingVerification = require('../models/pendingVerificationModel');
+    const hashedToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
+    
+    const pending = await PendingVerification.findOne({
+      verificationToken: hashedToken,
+      email,
+      phoneNumber,
+      isEmailVerified: true,
+      isPhoneVerified: true,
+    });
+
+    if (pending) {
+      isPreVerified = true;
+      // Delete the pending verification after use
+      await PendingVerification.deleteOne({ _id: pending._id });
+      logger.info(`Pre-verified registration for ${email}`);
+    } else {
+      logger.warn(`Invalid verification token provided for ${email}`);
+    }
+  }
 
   // Check if email or phone number already exists
   const existingUser = await User.findOne({ $or: [{ email }, { phoneNumber }] });
@@ -50,7 +75,18 @@ const register = asyncHandler(async (req, res) => {
     }
   }
 
-  const user = await User.create({ firstName, lastName, otherNames, email, phoneNumber, password, role });
+  // Create user with pre-verified status if applicable
+  const user = await User.create({ 
+    firstName, 
+    lastName, 
+    otherNames, 
+    email, 
+    phoneNumber, 
+    password, 
+    role,
+    isEmailVerified: isPreVerified,
+    isPhoneVerified: isPreVerified,
+  });
 
   // Log successful registration
   logger.logSecurityEvent('USER_REGISTERED', {
@@ -60,46 +96,50 @@ const register = asyncHandler(async (req, res) => {
     role: user.role,
     ip: req.ip,
     userAgent: req.get('User-Agent'),
+    isPreVerified,
   }, 'low');
 
-  // Generate email verification token and send email
-  if (email) {
-    const verificationToken = user.getEmailVerificationToken();
-    await user.save({ validateBeforeSave: false }); // Save user with token
+  // Only send verification emails/SMS if not pre-verified
+  if (!isPreVerified) {
+    // Generate email verification token and send email
+    if (email) {
+      const verificationToken = user.getEmailVerificationToken();
+      await user.save({ validateBeforeSave: false }); // Save user with token
 
-    const verificationUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/verify-email?token=${verificationToken}`;
-    const message = `Please verify your email by clicking on this link: <a href="${verificationUrl}">${verificationUrl}</a>`;
+      const verificationUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/verify-email?token=${verificationToken}`;
+      const message = `Please verify your email by clicking on this link: <a href="${verificationUrl}">${verificationUrl}</a>`;
 
-    try {
-      await sendEmail({
-        to: user.email,
-        subject: 'Email Verification for The Travel Place',
-        html: `<h4>Hello ${user.firstName},</h4><p>${message}</p>`,
-      });
-      logger.info(`Email verification link sent to ${user.email}`);
-    } catch (err) {
-      user.emailVerificationToken = undefined;
-      await user.save({ validateBeforeSave: false });
-      logger.error(`Error sending email verification to ${user.email}: ${err.message}`);
-      // Don't throw error here, just log and continue
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: 'Email Verification for The Travel Place',
+          html: `<h4>Hello ${user.firstName},</h4><p>${message}</p>`,
+        });
+        logger.info(`Email verification link sent to ${user.email}`);
+      } catch (err) {
+        user.emailVerificationToken = undefined;
+        await user.save({ validateBeforeSave: false });
+        logger.error(`Error sending email verification to ${user.email}: ${err.message}`);
+        // Don't throw error here, just log and continue
+      }
     }
-  }
 
-  // Generate phone verification OTP and send SMS
-  if (phoneNumber) {
-    const otp = user.getPhoneVerificationOtp();
-    await user.save({ validateBeforeSave: false }); // Save user with OTP
+    // Generate phone verification OTP and send SMS
+    if (phoneNumber) {
+      const otp = user.getPhoneVerificationOtp();
+      await user.save({ validateBeforeSave: false }); // Save user with OTP
 
-    const message = `Your OTP for phone verification at The Travel Place is: ${otp}. It expires in 5 minutes.`;
-    try {
-      await sendSMS(user.phoneNumber, message);
-      logger.info(`Phone verification OTP sent to ${user.phoneNumber}`);
-    } catch (err) {
-      user.phoneVerificationOtp = undefined;
-      user.phoneVerificationOtpExpires = undefined;
-      await user.save({ validateBeforeSave: false });
-      logger.error(`Error sending SMS verification to ${user.phoneNumber}: ${err.message}`);
-      // Don't throw error here, just log and continue
+      const message = `Your OTP for phone verification at The Travel Place is: ${otp}. It expires in 5 minutes.`;
+      try {
+        await sendSMS(user.phoneNumber, message);
+        logger.info(`Phone verification OTP sent to ${user.phoneNumber}`);
+      } catch (err) {
+        user.phoneVerificationOtp = undefined;
+        user.phoneVerificationOtpExpires = undefined;
+        await user.save({ validateBeforeSave: false });
+        logger.error(`Error sending SMS verification to ${user.phoneNumber}: ${err.message}`);
+        // Don't throw error here, just log and continue
+      }
     }
   }
 
@@ -112,7 +152,11 @@ const register = asyncHandler(async (req, res) => {
 
   attachCookiesToResponse(res, { _id: user._id, role: user.role }, sessionInfo);
 
-  ApiResponse.success(res, StatusCodes.CREATED, 'User registered successfully. Please check your email/phone for verification.', {
+  const message = isPreVerified 
+    ? 'User registered successfully. Your account is ready to use!' 
+    : 'User registered successfully. Please check your email/phone for verification.';
+
+  ApiResponse.success(res, StatusCodes.CREATED, message, {
     user: {
       _id: user._id,
       firstName: user.firstName,

@@ -1,6 +1,7 @@
 // v1/routes/index.js
 const express = require('express');
 const authRoutes = require('./authRoutes');
+const preRegistrationRoutes = require('./preRegistrationRoutes');
 const userRoutes = require('./userRoutes');
 const userProfileRoutes = require('./userProfileRoutes');
 const productRoutes = require('./productRoutes');
@@ -81,6 +82,7 @@ router.use('/cms', apiLimiter); // CMS with standard rate limiting
 
 // Define base routes for each module
 router.use('/auth', authRoutes);
+router.use('/auth', preRegistrationRoutes); // Pre-registration verification routes
 router.use('/users', userRoutes);
 router.use('/user', userProfileRoutes); // User profile endpoints
 router.use('/products', productRoutes);

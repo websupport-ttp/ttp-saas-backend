@@ -307,19 +307,23 @@ const resendPhoneOtp = asyncHandler(async (req, res) => {
         break;
         
       case 'whatsapp':
-        // TODO: Implement WhatsApp sending when API is set up
         message = `Your Travel Place verification code is: ${phoneOtp}. Valid for 10 minutes.`;
-        // await sendWhatsApp(phoneNumber, message);
-        logger.info(`Phone OTP sent via WhatsApp to ${phoneNumber} (placeholder)`);
-        // For now, fall back to SMS
-        await sendSMS(phoneNumber, message);
+        // Check if WhatsApp is configured
+        if (process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN) {
+          const { sendWhatsAppMessage } = require('../utils/whatsappService');
+          await sendWhatsAppMessage(phoneNumber, message);
+          logger.info(`Phone OTP sent via WhatsApp to ${phoneNumber}`);
+        } else {
+          // Fall back to SMS if WhatsApp not configured
+          logger.warn(`WhatsApp not configured, falling back to SMS for ${phoneNumber}`);
+          await sendSMS(phoneNumber, message);
+        }
         break;
         
       case 'call':
         // TODO: Implement voice call when API is set up
-        // await makeVerificationCall(phoneNumber, phoneOtp);
-        logger.info(`Phone OTP sent via call to ${phoneNumber} (placeholder)`);
         // For now, fall back to SMS
+        logger.info(`Voice call not yet implemented, using SMS for ${phoneNumber}`);
         message = `Your Travel Place verification code is: ${phoneOtp}. Valid for 10 minutes.`;
         await sendSMS(phoneNumber, message);
         break;

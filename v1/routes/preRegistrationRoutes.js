@@ -8,32 +8,48 @@ const {
 } = require('../controllers/preRegistrationController');
 const { authLimiter, strictAuthLimiter } = require('../middleware/rateLimitMiddleware');
 const { validate } = require('../middleware/validationMiddleware');
-const Joi = require('joi');
+const { z } = require('zod');
 
 const router = express.Router();
 
-// Validation schemas
-const sendCodesSchema = Joi.object({
-  email: Joi.string().email().required(),
-  phoneNumber: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
+// Validation schemas using Zod
+const sendCodesSchema = z.object({
+  body: z.object({
+    email: z.string().email('Invalid email format'),
+    phoneNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format'),
+  }),
+  query: z.object({}).optional(),
+  params: z.object({}).optional(),
 });
 
-const verifyCodesSchema = Joi.object({
-  email: Joi.string().email().required(),
-  phoneNumber: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
-  emailOtp: Joi.string().length(6).pattern(/^\d+$/).required(),
-  phoneOtp: Joi.string().length(6).pattern(/^\d+$/).required(),
+const verifyCodesSchema = z.object({
+  body: z.object({
+    email: z.string().email('Invalid email format'),
+    phoneNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format'),
+    emailOtp: z.string().length(6, 'Email OTP must be 6 digits').regex(/^\d+$/, 'Email OTP must contain only digits'),
+    phoneOtp: z.string().length(6, 'Phone OTP must be 6 digits').regex(/^\d+$/, 'Phone OTP must contain only digits'),
+  }),
+  query: z.object({}).optional(),
+  params: z.object({}).optional(),
 });
 
-const resendEmailSchema = Joi.object({
-  email: Joi.string().email().required(),
-  phoneNumber: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
+const resendEmailSchema = z.object({
+  body: z.object({
+    email: z.string().email('Invalid email format'),
+    phoneNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format'),
+  }),
+  query: z.object({}).optional(),
+  params: z.object({}).optional(),
 });
 
-const resendPhoneSchema = Joi.object({
-  email: Joi.string().email().required(),
-  phoneNumber: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
-  method: Joi.string().valid('sms', 'whatsapp', 'call').default('sms'),
+const resendPhoneSchema = z.object({
+  body: z.object({
+    email: z.string().email('Invalid email format'),
+    phoneNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format'),
+    method: z.enum(['sms', 'whatsapp', 'call']).default('sms'),
+  }),
+  query: z.object({}).optional(),
+  params: z.object({}).optional(),
 });
 
 /**

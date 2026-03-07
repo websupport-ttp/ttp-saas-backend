@@ -314,16 +314,15 @@ const resendPhoneOtp = asyncHandler(async (req, res) => {
           await sendWhatsAppMessage(phoneNumber, message);
           logger.info(`Phone OTP sent via WhatsApp to ${phoneNumber}`);
         } else {
-          // Fall back to SMS if WhatsApp not configured
-          logger.warn(`WhatsApp not configured, falling back to SMS for ${phoneNumber}`);
+          // WhatsApp not configured - use SMS as fallback
+          logger.info(`WhatsApp not configured, sending via SMS to ${phoneNumber}`);
           await sendSMS(phoneNumber, message);
         }
         break;
         
       case 'call':
-        // TODO: Implement voice call when API is set up
-        // For now, fall back to SMS
-        logger.info(`Voice call not yet implemented, using SMS for ${phoneNumber}`);
+        // Voice call not yet implemented - use SMS
+        logger.info(`Voice call not yet implemented, sending via SMS to ${phoneNumber}`);
         message = `Your Travel Place verification code is: ${phoneOtp}. Valid for 10 minutes.`;
         await sendSMS(phoneNumber, message);
         break;

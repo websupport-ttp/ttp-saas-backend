@@ -92,13 +92,19 @@ const sendVerificationCodes = asyncHandler(async (req, res) => {
   }
 
   // Send phone OTP via SMS
-  try {
-    const smsMessage = `Your Travel Place verification code is: ${phoneOtp}. Valid for 10 minutes.`;
-    await sendSMS(phoneNumber, smsMessage);
-    logger.info(`Phone OTP sent to ${phoneNumber}`);
-  } catch (error) {
-    logger.error(`Failed to send phone OTP to ${phoneNumber}:`, error);
-    // Don't throw error, at least one method should work
+  const skipPhoneVerification = process.env.SKIP_PHONE_VERIFICATION === 'true';
+  
+  if (skipPhoneVerification) {
+    logger.info(`[DEV MODE] Skipping phone OTP send to ${phoneNumber} - phone verification disabled`);
+  } else {
+    try {
+      const smsMessage = `Your Travel Place verification code is: ${phoneOtp}. Valid for 10 minutes.`;
+      await sendSMS(phoneNumber, smsMessage);
+      logger.info(`Phone OTP sent to ${phoneNumber}`);
+    } catch (error) {
+      logger.error(`Failed to send phone OTP to ${phoneNumber}:`, error);
+      // Don't throw error, at least one method should work
+    }
   }
 
   ApiResponse.success(
@@ -123,6 +129,13 @@ const verifyRegistrationCodes = asyncHandler(async (req, res) => {
 
   if (!email || !phoneNumber) {
     throw new ApiError('Email and phone number are required', StatusCodes.BAD_REQUEST);
+  }
+
+  // DEVELOPMENT MODE: Skip phone verification if enabled
+  const skipPhoneVerification = process.env.SKIP_PHONE_VERIFICATION === 'true';
+  
+  if (skipPhoneVerification) {
+    logger.info(`[DEV MODE] Phone verification skipped for ${phoneNumber}`);
   }
 
   // Find pending verification
@@ -154,19 +167,26 @@ const verifyRegistrationCodes = asyncHandler(async (req, res) => {
 
   // Verify phone OTP if provided and not already verified
   if (phoneOtp && phoneOtp !== '000000' && !pending.isPhoneVerified) {
-    const phoneResult = pending.verifyPhoneOtp(phoneOtp);
-    if (!phoneResult.valid) {
-      await pending.save(); // Save attempt count
-      
-      if (phoneResult.reason === 'expired') {
-        throw new ApiError('Phone verification code has expired. Please request a new one.', StatusCodes.BAD_REQUEST);
+    // DEVELOPMENT MODE: Auto-verify phone if skip is enabled
+    if (skipPhoneVerification) {
+      logger.info(`[DEV MODE] Auto-verifying phone for ${phoneNumber}`);
+      pending.isPhoneVerified = true;
+      phoneVerified = true;
+    } else {
+      const phoneResult = pending.verifyPhoneOtp(phoneOtp);
+      if (!phoneResult.valid) {
+        await pending.save(); // Save attempt count
+        
+        if (phoneResult.reason === 'expired') {
+          throw new ApiError('Phone verification code has expired. Please request a new one.', StatusCodes.BAD_REQUEST);
+        }
+        if (phoneResult.reason === 'max_attempts') {
+          throw new ApiError('Maximum verification attempts exceeded. Please request new codes.', StatusCodes.TOO_MANY_REQUESTS);
+        }
+        throw new ApiError('Invalid phone verification code', StatusCodes.BAD_REQUEST);
       }
-      if (phoneResult.reason === 'max_attempts') {
-        throw new ApiError('Maximum verification attempts exceeded. Please request new codes.', StatusCodes.TOO_MANY_REQUESTS);
-      }
-      throw new ApiError('Invalid phone verification code', StatusCodes.BAD_REQUEST);
+      phoneVerified = true;
     }
-    phoneVerified = true;
   }
 
   // Generate verification token only when both are verified

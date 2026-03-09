@@ -1,59 +1,130 @@
-// Test SMS Service
-// Run with: node test-sms.js from backend directory
+// test-sms.js - Test Termii SMS Integration
+require('dotenv').config();
+const axios = require('axios');
 
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
-const { sendSMS, validateSMSConfiguration, getProviderForCountry } = require('./v1/utils/smsService');
-
-async function testSMSService() {
-  console.log('\n🔍 Testing SMS Service Configuration...\n');
+const testTermiiSMS = async () => {
+  console.log('🧪 Testing Termii SMS Integration...\n');
   
-  // Check configuration
-  const config = validateSMSConfiguration();
-  console.log('Configuration Status:');
-  console.log('  Valid:', config.valid ? '✅' : '❌');
-  console.log('  Providers:', config.providers.join(', '));
-  console.log('  Message:', config.message);
-  console.log('\nProvider Details:');
-  console.log('  Termii:', config.details.termii.configured ? '✅ Configured' : '❌ Not configured');
-  console.log('  Telnyx:', config.details.telnyx.configured ? '✅ Configured' : '❌ Not configured');
-  console.log('  Twilio:', config.details.twilio.configured ? '✅ Configured' : '❌ Not configured');
+  // Check environment variables
+  console.log('📋 Configuration Check:');
+  console.log('✓ TERMII_API_KEY:', process.env.TERMII_API_KEY ? '✅ Set' : '❌ Missing');
+  console.log('✓ TERMII_BASE_URL:', process.env.TERMII_BASE_URL || 'https://v3.api.termii.com');
+  console.log('✓ TERMII_SENDER_ID:', process.env.TERMII_SENDER_ID || 'TravelPlace');
+  console.log('');
   
-  // Test phone numbers
-  const testNumbers = [
-    '+2348012345678',  // Nigerian
-    '+14155551234',    // US
-    '08012345678',     // Nigerian local format
-  ];
+  if (!process.env.TERMII_API_KEY) {
+    console.error('❌ TERMII_API_KEY is not set in .env file');
+    process.exit(1);
+  }
   
-  console.log('\n📱 Provider Routing Test:\n');
-  testNumbers.forEach(number => {
-    const provider = getProviderForCountry(number);
-    console.log(`  ${number} → ${provider}`);
-  });
+  // Test phone number (replace with your actual number)
+  const testPhoneNumber = '2349035573593'; // Your number without +
+  const testMessage = 'Test message from The Travel Place. Your verification code is: 123456';
   
-  // Ask for confirmation before sending real SMS
-  console.log('\n⚠️  WARNING: The next step will send a real SMS and may incur charges.');
-  console.log('To test SMS sending, uncomment the code below and add your phone number.\n');
+  // Use generic sender ID while KYC is pending
+  const senderID = 'N-Alert'; // Generic sender ID that works without KYC
   
-  // Uncomment to test actual SMS sending
-  /*
-  const testPhoneNumber = '+2348012345678'; // Replace with your number
-  const testMessage = 'Test SMS from The Travel Place. Your OTP is: 123456';
+  console.log('📱 Sending test SMS to:', `+${testPhoneNumber}`);
+  console.log('📤 Sender ID:', senderID, '(Generic - works without KYC)');
+  console.log('💬 Message:', testMessage);
+  console.log('');
   
   try {
-    console.log(`\n📤 Sending test SMS to ${testPhoneNumber}...\n`);
-    const result = await sendSMS(testPhoneNumber, testMessage);
-    console.log('✅ SMS sent successfully!');
-    console.log('  Provider:', result.provider);
-    console.log('  Message ID:', result.messageId || result.messageSid);
-    console.log('  Status:', result.status);
-    console.log('  Cost:', result.cost);
+    const termiiBaseUrl = process.env.TERMII_BASE_URL || 'https://v3.api.termii.com';
+    const response = await axios.post(`${termiiBaseUrl}/api/sms/send`, {
+      to: testPhoneNumber,
+      from: senderID, // Use generic sender ID
+      sms: testMessage,
+      type: 'plain',
+      channel: 'generic',
+      api_key: process.env.TERMII_API_KEY
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 15000
+    });
+    
+    console.log('✅ SMS Sent Successfully!');
+    console.log('');
+    console.log('📊 Response Details:');
+    console.log('   Message ID:', response.data.message_id || 'N/A');
+    console.log('   Status:', response.data.message || response.data.status);
+    console.log('   Balance:', response.data.balance || 'N/A');
+    console.log('');
+    console.log('📱 Check your phone for the SMS!');
+    console.log('');
+    
+    // Check account balance
+    if (response.data.balance) {
+      const balance = parseFloat(response.data.balance);
+      if (balance < 100) {
+        console.log('⚠️  Warning: Low balance (₦' + balance + '). Consider topping up.');
+      } else {
+        console.log('💰 Account Balance: ₦' + balance);
+      }
+    }
+    
+    return response.data;
+    
   } catch (error) {
-    console.error('❌ SMS sending failed:', error.message);
+    console.error('❌ SMS Sending Failed!');
+    console.error('');
+    
+    if (error.response) {
+      console.error('📊 Error Details:');
+      console.error('   Status:', error.response.status);
+      console.error('   Message:', error.response.data?.message || error.response.data);
+      console.error('');
+      
+      // Common error messages
+      if (error.response.status === 401) {
+        console.error('🔑 Authentication Error: Invalid API key');
+        console.error('   → Check your TERMII_API_KEY in .env file');
+      } else if (error.response.status === 400) {
+        console.error('📝 Bad Request: Check your request parameters');
+        console.error('   → Phone number format: 2349035573593 (no + or spaces)');
+        console.error('   → Sender ID must be approved');
+      } else if (error.response.status === 402) {
+        console.error('💳 Payment Required: Insufficient balance');
+        console.error('   → Top up your Termii account');
+      } else if (error.response.status === 403) {
+        console.error('🚫 Forbidden: KYC verification may be required');
+        console.error('   → Complete KYC verification in Termii dashboard');
+        console.error('   → Or you may have reached daily limits');
+      }
+    } else if (error.request) {
+      console.error('🌐 Network Error: Could not reach Termii API');
+      console.error('   → Check your internet connection');
+      console.error('   → Termii API might be down');
+    } else {
+      console.error('❌ Error:', error.message);
+    }
+    
+    console.error('');
+    console.error('📚 Termii Documentation: https://developers.termii.com/');
+    console.error('💬 Termii Support: support@termii.com');
+    
+    throw error;
   }
-  */
-}
+};
 
 // Run the test
-testSMSService().catch(console.error);
+console.log('═══════════════════════════════════════════════════════');
+console.log('  TERMII SMS INTEGRATION TEST');
+console.log('═══════════════════════════════════════════════════════');
+console.log('');
+
+testTermiiSMS()
+  .then(() => {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('✅ TEST COMPLETED SUCCESSFULLY');
+    console.log('═══════════════════════════════════════════════════════');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('❌ TEST FAILED');
+    console.log('═══════════════════════════════════════════════════════');
+    process.exit(1);
+  });

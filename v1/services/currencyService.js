@@ -4,33 +4,53 @@ const Currency = require('../models/currencyModel');
 const logger = require('../utils/logger');
 
 /**
- * Exchange Rate API Service
- * Free tier: 1,500 requests/month
- * Docs: https://www.exchangerate-api.com/docs/free
+ * Frankfurter API - Free Currency Exchange Rates
+ * No API key required, no rate limits
+ * Docs: https://www.frankfurter.app/docs/
+ * Base: EUR (European Central Bank rates)
  */
 
-const EXCHANGE_RATE_API_KEY = process.env.EXCHANGE_RATE_API_KEY || 'free';
-const EXCHANGE_RATE_API_URL = `https://v6.exchangerate-api.com/v6/${EXCHANGE_RATE_API_KEY}`;
+const FRANKFURTER_API_URL = 'https://api.frankfurter.app';
 const BASE_CURRENCY = 'NGN'; // Nigerian Naira as base
 
 /**
- * Fetch latest exchange rates from API
+ * Fetch latest exchange rates from Frankfurter API
+ * Since Frankfurter uses EUR as base, we need to convert to NGN base
  */
 const fetchExchangeRates = async (baseCurrency = BASE_CURRENCY) => {
   try {
-    const response = await axios.get(`${EXCHANGE_RATE_API_URL}/latest/${baseCurrency}`, {
+    // First, get EUR to all currencies
+    const response = await axios.get(`${FRANKFURTER_API_URL}/latest`, {
       timeout: 10000,
     });
 
-    if (response.data.result === 'success') {
+    if (response.data && response.data.rates) {
+      const rates = response.data.rates;
+      
+      // Get NGN rate from EUR
+      const ngnToEur = rates.NGN || 1700; // Fallback if NGN not available
+      
+      // Convert all rates to NGN base
+      const ngnBasedRates = {
+        NGN: 1, // Base currency
+      };
+      
+      // Convert each rate from EUR base to NGN base
+      for (const [currency, eurRate] of Object.entries(rates)) {
+        if (currency !== 'NGN') {
+          // Rate from NGN to currency = (EUR to currency) / (EUR to NGN)
+          ngnBasedRates[currency] = eurRate / ngnToEur;
+        }
+      }
+      
       return {
         success: true,
-        rates: response.data.conversion_rates,
-        lastUpdated: new Date(response.data.time_last_update_unix * 1000),
+        rates: ngnBasedRates,
+        lastUpdated: new Date(response.data.date),
       };
     }
 
-    throw new Error('API returned unsuccessful result');
+    throw new Error('API returned invalid data');
   } catch (error) {
     logger.error('Failed to fetch exchange rates:', error.message);
     return {
@@ -65,7 +85,7 @@ const updateExchangeRates = async () => {
         if (rate) {
           currency.exchangeRate = rate;
           currency.lastUpdated = ratesData.lastUpdated;
-          currency.apiSource = 'exchangerate-api';
+          currency.apiSource = 'frankfurter-api';
           await currency.save();
           updated++;
         } else {

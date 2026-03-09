@@ -46,8 +46,8 @@ const currencySchema = new mongoose.Schema({
   },
   apiSource: {
     type: String,
-    enum: ['exchangerate-api', 'manual', 'fallback'],
-    default: 'exchangerate-api',
+    enum: ['frankfurter-api', 'exchangerate-api', 'manual', 'fallback'],
+    default: 'frankfurter-api',
   },
   fallbackRate: {
     type: Number,

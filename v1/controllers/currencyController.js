@@ -42,9 +42,15 @@ const getAllCurrenciesAdmin = asyncHandler(async (req, res) => {
     .populate('updatedBy', 'firstName lastName')
     .sort({ code: 1 });
 
+  // Transform to include both rate and exchangeRate for compatibility
+  const transformedCurrencies = currencies.map(c => ({
+    ...c.toObject(),
+    rate: c.getEffectiveRate(), // Add rate field for frontend compatibility
+  }));
+
   ApiResponse.success(res, StatusCodes.OK, 'All currencies fetched successfully', {
-    count: currencies.length,
-    currencies,
+    count: transformedCurrencies.length,
+    currencies: transformedCurrencies,
   });
 });
 

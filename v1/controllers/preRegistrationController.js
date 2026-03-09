@@ -188,6 +188,13 @@ const verifyRegistrationCodes = asyncHandler(async (req, res) => {
       phoneVerified = true;
     }
   }
+  
+  // DEVELOPMENT MODE: Auto-verify phone if skip is enabled and phoneOtp is placeholder
+  if (skipPhoneVerification && phoneOtp === '000000' && !pending.isPhoneVerified) {
+    logger.info(`[DEV MODE] Auto-verifying phone with placeholder OTP for ${phoneNumber}`);
+    pending.isPhoneVerified = true;
+    phoneVerified = true;
+  }
 
   // Generate verification token only when both are verified
   let verificationToken = pending.verificationToken;

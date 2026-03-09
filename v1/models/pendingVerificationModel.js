@@ -70,7 +70,7 @@ const pendingVerificationSchema = new mongoose.Schema({
 
 // Index for faster lookups
 pendingVerificationSchema.index({ email: 1, phoneNumber: 1 });
-pendingVerificationSchema.index({ verificationToken: 1 });
+// verificationToken already has unique: true in schema, no need for separate index
 pendingVerificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 900 });
 
 /**

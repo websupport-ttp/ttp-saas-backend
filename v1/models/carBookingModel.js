@@ -101,6 +101,22 @@ const CarBookingSchema = new mongoose.Schema({
     required: true,
     min: 0,
   },
+  currency: {
+    type: String,
+    default: 'NGN',
+    uppercase: true,
+    trim: true,
+    minlength: 3,
+    maxlength: 3,
+  },
+  originalAmount: {
+    type: Number,
+    default: null,
+  },
+  exchangeRate: {
+    type: Number,
+    default: 1,
+  },
   status: {
     type: String,
     enum: ['pending', 'confirmed', 'in-progress', 'completed', 'cancelled'],
@@ -146,5 +162,7 @@ CarBookingSchema.index({ createdAt: -1 });
 // Compound indexes
 CarBookingSchema.index({ user: 1, status: 1 });
 CarBookingSchema.index({ car: 1, pickupDate: 1, returnDate: 1 });
+CarBookingSchema.index({ currency: 1 });
+CarBookingSchema.index({ status: 1, currency: 1 });
 
 module.exports = mongoose.model('CarBooking', CarBookingSchema);

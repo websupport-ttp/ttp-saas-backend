@@ -20,6 +20,8 @@ const carHireRoutes = require('./carHireRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
 const visaAssistanceRoutes = require('./visaAssistanceRoutes');
 const cmsRoutes = require('./cmsRoutes');
+const currencyRoutes = require('./currencyRoutes');
+const transactionDashboardRoutes = require('./transactionDashboardRoutes');
 
 // Import security middleware
 const { 
@@ -79,6 +81,8 @@ router.use('/car-hire', paymentLimiter); // Car hire involves payments
 router.use('/dashboard', apiLimiter); // Dashboard stats with standard rate limiting
 router.use('/visa-assistance', paymentLimiter); // Visa assistance involves payments
 router.use('/cms', apiLimiter); // CMS with standard rate limiting
+router.use('/currencies', apiLimiter); // Currency with standard rate limiting
+router.use('/dashboard/transactions', apiLimiter); // Transaction dashboard with standard rate limiting
 
 // Define base routes for each module
 router.use('/auth', authRoutes);
@@ -101,6 +105,8 @@ router.use('/car-hire', carHireRoutes); // Car hire endpoints
 router.use('/dashboard', dashboardRoutes); // Dashboard statistics endpoints
 router.use('/visa-assistance', visaAssistanceRoutes); // Visa assistance endpoints
 router.use('/cms', cmsRoutes); // CMS endpoints for content management
+router.use('/currencies', currencyRoutes); // Currency management endpoints
+router.use('/dashboard/transactions', transactionDashboardRoutes); // Transaction dashboard endpoints
 router.use('/health', require('./healthRoutes')); // Health check endpoints
 
 module.exports = router;

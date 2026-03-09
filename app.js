@@ -37,10 +37,17 @@ connectDB();
 
 // Initialize application components
 const { initializeApplication } = require('./v1/utils/initializeApp');
+const { initializeDefaultCurrencies } = require('./v1/services/currencyService');
+
 // Run initialization after a short delay to ensure DB connection is established
 setTimeout(() => {
   initializeApplication().catch(error => {
     console.error('Failed to initialize application:', error.message);
+  });
+  
+  // Initialize default currencies
+  initializeDefaultCurrencies().catch(error => {
+    console.error('Failed to initialize currencies:', error.message);
   });
 }, 2000);
 

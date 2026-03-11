@@ -25,6 +25,9 @@ const transactionDashboardRoutes = require('./transactionDashboardRoutes');
 const siteSettingsRoutes = require('./siteSettingsRoutes');
 const teamRoutes = require('./teamRoutes');
 const emailTemplateRoutes = require('./emailTemplateRoutes');
+const serviceChargeRoutes = require('./serviceChargeRoutes');
+const taxRoutes = require('./taxRoutes');
+const discountRoutes = require('./discountRoutes');
 
 // Import security middleware
 const { 
@@ -89,6 +92,9 @@ router.use('/dashboard/transactions', apiLimiter); // Transaction dashboard with
 router.use('/settings', apiLimiter); // Site settings with standard rate limiting
 router.use('/team', apiLimiter); // Team management with standard rate limiting
 router.use('/email-templates', apiLimiter); // Email templates with standard rate limiting
+router.use('/service-charges', apiLimiter); // Service charges with standard rate limiting
+router.use('/taxes', apiLimiter); // Taxes with standard rate limiting
+router.use('/discounts', apiLimiter); // Discounts with standard rate limiting
 
 // Define base routes for each module
 router.use('/auth', authRoutes);
@@ -116,6 +122,9 @@ router.use('/dashboard/transactions', transactionDashboardRoutes); // Transactio
 router.use('/settings', siteSettingsRoutes); // Site settings endpoints
 router.use('/team', teamRoutes); // Team management endpoints
 router.use('/email-templates', emailTemplateRoutes); // Email template management endpoints
+router.use('/service-charges', serviceChargeRoutes); // Service charge management endpoints
+router.use('/taxes', taxRoutes); // Tax management endpoints
+router.use('/discounts', discountRoutes); // Discount management endpoints
 router.use('/health', require('./healthRoutes')); // Health check endpoints
 
 module.exports = router;

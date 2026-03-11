@@ -123,13 +123,18 @@ const securityConfig = {
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
       
+      // Log the origin for debugging
+      console.log(`CORS request from origin: ${origin}`);
+      
       if (process.env.NODE_ENV === 'production') {
         // Default allowed origins for production
         const defaultAllowedOrigins = [
           'https://test.ttp.ng',
           'https://www.test.ttp.ng',
           'https://ttp.ng',
-          'https://www.ttp.ng'
+          'https://www.ttp.ng',
+          'https://ttp-saas-frontend.vercel.app',
+          'https://ttp-saas-frontend-git-main.vercel.app'
         ];
         
         const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(o => o);
@@ -140,13 +145,16 @@ const securityConfig = {
           : defaultAllowedOrigins;
         
         if (allAllowedOrigins.includes(origin)) {
+          console.log(`CORS allowed for origin: ${origin}`);
           return callback(null, true);
         } else {
           console.warn(`CORS blocked origin: ${origin}`);
+          console.warn(`Allowed origins:`, allAllowedOrigins);
           return callback(new Error('Not allowed by CORS'));
         }
       } else {
         // Development mode - allow all origins
+        console.log(`CORS allowed (dev mode) for origin: ${origin}`);
         return callback(null, true);
       }
     },
@@ -167,6 +175,8 @@ const securityConfig = {
     ],
     exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
     maxAge: 86400, // 24 hours
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   },
   
   // Helmet configuration for enhanced security headers
@@ -217,6 +227,9 @@ app.use(cookieParser(cookieSecret));
 
 // Enhanced CORS configuration
 app.use(cors(securityConfig.corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(securityConfig.corsOptions));
 
 // Enhanced security headers with Helmet
 app.use(helmet(securityConfig.helmetOptions));

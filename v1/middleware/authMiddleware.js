@@ -202,7 +202,11 @@ const authorizeRoles = (...roles) => {
       throw new ApiError('Authorization failed: No user role found', StatusCodes.FORBIDDEN);
     }
 
-    if (!roles.includes(req.user.role)) {
+    // Case-insensitive role comparison
+    const userRole = req.user.role.toLowerCase();
+    const allowedRoles = roles.map(role => role.toLowerCase());
+
+    if (!allowedRoles.includes(userRole)) {
       logger.logSecurityEvent('AUTHORIZATION_FAILED', {
         userId: req.user.userId,
         userRole: req.user.role,
@@ -219,7 +223,7 @@ const authorizeRoles = (...roles) => {
     }
 
     // Log successful authorization for sensitive roles
-    if (['admin', 'manager'].includes(req.user.role)) {
+    if (['admin', 'manager'].includes(userRole)) {
       logger.logSecurityEvent('PRIVILEGED_ACCESS', {
         userId: req.user.userId,
         userRole: req.user.role,

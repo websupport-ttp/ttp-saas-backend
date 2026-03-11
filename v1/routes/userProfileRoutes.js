@@ -21,4 +21,7 @@ router.route('/profile/picture')
   .post(uploadProfilePicture)
   .delete(deleteProfilePicture);
 
+// Alternative route for profile picture upload (for backward compatibility)
+router.post('/upload-profile-picture', uploadProfilePicture);
+
 module.exports = router;

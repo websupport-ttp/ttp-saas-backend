@@ -1198,10 +1198,368 @@ const getCarHireConfirmationEmail = (data) => {
   return getBaseTemplate(content, 'Car Hire Booking Confirmed');
 };
 
+/**
+ * Email Verification OTP Email - Modern Design
+ */
+const getEmailVerificationOtpEmail = (data) => {
+  const { otp, email, expiryMinutes = 10 } = data;
+
+  const content = `
+    <div class="header">
+      <div class="header-content">
+        <div class="brand">
+          <div class="brand-icon">
+            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">verified_user</span>
+          </div>
+          <div class="brand-text">
+            <p class="brand-name">THE TRAVEL PLACE</p>
+            <p class="brand-tagline">Email Verification</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1 class="greeting">Verify your email address</h1>
+      <p class="subtext">To complete your registration, please enter the verification code below:</p>
+
+      <div style="background: linear-gradient(135deg, ${BRAND_COLORS.red} 0%, ${BRAND_COLORS.redDark} 100%); border-radius: 16px; padding: 40px; text-align: center; margin: 32px 0;">
+        <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255, 255, 255, 0.8); margin: 0 0 16px 0;">Your Verification Code</p>
+        <div style="background-color: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; padding: 24px; display: inline-block;">
+          <p style="font-size: 48px; font-weight: 700; letter-spacing: 12px; color: ${BRAND_COLORS.white}; margin: 0; font-family: 'Courier New', monospace;">${otp}</p>
+        </div>
+        <p style="font-size: 13px; color: rgba(255, 255, 255, 0.9); margin: 20px 0 0 0;">This code expires in ${expiryMinutes} minutes</p>
+      </div>
+
+      <div class="info-card">
+        <div class="info-card-header">
+          <span class="material-icons-outlined info-card-icon">info</span>
+          <h3 class="info-card-title">Security Tips</h3>
+        </div>
+        <div style="padding: 12px 0;">
+          <p style="font-size: 13px; color: ${BRAND_COLORS.gray700}; line-height: 1.6; margin: 0;">
+            • Never share this code with anyone<br>
+            • The Travel Place will never ask for your verification code<br>
+            • If you didn't request this code, please ignore this email<br>
+            • This code is only valid for ${expiryMinutes} minutes
+          </p>
+        </div>
+      </div>
+
+      <div class="alert-box">
+        <p class="alert-title">
+          <span class="material-icons-outlined" style="font-size: 18px;">help_outline</span>
+          Didn't request this?
+        </p>
+        <p class="alert-content">
+          If you didn't try to register with The Travel Place, you can safely ignore this email. Your account security is important to us.
+        </p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-brand">
+        <span class="material-icons-outlined footer-brand-icon">verified_user</span>
+        <span class="footer-brand-name">THE TRAVEL PLACE</span>
+      </div>
+      <p class="footer-text">This is an automated security email for account verification.<br>For your security, do not share this code with anyone.</p>
+      <div class="footer-links">
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/help" class="footer-link">Help Center</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/privacy" class="footer-link">Privacy Policy</a>
+      </div>
+      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
+    </div>
+  `;
+
+  return getBaseTemplate(content, 'Verify Your Email - The Travel Place');
+};
+
+/**
+ * Welcome Email - Modern Design
+ */
+const getWelcomeEmail = (data) => {
+  const { firstName, email } = data;
+
+  const content = `
+    <div class="header">
+      <div class="header-content">
+        <div class="brand">
+          <div class="brand-icon">
+            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">celebration</span>
+          </div>
+          <div class="brand-text">
+            <p class="brand-name">THE TRAVEL PLACE</p>
+            <p class="brand-tagline">Welcome Aboard!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1 class="greeting">Welcome to The Travel Place, ${firstName || 'Traveler'}! 🎉</h1>
+      <p class="subtext">Your account has been successfully created. We're excited to help you explore the world!</p>
+
+      <div style="background: linear-gradient(135deg, ${BRAND_COLORS.red} 0%, ${BRAND_COLORS.redDark} 100%); border-radius: 16px; padding: 32px; text-align: center; margin: 32px 0;">
+        <span class="material-icons-outlined" style="font-size: 64px; color: ${BRAND_COLORS.white}; margin-bottom: 16px;">luggage</span>
+        <p style="font-size: 18px; font-weight: 600; color: ${BRAND_COLORS.white}; margin: 0 0 8px 0;">Your Journey Starts Here</p>
+        <p style="font-size: 14px; color: rgba(255, 255, 255, 0.9); margin: 0;">Book flights, hotels, car rentals, and more - all in one place</p>
+      </div>
+
+      <div style="margin: 32px 0;">
+        <h3 style="font-size: 14px; font-weight: 600; color: ${BRAND_COLORS.gray900}; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">What you can do now</h3>
+        <div class="action-cards">
+          <div class="action-card">
+            <span class="material-icons-outlined action-icon">flight</span>
+            <p class="action-title">Book Flights</p>
+            <p class="action-desc">Search and compare flights worldwide</p>
+            <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/flights" class="action-link">Search Flights</a>
+          </div>
+          <div class="action-card">
+            <span class="material-icons-outlined action-icon">hotel</span>
+            <p class="action-title">Find Hotels</p>
+            <p class="action-desc">Discover great accommodation deals</p>
+            <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/hotels" class="action-link">Browse Hotels</a>
+          </div>
+          <div class="action-card">
+            <span class="material-icons-outlined action-icon">directions_car</span>
+            <p class="action-title">Rent a Car</p>
+            <p class="action-desc">Get the best car rental rates</p>
+            <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/cars" class="action-link">Rent Now</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-card-header">
+          <span class="material-icons-outlined info-card-icon">account_circle</span>
+          <h3 class="info-card-title">Your Account Details</h3>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Email Address</span>
+          <span class="info-value">${email || 'N/A'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Account Status</span>
+          <span class="info-value" style="color: ${BRAND_COLORS.green};">Active</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Member Since</span>
+          <span class="info-value">${new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+        </div>
+      </div>
+
+      <div class="alert-box">
+        <p class="alert-title">
+          <span class="material-icons-outlined" style="font-size: 18px;">tips_and_updates</span>
+          Pro Tips for Your First Booking
+        </p>
+        <ul class="alert-list">
+          <li>Complete your profile for faster checkout</li>
+          <li>Enable notifications to get the best travel deals</li>
+          <li>Save your favorite destinations for quick access</li>
+          <li>Check out our travel guides and tips</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-brand">
+        <span class="material-icons-outlined footer-brand-icon">celebration</span>
+        <span class="footer-brand-name">THE TRAVEL PLACE</span>
+      </div>
+      <p class="footer-text">Thank you for choosing The Travel Place for your travel needs.<br>We're here to make your journey unforgettable!</p>
+      <div class="footer-links">
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/help" class="footer-link">Help Center</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/about" class="footer-link">About Us</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/blog" class="footer-link">Travel Blog</a>
+      </div>
+      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
+    </div>
+  `;
+
+  return getBaseTemplate(content, 'Welcome to The Travel Place!');
+};
+
+/**
+ * Password Reset Email - Modern Design
+ */
+const getPasswordResetEmail = (data) => {
+  const { firstName, resetUrl, expiryMinutes = 30 } = data;
+
+  const content = `
+    <div class="header">
+      <div class="header-content">
+        <div class="brand">
+          <div class="brand-icon">
+            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">lock_reset</span>
+          </div>
+          <div class="brand-text">
+            <p class="brand-name">THE TRAVEL PLACE</p>
+            <p class="brand-tagline">Password Reset</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1 class="greeting">Reset your password</h1>
+      <p class="subtext">Hi ${firstName || 'there'}, we received a request to reset your password. Click the button below to create a new password.</p>
+
+      <div style="text-align: center; margin: 40px 0;">
+        <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, ${BRAND_COLORS.red} 0%, ${BRAND_COLORS.redDark} 100%); color: ${BRAND_COLORS.white}; text-decoration: none; padding: 16px 48px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
+          Reset Password
+        </a>
+      </div>
+
+      <div class="info-card">
+        <div class="info-card-header">
+          <span class="material-icons-outlined info-card-icon">schedule</span>
+          <h3 class="info-card-title">Link Expiration</h3>
+        </div>
+        <div style="padding: 12px 0;">
+          <p style="font-size: 13px; color: ${BRAND_COLORS.gray700}; line-height: 1.6; margin: 0;">
+            This password reset link will expire in <strong>${expiryMinutes} minutes</strong> for security reasons. If you need a new link, you can request another password reset from the login page.
+          </p>
+        </div>
+      </div>
+
+      <div class="alert-box">
+        <p class="alert-title">
+          <span class="material-icons-outlined" style="font-size: 18px;">security</span>
+          Security Notice
+        </p>
+        <ul class="alert-list">
+          <li>Never share your password with anyone</li>
+          <li>Use a strong, unique password</li>
+          <li>If you didn't request this reset, please ignore this email</li>
+          <li>Your current password will remain active until you set a new one</li>
+        </ul>
+      </div>
+
+      <div style="background-color: ${BRAND_COLORS.gray100}; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
+        <p style="font-size: 12px; color: ${BRAND_COLORS.gray600}; margin: 0 0 8px 0;">If the button doesn't work, copy and paste this link:</p>
+        <p style="font-size: 11px; color: ${BRAND_COLORS.gray500}; word-break: break-all; margin: 0;">${resetUrl}</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-brand">
+        <span class="material-icons-outlined footer-brand-icon">lock_reset</span>
+        <span class="footer-brand-name">THE TRAVEL PLACE</span>
+      </div>
+      <p class="footer-text">This is an automated security email for password reset.<br>If you didn't request this, please contact our support team immediately.</p>
+      <div class="footer-links">
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/help" class="footer-link">Help Center</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/privacy" class="footer-link">Security</a>
+      </div>
+      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
+    </div>
+  `;
+
+  return getBaseTemplate(content, 'Reset Your Password - The Travel Place');
+};
+
+/**
+ * Account Verification Success Email - Modern Design
+ */
+const getAccountVerifiedEmail = (data) => {
+  const { firstName, email } = data;
+
+  const content = `
+    <div class="header">
+      <div class="header-content">
+        <div class="brand">
+          <div class="brand-icon">
+            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">check_circle</span>
+          </div>
+          <div class="brand-text">
+            <p class="brand-name">THE TRAVEL PLACE</p>
+            <p class="brand-tagline">Account Verified</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1 class="greeting">Your account is verified! ✓</h1>
+      <p class="subtext">Congratulations ${firstName || 'Traveler'}! Your email has been successfully verified and your account is now fully active.</p>
+
+      <div style="background: linear-gradient(135deg, ${BRAND_COLORS.green} 0%, #059669 100%); border-radius: 16px; padding: 40px; text-align: center; margin: 32px 0;">
+        <span class="material-icons-outlined" style="font-size: 80px; color: ${BRAND_COLORS.white}; margin-bottom: 16px;">verified</span>
+        <p style="font-size: 20px; font-weight: 600; color: ${BRAND_COLORS.white}; margin: 0 0 8px 0;">Account Successfully Verified</p>
+        <p style="font-size: 14px; color: rgba(255, 255, 255, 0.9); margin: 0;">You can now access all features of The Travel Place</p>
+      </div>
+
+      <div style="margin: 32px 0;">
+        <h3 style="font-size: 14px; font-weight: 600; color: ${BRAND_COLORS.gray900}; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">Start exploring</h3>
+        <div class="action-cards">
+          <div class="action-card">
+            <span class="material-icons-outlined action-icon">dashboard</span>
+            <p class="action-title">Your Dashboard</p>
+            <p class="action-desc">Manage bookings and preferences</p>
+            <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/dashboard" class="action-link">Go to Dashboard</a>
+          </div>
+          <div class="action-card">
+            <span class="material-icons-outlined action-icon">explore</span>
+            <p class="action-title">Browse Services</p>
+            <p class="action-desc">Discover travel options</p>
+            <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/services" class="action-link">Explore Now</a>
+          </div>
+          <div class="action-card">
+            <span class="material-icons-outlined action-icon">person</span>
+            <p class="action-title">Complete Profile</p>
+            <p class="action-desc">Add more details for faster booking</p>
+            <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/profile" class="action-link">Update Profile</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-card-header">
+          <span class="material-icons-outlined info-card-icon">verified_user</span>
+          <h3 class="info-card-title">Verified Account Benefits</h3>
+        </div>
+        <div style="padding: 12px 0;">
+          <p style="font-size: 13px; color: ${BRAND_COLORS.gray700}; line-height: 1.6; margin: 0;">
+            ✓ Book flights, hotels, and car rentals<br>
+            ✓ Access exclusive deals and offers<br>
+            ✓ Manage all your bookings in one place<br>
+            ✓ Get personalized travel recommendations<br>
+            ✓ 24/7 customer support
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-brand">
+        <span class="material-icons-outlined footer-brand-icon">check_circle</span>
+        <span class="footer-brand-name">THE TRAVEL PLACE</span>
+      </div>
+      <p class="footer-text">Your account is now fully activated and ready to use.<br>Happy travels!</p>
+      <div class="footer-links">
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/help" class="footer-link">Help Center</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/about" class="footer-link">About Us</a>
+      </div>
+      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
+    </div>
+  `;
+
+  return getBaseTemplate(content, 'Account Verified - The Travel Place');
+};
+
 module.exports = {
   getTravelInsuranceConfirmationEmail,
   getHotelConfirmationEmail,
   getFlightConfirmationEmail,
   getCarHireConfirmationEmail,
+  getEmailVerificationOtpEmail,
+  getWelcomeEmail,
+  getPasswordResetEmail,
+  getAccountVerifiedEmail,
   BRAND_COLORS
 };

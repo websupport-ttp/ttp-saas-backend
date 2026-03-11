@@ -8,6 +8,11 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { attachCookiesToResponse, generateToken, verifyToken, clearAuthCookies, blacklistToken } = require('../utils/jwt');
 const { sendEmail } = require('../utils/emailService');
 const { sendSMS } = require('../utils/smsService');
+const { 
+  getWelcomeEmail, 
+  getPasswordResetEmail, 
+  getAccountVerifiedEmail 
+} = require('../utils/emailTemplates');
 const logger = require('../utils/logger');
 const { createAuditMiddleware } = require('../middleware/auditMiddleware');
 const crypto = require('crypto');
@@ -435,17 +440,22 @@ const forgotPassword = asyncHandler(async (req, res) => {
   const resetToken = user.getResetPasswordToken();
   await user.save({ validateBeforeSave: false });
 
-  const resetUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/reset-password/${resetToken}`;
+  const resetUrl = `${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/reset-password?token=${resetToken}`;
 
-  const emailMessage = `You are receiving this because you (or someone else) has requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl} with a JSON body containing { "token": "${resetToken}", "newPassword": "YOUR_NEW_PASSWORD" }. \n\n If you did not request this, please ignore this email and your password will remain unchanged.`;
   const smsMessage = `Your password reset token for The Travel Place is: ${resetToken}. This token is valid for 10 minutes.`;
 
   try {
     if (user.email) {
+      const emailHtml = getPasswordResetEmail({
+        firstName: user.firstName,
+        resetUrl: resetUrl,
+        expiryMinutes: 10
+      });
+
       await sendEmail({
         to: user.email,
-        subject: 'Password Reset Request for The Travel Place',
-        html: `<h4>Hello ${user.firstName},</h4><p>${emailMessage}</p>`,
+        subject: 'Reset Your Password - The Travel Place',
+        html: emailHtml,
       });
       logger.info(`Password reset email sent to ${user.email}`);
     } else if (user.phoneNumber) {
@@ -526,6 +536,24 @@ const verifyEmail = asyncHandler(async (req, res) => {
   await user.save({ validateBeforeSave: false });
 
   logger.info(`Email verified successfully for user: ${user.email}`);
+
+  // Send welcome/verification success email
+  try {
+    const emailHtml = getAccountVerifiedEmail({
+      firstName: user.firstName,
+      email: user.email
+    });
+
+    await sendEmail({
+      to: user.email,
+      subject: 'Account Verified - Welcome to The Travel Place!',
+      html: emailHtml,
+    });
+    logger.info(`Verification success email sent to ${user.email}`);
+  } catch (err) {
+    logger.error(`Error sending verification success email to ${user.email}: ${err.message}`);
+    // Don't throw error, verification was successful
+  }
 
   // Redirect to frontend with success
   const frontendUrl = process.env.FRONTEND_URL || 'https://test.ttp.ng';

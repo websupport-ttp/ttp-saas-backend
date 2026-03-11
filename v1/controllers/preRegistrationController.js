@@ -8,6 +8,7 @@ const ApiResponse = require('../utils/apiResponse');
 const asyncHandler = require('../middleware/asyncHandler');
 const { sendEmail } = require('../utils/emailService');
 const { sendSMS } = require('../utils/smsService');
+const { getEmailVerificationOtpEmail } = require('../utils/emailTemplates');
 const logger = require('../utils/logger');
 
 /**
@@ -68,22 +69,16 @@ const sendVerificationCodes = asyncHandler(async (req, res) => {
 
   // Send email OTP
   try {
+    const emailHtml = getEmailVerificationOtpEmail({
+      otp: emailOtp,
+      email: email,
+      expiryMinutes: 10
+    });
+
     await sendEmail({
       to: email,
       subject: 'Verify Your Email - The Travel Place',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">Email Verification</h2>
-          <p>Your verification code is:</p>
-          <div style="background-color: #f5f5f5; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
-            ${emailOtp}
-          </div>
-          <p>This code will expire in 10 minutes.</p>
-          <p>If you didn't request this code, please ignore this email.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">The Travel Place - Your trusted travel partner</p>
-        </div>
-      `,
+      html: emailHtml,
     });
     logger.info(`Email OTP sent to ${email}`);
   } catch (error) {
@@ -267,19 +262,16 @@ const resendEmailOtp = asyncHandler(async (req, res) => {
 
   // Send email
   try {
+    const emailHtml = getEmailVerificationOtpEmail({
+      otp: emailOtp,
+      email: email,
+      expiryMinutes: 10
+    });
+
     await sendEmail({
       to: email,
       subject: 'Verify Your Email - The Travel Place',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">Email Verification</h2>
-          <p>Your new verification code is:</p>
-          <div style="background-color: #f5f5f5; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
-            ${emailOtp}
-          </div>
-          <p>This code will expire in 10 minutes.</p>
-        </div>
-      `,
+      html: emailHtml,
     });
     logger.info(`Email OTP resent to ${email}`);
   } catch (error) {

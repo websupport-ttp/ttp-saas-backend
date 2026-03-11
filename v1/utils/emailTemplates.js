@@ -1552,6 +1552,69 @@ const getAccountVerifiedEmail = (data) => {
   return getBaseTemplate(content, 'Account Verified - The Travel Place');
 };
 
+/**
+ * Generate email HTML from database template
+ * @param {Object} template - Email template from database
+ * @param {Object} data - Data to populate template variables
+ * @returns {string} - Generated HTML email
+ */
+const generateEmailFromTemplate = (template, data) => {
+  // Replace variables in content
+  let content = template.mainContent;
+  let greeting = template.greeting;
+  let subject = template.subject;
+  
+  // Replace all {{variable}} placeholders
+  const replaceVariables = (text) => {
+    return text.replace(/\{\{(\w+)\}\}/g, (match, variable) => {
+      return data[variable] || match;
+    });
+  };
+
+  content = replaceVariables(content);
+  greeting = replaceVariables(greeting);
+  subject = replaceVariables(subject);
+
+  const emailContent = `
+    <div class="header">
+      <div class="header-content">
+        <div class="brand">
+          <div class="brand-icon">
+            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">${template.headerIcon || 'mail'}</span>
+          </div>
+          <div class="brand-text">
+            <p class="brand-name">${template.headerTitle || 'THE TRAVEL PLACE'}</p>
+            ${template.headerSubtitle ? `<p class="brand-tagline">${template.headerSubtitle}</p>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1 class="greeting">${greeting}</h1>
+      <div class="subtext">
+        ${content}
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-brand">
+        <span class="material-icons-outlined footer-brand-icon">${template.headerIcon || 'mail'}</span>
+        <span class="footer-brand-name">THE TRAVEL PLACE</span>
+      </div>
+      <p class="footer-text">${template.footerText || 'Thank you for choosing The Travel Place.'}</p>
+      <div class="footer-links">
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/help" class="footer-link">Help Center</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
+        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/about" class="footer-link">About Us</a>
+      </div>
+      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
+    </div>
+  `;
+
+  return getBaseTemplate(emailContent, subject);
+};
+
 module.exports = {
   getTravelInsuranceConfirmationEmail,
   getHotelConfirmationEmail,
@@ -1561,5 +1624,6 @@ module.exports = {
   getWelcomeEmail,
   getPasswordResetEmail,
   getAccountVerifiedEmail,
+  generateEmailFromTemplate,
   BRAND_COLORS
 };

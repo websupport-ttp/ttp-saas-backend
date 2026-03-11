@@ -24,6 +24,7 @@ const currencyRoutes = require('./currencyRoutes');
 const transactionDashboardRoutes = require('./transactionDashboardRoutes');
 const siteSettingsRoutes = require('./siteSettingsRoutes');
 const teamRoutes = require('./teamRoutes');
+const emailTemplateRoutes = require('./emailTemplateRoutes');
 
 // Import security middleware
 const { 
@@ -87,6 +88,7 @@ router.use('/currencies', apiLimiter); // Currency with standard rate limiting
 router.use('/dashboard/transactions', apiLimiter); // Transaction dashboard with standard rate limiting
 router.use('/settings', apiLimiter); // Site settings with standard rate limiting
 router.use('/team', apiLimiter); // Team management with standard rate limiting
+router.use('/email-templates', apiLimiter); // Email templates with standard rate limiting
 
 // Define base routes for each module
 router.use('/auth', authRoutes);
@@ -113,6 +115,7 @@ router.use('/currencies', currencyRoutes); // Currency management endpoints
 router.use('/dashboard/transactions', transactionDashboardRoutes); // Transaction dashboard endpoints
 router.use('/settings', siteSettingsRoutes); // Site settings endpoints
 router.use('/team', teamRoutes); // Team management endpoints
+router.use('/email-templates', emailTemplateRoutes); // Email template management endpoints
 router.use('/health', require('./healthRoutes')); // Health check endpoints
 
 module.exports = router;

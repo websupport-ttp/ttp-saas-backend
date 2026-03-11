@@ -5,18 +5,16 @@ const ApiError = require('../utils/apiError');
 const asyncHandler = require('../middleware/asyncHandler');
 
 // @desc    Get site settings
-// @route   GET /api/v1/settings/site
+// @route   GET /api/v1/settings
 // @access  Public
 exports.getSiteSettings = asyncHandler(async (req, res) => {
   const settings = await SiteSettings.getSettings();
   
-  res.status(200).json(
-    ApiResponse.success(settings, 'Site settings retrieved successfully')
-  );
+  return ApiResponse.success(res, 200, 'Site settings retrieved successfully', settings);
 });
 
 // @desc    Update site settings
-// @route   PUT /api/v1/settings/site
+// @route   PUT /api/v1/settings
 // @access  Private/Admin
 exports.updateSiteSettings = asyncHandler(async (req, res) => {
   const {
@@ -47,7 +45,5 @@ exports.updateSiteSettings = asyncHandler(async (req, res) => {
 
   const settings = await SiteSettings.updateSettings(updates, req.user._id);
 
-  res.status(200).json(
-    ApiResponse.success(settings, 'Site settings updated successfully')
-  );
+  return ApiResponse.success(res, 200, 'Site settings updated successfully', settings);
 });

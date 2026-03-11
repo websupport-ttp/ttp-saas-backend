@@ -12,9 +12,7 @@ exports.getTeamMembers = asyncHandler(async (req, res) => {
     .sort({ order: 1, createdAt: 1 })
     .select('-createdBy -updatedBy');
 
-  res.status(200).json(
-    ApiResponse.success(teamMembers, 'Team members retrieved successfully')
-  );
+  return ApiResponse.success(res, 200, 'Team members retrieved successfully', teamMembers);
 });
 
 // @desc    Get all team members (admin)
@@ -26,9 +24,7 @@ exports.getAllTeamMembers = asyncHandler(async (req, res) => {
     .populate('createdBy', 'firstName lastName email')
     .populate('updatedBy', 'firstName lastName email');
 
-  res.status(200).json(
-    ApiResponse.success(teamMembers, 'All team members retrieved successfully')
-  );
+  return ApiResponse.success(res, 200, 'All team members retrieved successfully', teamMembers);
 });
 
 // @desc    Create team member
@@ -56,9 +52,7 @@ exports.createTeamMember = asyncHandler(async (req, res) => {
     updatedBy: req.user._id,
   });
 
-  res.status(201).json(
-    ApiResponse.success(teamMember, 'Team member created successfully')
-  );
+  return ApiResponse.created(res, 'Team member created successfully', teamMember);
 });
 
 // @desc    Update team member
@@ -89,9 +83,7 @@ exports.updateTeamMember = asyncHandler(async (req, res) => {
 
   await teamMember.save();
 
-  res.status(200).json(
-    ApiResponse.success(teamMember, 'Team member updated successfully')
-  );
+  return ApiResponse.success(res, 200, 'Team member updated successfully', teamMember);
 });
 
 // @desc    Delete team member
@@ -108,7 +100,5 @@ exports.deleteTeamMember = asyncHandler(async (req, res) => {
 
   await teamMember.deleteOne();
 
-  res.status(200).json(
-    ApiResponse.success(null, 'Team member deleted successfully')
-  );
+  return ApiResponse.success(res, 200, 'Team member deleted successfully', null);
 });

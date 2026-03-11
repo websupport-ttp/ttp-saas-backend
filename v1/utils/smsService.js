@@ -132,6 +132,129 @@ const sendViaTermii = async (to, message) => {
 };
 
 /**
+ * @function sendOTPViaTermii
+ * @description Sends OTP via Termii's OTP API (more secure and reliable)
+ * @param {string} to - Recipient phone number
+ * @param {Object} options - OTP options
+ * @returns {Object} Send result with pinId for verification
+ */
+const sendOTPViaTermii = async (to, options = {}) => {
+  if (!process.env.TERMII_API_KEY) {
+    throw new Error('Termii API key not configured');
+  }
+  
+  try {
+    const termiiBaseUrl = process.env.TERMII_BASE_URL || 'https://v3.api.termii.com';
+    
+    // Generate OTP code if not provided
+    const pinLength = options.pinLength || 6;
+    const pinType = options.pinType || 'NUMERIC';
+    const pinPlaceholder = '< ' + '1'.repeat(pinLength) + ' >';
+    
+    // Use configured sender ID from environment variable
+    // For testing, use 'fastbeep' (test sender ID provided by Termii)
+    const senderId = options.senderId || process.env.TERMII_SENDER_ID || 'fastbeep';
+    
+    const payload = {
+      api_key: process.env.TERMII_API_KEY,
+      pin_type: pinType,
+      to: to.replace('+', ''), // Termii expects without +
+      from: senderId,
+      channel: 'generic',
+      pin_attempts: options.pinAttempts || 3,
+      pin_time_to_live: options.pinTimeToLive || 5, // minutes
+      pin_length: pinLength,
+      pin_placeholder: pinPlaceholder,
+      message_text: options.messageText || `Your verification code is ${pinPlaceholder}. Valid for ${options.pinTimeToLive || 5} minutes.`,
+      message_type: pinType
+    };
+    
+    const response = await axios.post(`${termiiBaseUrl}/api/sms/otp/send`, payload, {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000
+    });
+    
+    logger.info(`OTP sent via Termii to ${to}`, {
+      pinId: response.data.pinId || response.data.pin_id,
+      status: response.data.smsStatus,
+      provider: 'termii-otp'
+    });
+    
+    return {
+      success: true,
+      provider: 'termii-otp',
+      pinId: response.data.pinId || response.data.pin_id,
+      messageId: response.data.message_id_str,
+      status: response.data.smsStatus,
+      phoneNumber: response.data.phone_number,
+      cost: '₦2.50' // Approximate
+    };
+  } catch (error) {
+    logger.error(`Termii OTP failed for ${to}: ${error.message}`, {
+      provider: 'termii-otp',
+      error: error.response?.data || error.message
+    });
+    throw error;
+  }
+};
+
+/**
+ * @function verifyOTPViaTermii
+ * @description Verifies OTP sent via Termii's OTP API
+ * @param {string} pinId - PIN ID returned from sendOTPViaTermii
+ * @param {string} pin - OTP code entered by user
+ * @returns {Object} Verification result
+ */
+const verifyOTPViaTermii = async (pinId, pin) => {
+  if (!process.env.TERMII_API_KEY) {
+    throw new Error('Termii API key not configured');
+  }
+  
+  try {
+    const termiiBaseUrl = process.env.TERMII_BASE_URL || 'https://v3.api.termii.com';
+    
+    const response = await axios.post(`${termiiBaseUrl}/api/sms/otp/verify`, {
+      api_key: process.env.TERMII_API_KEY,
+      pin_id: pinId,
+      pin: pin
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000
+    });
+    
+    const verified = response.data.verified === true || response.data.verified === 'True';
+    
+    logger.info(`OTP verification via Termii`, {
+      pinId,
+      verified,
+      msisdn: response.data.msisdn
+    });
+    
+    return {
+      success: true,
+      verified,
+      msisdn: response.data.msisdn,
+      provider: 'termii-otp'
+    };
+  } catch (error) {
+    logger.error(`Termii OTP verification failed: ${error.message}`, {
+      pinId,
+      error: error.response?.data || error.message
+    });
+    
+    return {
+      success: false,
+      verified: false,
+      error: error.response?.data?.message || error.message
+    };
+  }
+};
+
+/**
  * @function sendViaTelnyx
  * @description Sends SMS via Telnyx (International provider)
  * @param {string} to - Recipient phone number
@@ -375,6 +498,8 @@ const getProviderForCountry = (phoneNumber) => {
 module.exports = { 
   sendSMS,
   sendViaTermii,
+  sendOTPViaTermii,
+  verifyOTPViaTermii,
   sendViaTelnyx,
   sendViaTwilio,
   validateSMSConfiguration,

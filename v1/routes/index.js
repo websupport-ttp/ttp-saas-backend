@@ -28,6 +28,7 @@ const emailTemplateRoutes = require('./emailTemplateRoutes');
 const serviceChargeRoutes = require('./serviceChargeRoutes');
 const taxRoutes = require('./taxRoutes');
 const discountRoutes = require('./discountRoutes');
+const pricingRoutes = require('./pricingRoutes');
 
 // Import security middleware
 const { 
@@ -95,6 +96,7 @@ router.use('/email-templates', apiLimiter); // Email templates with standard rat
 router.use('/service-charges', apiLimiter); // Service charges with standard rate limiting
 router.use('/taxes', apiLimiter); // Taxes with standard rate limiting
 router.use('/discounts', apiLimiter); // Discounts with standard rate limiting
+router.use('/pricing', apiLimiter); // Pricing calculation with standard rate limiting
 
 // Define base routes for each module
 router.use('/auth', authRoutes);
@@ -125,6 +127,7 @@ router.use('/email-templates', emailTemplateRoutes); // Email template managemen
 router.use('/service-charges', serviceChargeRoutes); // Service charge management endpoints
 router.use('/taxes', taxRoutes); // Tax management endpoints
 router.use('/discounts', discountRoutes); // Discount management endpoints
+router.use('/pricing', pricingRoutes); // Pricing calculation endpoints
 router.use('/health', require('./healthRoutes')); // Health check endpoints
 
 module.exports = router;

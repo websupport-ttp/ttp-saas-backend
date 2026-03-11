@@ -22,6 +22,8 @@ const visaAssistanceRoutes = require('./visaAssistanceRoutes');
 const cmsRoutes = require('./cmsRoutes');
 const currencyRoutes = require('./currencyRoutes');
 const transactionDashboardRoutes = require('./transactionDashboardRoutes');
+const siteSettingsRoutes = require('./siteSettingsRoutes');
+const teamRoutes = require('./teamRoutes');
 
 // Import security middleware
 const { 
@@ -83,6 +85,8 @@ router.use('/visa-assistance', paymentLimiter); // Visa assistance involves paym
 router.use('/cms', apiLimiter); // CMS with standard rate limiting
 router.use('/currencies', apiLimiter); // Currency with standard rate limiting
 router.use('/dashboard/transactions', apiLimiter); // Transaction dashboard with standard rate limiting
+router.use('/settings', apiLimiter); // Site settings with standard rate limiting
+router.use('/team', apiLimiter); // Team management with standard rate limiting
 
 // Define base routes for each module
 router.use('/auth', authRoutes);
@@ -107,6 +111,8 @@ router.use('/visa-assistance', visaAssistanceRoutes); // Visa assistance endpoin
 router.use('/cms', cmsRoutes); // CMS endpoints for content management
 router.use('/currencies', currencyRoutes); // Currency management endpoints
 router.use('/dashboard/transactions', transactionDashboardRoutes); // Transaction dashboard endpoints
+router.use('/settings', siteSettingsRoutes); // Site settings endpoints
+router.use('/team', teamRoutes); // Team management endpoints
 router.use('/health', require('./healthRoutes')); // Health check endpoints
 
 module.exports = router;

@@ -2,12 +2,12 @@
 const express = require('express');
 const router = express.Router();
 const { getSiteSettings, updateSiteSettings } = require('../controllers/siteSettingsController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 
 // Public route
 router.get('/', getSiteSettings);
 
 // Admin only route
-router.put('/', protect, authorize('admin'), updateSiteSettings);
+router.put('/', authenticateUser, authorizeRoles('admin'), updateSiteSettings);
 
 module.exports = router;

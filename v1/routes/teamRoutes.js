@@ -8,15 +8,15 @@ const {
   updateTeamMember,
   deleteTeamMember,
 } = require('../controllers/teamController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 
 // Public routes
 router.get('/', getTeamMembers);
 
 // Admin routes
-router.get('/all', protect, authorize('admin'), getAllTeamMembers);
-router.post('/', protect, authorize('admin'), createTeamMember);
-router.put('/:id', protect, authorize('admin'), updateTeamMember);
-router.delete('/:id', protect, authorize('admin'), deleteTeamMember);
+router.get('/all', authenticateUser, authorizeRoles('admin'), getAllTeamMembers);
+router.post('/', authenticateUser, authorizeRoles('admin'), createTeamMember);
+router.put('/:id', authenticateUser, authorizeRoles('admin'), updateTeamMember);
+router.delete('/:id', authenticateUser, authorizeRoles('admin'), deleteTeamMember);
 
 module.exports = router;

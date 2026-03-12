@@ -14,17 +14,13 @@ const { UserRoles } = require('../utils/constants');
 // Public routes
 router.get('/applicable/:serviceType', getApplicableServiceCharges);
 
-// Admin routes
-router.use(authenticateUser);
-router.use(authorizeRoles(UserRoles.ADMIN));
+// Read routes (authenticated users can view)
+router.get('/', authenticateUser, getAllServiceCharges);
+router.get('/:id', authenticateUser, getServiceCharge);
 
-router.route('/')
-  .get(getAllServiceCharges)
-  .post(createServiceCharge);
-
-router.route('/:id')
-  .get(getServiceCharge)
-  .put(updateServiceCharge)
-  .delete(deleteServiceCharge);
+// Admin-only write routes
+router.post('/', authenticateUser, authorizeRoles(UserRoles.ADMIN), createServiceCharge);
+router.put('/:id', authenticateUser, authorizeRoles(UserRoles.ADMIN), updateServiceCharge);
+router.delete('/:id', authenticateUser, authorizeRoles(UserRoles.ADMIN), deleteServiceCharge);
 
 module.exports = router;

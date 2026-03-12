@@ -14,17 +14,13 @@ const { UserRoles } = require('../utils/constants');
 // Public routes
 router.get('/applicable/:serviceType', getApplicableTaxes);
 
-// Admin routes
-router.use(authenticateUser);
-router.use(authorizeRoles(UserRoles.ADMIN));
+// Read routes (authenticated users can view)
+router.get('/', authenticateUser, getAllTaxes);
+router.get('/:id', authenticateUser, getTax);
 
-router.route('/')
-  .get(getAllTaxes)
-  .post(createTax);
-
-router.route('/:id')
-  .get(getTax)
-  .put(updateTax)
-  .delete(deleteTax);
+// Admin-only write routes
+router.post('/', authenticateUser, authorizeRoles(UserRoles.ADMIN), createTax);
+router.put('/:id', authenticateUser, authorizeRoles(UserRoles.ADMIN), updateTax);
+router.delete('/:id', authenticateUser, authorizeRoles(UserRoles.ADMIN), deleteTax);
 
 module.exports = router;

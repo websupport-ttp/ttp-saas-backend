@@ -20,17 +20,13 @@ router.get('/applicable/:serviceType', getApplicableDiscounts);
 // Protected routes
 router.post('/:id/use', authenticateUser, incrementDiscountUsage);
 
-// Admin routes
-router.use(authenticateUser);
-router.use(authorizeRoles(UserRoles.ADMIN));
+// Read routes (authenticated users can view)
+router.get('/', authenticateUser, getAllDiscounts);
+router.get('/:id', authenticateUser, getDiscount);
 
-router.route('/')
-  .get(getAllDiscounts)
-  .post(createDiscount);
-
-router.route('/:id')
-  .get(getDiscount)
-  .put(updateDiscount)
-  .delete(deleteDiscount);
+// Admin-only write routes
+router.post('/', authenticateUser, authorizeRoles(UserRoles.ADMIN), createDiscount);
+router.put('/:id', authenticateUser, authorizeRoles(UserRoles.ADMIN), updateDiscount);
+router.delete('/:id', authenticateUser, authorizeRoles(UserRoles.ADMIN), deleteDiscount);
 
 module.exports = router;

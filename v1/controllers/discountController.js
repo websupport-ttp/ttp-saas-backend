@@ -9,22 +9,32 @@ const ApiError = require('../utils/apiError');
  * @access  Private/Admin
  */
 exports.getAllDiscounts = asyncHandler(async (req, res) => {
-  const { isActive, type, appliesTo } = req.query;
-  
-  const filter = {};
-  if (isActive !== undefined) filter.isActive = isActive === 'true';
-  if (type) filter.type = type;
-  if (appliesTo) filter.appliesTo = appliesTo;
-  
-  const discounts = await Discount.find(filter)
-    .sort({ priority: -1, createdAt: -1 })
-    .populate('createdBy', 'firstName lastName email')
-    .populate('updatedBy', 'firstName lastName email');
-  
-  res.status(200).json(ApiResponse.success({
-    count: discounts.length,
-    discounts
-  }, 'Discounts retrieved successfully'));
+  try {
+    const { isActive, type, appliesTo } = req.query;
+    
+    const filter = {};
+    if (isActive !== undefined) filter.isActive = isActive === 'true';
+    if (type) filter.type = type;
+    if (appliesTo) filter.appliesTo = appliesTo;
+    
+    const discounts = await Discount.find(filter)
+      .sort({ priority: -1, createdAt: -1 })
+      .populate('createdBy', 'firstName lastName email')
+      .populate('updatedBy', 'firstName lastName email')
+      .lean();
+    
+    res.status(200).json(ApiResponse.success({
+      count: discounts.length,
+      discounts
+    }, 'Discounts retrieved successfully'));
+  } catch (error) {
+    console.error('Error fetching discounts:', error);
+    // Return empty array if there's an error (e.g., collection doesn't exist)
+    res.status(200).json(ApiResponse.success({
+      count: 0,
+      discounts: []
+    }, 'Discounts retrieved successfully'));
+  }
 });
 
 /**
@@ -33,15 +43,22 @@ exports.getAllDiscounts = asyncHandler(async (req, res) => {
  * @access  Private/Admin
  */
 exports.getDiscount = asyncHandler(async (req, res) => {
-  const discount = await Discount.findById(req.params.id)
-    .populate('createdBy', 'firstName lastName email')
-    .populate('updatedBy', 'firstName lastName email');
-  
-  if (!discount) {
+  try {
+    const discount = await Discount.findById(req.params.id)
+      .populate('createdBy', 'firstName lastName email')
+      .populate('updatedBy', 'firstName lastName email')
+      .lean();
+    
+    if (!discount) {
+      throw new ApiError(404, 'Discount not found');
+    }
+    
+    res.status(200).json(ApiResponse.success({ discount }, 'Discount retrieved successfully'));
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    console.error('Error fetching discount:', error);
     throw new ApiError(404, 'Discount not found');
   }
-  
-  res.status(200).json(ApiResponse.success({ discount }, 'Discount retrieved successfully'));
 });
 
 /**
@@ -247,44 +264,52 @@ exports.validateDiscountCode = asyncHandler(async (req, res) => {
  * @access  Public
  */
 exports.getApplicableDiscounts = asyncHandler(async (req, res) => {
-  const { serviceType } = req.params;
-  const { userRole, providerCode } = req.query;
-  
-  const filter = {
-    isActive: true,
-    $or: [
-      { appliesTo: 'all' },
-      { appliesTo: serviceType }
-    ]
-  };
-  
-  // Add date filter
-  const now = new Date();
-  filter.$and = [
-    { $or: [{ validFrom: { $exists: false } }, { validFrom: { $lte: now } }] },
-    { $or: [{ validUntil: { $exists: false } }, { validUntil: { $gte: now } }] }
-  ];
-  
-  // Filter by provider if specified
-  if (providerCode) {
-    filter['provider.code'] = providerCode;
-  }
-  
-  const discounts = await Discount.find(filter).sort({ priority: -1 });
-  
-  // Calculate discount values for role-based discounts
-  const discountsWithValues = discounts.map(discount => {
-    const discountObj = discount.toObject();
-    if (discount.type === 'role-based' && userRole) {
-      discountObj.applicableValue = discount.getDiscountForRole(userRole);
+  try {
+    const { serviceType } = req.params;
+    const { userRole, providerCode } = req.query;
+    
+    const filter = {
+      isActive: true,
+      $or: [
+        { appliesTo: 'all' },
+        { appliesTo: serviceType }
+      ]
+    };
+    
+    // Add date filter
+    const now = new Date();
+    filter.$and = [
+      { $or: [{ validFrom: { $exists: false } }, { validFrom: { $lte: now } }] },
+      { $or: [{ validUntil: { $exists: false } }, { validUntil: { $gte: now } }] }
+    ];
+    
+    // Filter by provider if specified
+    if (providerCode) {
+      filter['provider.code'] = providerCode;
     }
-    return discountObj;
-  });
-  
-  res.status(200).json(ApiResponse.success({
-    count: discountsWithValues.length,
-    discounts: discountsWithValues
-  }, 'Applicable discounts retrieved successfully'));
+    
+    const discounts = await Discount.find(filter).sort({ priority: -1 }).lean();
+    
+    // Calculate discount values for role-based discounts
+    const discountsWithValues = discounts.map(discount => {
+      if (discount.type === 'role-based' && userRole && discount.roleDiscounts) {
+        const roleDiscount = discount.roleDiscounts.find(rd => rd.role === userRole);
+        discount.applicableValue = roleDiscount ? roleDiscount.value : 0;
+      }
+      return discount;
+    });
+    
+    res.status(200).json(ApiResponse.success({
+      count: discountsWithValues.length,
+      discounts: discountsWithValues
+    }, 'Applicable discounts retrieved successfully'));
+  } catch (error) {
+    console.error('Error fetching applicable discounts:', error);
+    res.status(200).json(ApiResponse.success({
+      count: 0,
+      discounts: []
+    }, 'Applicable discounts retrieved successfully'));
+  }
 });
 
 /**

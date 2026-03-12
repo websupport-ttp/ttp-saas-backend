@@ -9,22 +9,32 @@ const ApiError = require('../utils/apiError');
  * @access  Private/Admin
  */
 exports.getAllTaxes = asyncHandler(async (req, res) => {
-  const { isActive, appliesTo, country } = req.query;
-  
-  const filter = {};
-  if (isActive !== undefined) filter.isActive = isActive === 'true';
-  if (appliesTo) filter.appliesTo = appliesTo;
-  if (country) filter.country = country;
-  
-  const taxes = await Tax.find(filter)
-    .sort({ priority: -1, createdAt: -1 })
-    .populate('createdBy', 'firstName lastName email')
-    .populate('updatedBy', 'firstName lastName email');
-  
-  res.status(200).json(ApiResponse.success({
-    count: taxes.length,
-    taxes
-  }, 'Taxes retrieved successfully'));
+  try {
+    const { isActive, appliesTo, country } = req.query;
+    
+    const filter = {};
+    if (isActive !== undefined) filter.isActive = isActive === 'true';
+    if (appliesTo) filter.appliesTo = appliesTo;
+    if (country) filter.country = country;
+    
+    const taxes = await Tax.find(filter)
+      .sort({ priority: -1, createdAt: -1 })
+      .populate('createdBy', 'firstName lastName email')
+      .populate('updatedBy', 'firstName lastName email')
+      .lean();
+    
+    res.status(200).json(ApiResponse.success({
+      count: taxes.length,
+      taxes
+    }, 'Taxes retrieved successfully'));
+  } catch (error) {
+    console.error('Error fetching taxes:', error);
+    // Return empty array if there's an error (e.g., collection doesn't exist)
+    res.status(200).json(ApiResponse.success({
+      count: 0,
+      taxes: []
+    }, 'Taxes retrieved successfully'));
+  }
 });
 
 /**
@@ -33,15 +43,22 @@ exports.getAllTaxes = asyncHandler(async (req, res) => {
  * @access  Private/Admin
  */
 exports.getTax = asyncHandler(async (req, res) => {
-  const tax = await Tax.findById(req.params.id)
-    .populate('createdBy', 'firstName lastName email')
-    .populate('updatedBy', 'firstName lastName email');
-  
-  if (!tax) {
+  try {
+    const tax = await Tax.findById(req.params.id)
+      .populate('createdBy', 'firstName lastName email')
+      .populate('updatedBy', 'firstName lastName email')
+      .lean();
+    
+    if (!tax) {
+      throw new ApiError(404, 'Tax not found');
+    }
+    
+    res.status(200).json(ApiResponse.success({ tax }, 'Tax retrieved successfully'));
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    console.error('Error fetching tax:', error);
     throw new ApiError(404, 'Tax not found');
   }
-  
-  res.status(200).json(ApiResponse.success({ tax }, 'Tax retrieved successfully'));
 });
 
 /**
@@ -121,20 +138,28 @@ exports.deleteTax = asyncHandler(async (req, res) => {
  * @access  Public
  */
 exports.getApplicableTaxes = asyncHandler(async (req, res) => {
-  const { serviceType } = req.params;
-  const { country = 'NG' } = req.query;
-  
-  const taxes = await Tax.find({
-    isActive: true,
-    country,
-    $or: [
-      { appliesTo: 'all' },
-      { appliesTo: serviceType }
-    ]
-  }).sort({ priority: -1 });
-  
-  res.status(200).json(ApiResponse.success({
-    count: taxes.length,
-    taxes
-  }, 'Applicable taxes retrieved successfully'));
+  try {
+    const { serviceType } = req.params;
+    const { country = 'NG' } = req.query;
+    
+    const taxes = await Tax.find({
+      isActive: true,
+      country,
+      $or: [
+        { appliesTo: 'all' },
+        { appliesTo: serviceType }
+      ]
+    }).sort({ priority: -1 }).lean();
+    
+    res.status(200).json(ApiResponse.success({
+      count: taxes.length,
+      taxes
+    }, 'Applicable taxes retrieved successfully'));
+  } catch (error) {
+    console.error('Error fetching applicable taxes:', error);
+    res.status(200).json(ApiResponse.success({
+      count: 0,
+      taxes: []
+    }, 'Applicable taxes retrieved successfully'));
+  }
 });

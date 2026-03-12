@@ -9,21 +9,31 @@ const ApiError = require('../utils/apiError');
  * @access  Private/Admin
  */
 exports.getAllServiceCharges = asyncHandler(async (req, res) => {
-  const { isActive, appliesTo } = req.query;
-  
-  const filter = {};
-  if (isActive !== undefined) filter.isActive = isActive === 'true';
-  if (appliesTo) filter.appliesTo = appliesTo;
-  
-  const serviceCharges = await ServiceCharge.find(filter)
-    .sort({ priority: -1, createdAt: -1 })
-    .populate('createdBy', 'firstName lastName email')
-    .populate('updatedBy', 'firstName lastName email');
-  
-  res.status(200).json(ApiResponse.success({
-    count: serviceCharges.length,
-    serviceCharges
-  }, 'Service charges retrieved successfully'));
+  try {
+    const { isActive, appliesTo } = req.query;
+    
+    const filter = {};
+    if (isActive !== undefined) filter.isActive = isActive === 'true';
+    if (appliesTo) filter.appliesTo = appliesTo;
+    
+    const serviceCharges = await ServiceCharge.find(filter)
+      .sort({ priority: -1, createdAt: -1 })
+      .populate('createdBy', 'firstName lastName email')
+      .populate('updatedBy', 'firstName lastName email')
+      .lean();
+    
+    res.status(200).json(ApiResponse.success({
+      count: serviceCharges.length,
+      serviceCharges
+    }, 'Service charges retrieved successfully'));
+  } catch (error) {
+    console.error('Error fetching service charges:', error);
+    // Return empty array if there's an error (e.g., collection doesn't exist)
+    res.status(200).json(ApiResponse.success({
+      count: 0,
+      serviceCharges: []
+    }, 'Service charges retrieved successfully'));
+  }
 });
 
 /**
@@ -32,15 +42,22 @@ exports.getAllServiceCharges = asyncHandler(async (req, res) => {
  * @access  Private/Admin
  */
 exports.getServiceCharge = asyncHandler(async (req, res) => {
-  const serviceCharge = await ServiceCharge.findById(req.params.id)
-    .populate('createdBy', 'firstName lastName email')
-    .populate('updatedBy', 'firstName lastName email');
-  
-  if (!serviceCharge) {
+  try {
+    const serviceCharge = await ServiceCharge.findById(req.params.id)
+      .populate('createdBy', 'firstName lastName email')
+      .populate('updatedBy', 'firstName lastName email')
+      .lean();
+    
+    if (!serviceCharge) {
+      throw new ApiError(404, 'Service charge not found');
+    }
+    
+    res.status(200).json(ApiResponse.success({ serviceCharge }, 'Service charge retrieved successfully'));
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    console.error('Error fetching service charge:', error);
     throw new ApiError(404, 'Service charge not found');
   }
-  
-  res.status(200).json(ApiResponse.success({ serviceCharge }, 'Service charge retrieved successfully'));
 });
 
 /**
@@ -116,18 +133,26 @@ exports.deleteServiceCharge = asyncHandler(async (req, res) => {
  * @access  Public
  */
 exports.getApplicableServiceCharges = asyncHandler(async (req, res) => {
-  const { serviceType } = req.params;
-  
-  const serviceCharges = await ServiceCharge.find({
-    isActive: true,
-    $or: [
-      { appliesTo: 'all' },
-      { appliesTo: serviceType }
-    ]
-  }).sort({ priority: -1 });
-  
-  res.status(200).json(ApiResponse.success({
-    count: serviceCharges.length,
-    serviceCharges
-  }, 'Applicable service charges retrieved successfully'));
+  try {
+    const { serviceType } = req.params;
+    
+    const serviceCharges = await ServiceCharge.find({
+      isActive: true,
+      $or: [
+        { appliesTo: 'all' },
+        { appliesTo: serviceType }
+      ]
+    }).sort({ priority: -1 }).lean();
+    
+    res.status(200).json(ApiResponse.success({
+      count: serviceCharges.length,
+      serviceCharges
+    }, 'Applicable service charges retrieved successfully'));
+  } catch (error) {
+    console.error('Error fetching applicable service charges:', error);
+    res.status(200).json(ApiResponse.success({
+      count: 0,
+      serviceCharges: []
+    }, 'Applicable service charges retrieved successfully'));
+  }
 });

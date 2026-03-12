@@ -23,17 +23,17 @@ exports.getAllDiscounts = asyncHandler(async (req, res) => {
       .populate('updatedBy', 'firstName lastName email')
       .lean();
     
-    res.status(200).json(ApiResponse.success({
+    return ApiResponse.success(res, 200, 'Discounts retrieved successfully', {
       count: discounts.length,
       discounts
-    }, 'Discounts retrieved successfully'));
+    });
   } catch (error) {
     console.error('Error fetching discounts:', error);
     // Return empty array if there's an error (e.g., collection doesn't exist)
-    res.status(200).json(ApiResponse.success({
+    return ApiResponse.success(res, 200, 'Discounts retrieved successfully', {
       count: 0,
       discounts: []
-    }, 'Discounts retrieved successfully'));
+    });
   }
 });
 
@@ -53,7 +53,7 @@ exports.getDiscount = asyncHandler(async (req, res) => {
       throw new ApiError(404, 'Discount not found');
     }
     
-    res.status(200).json(ApiResponse.success({ discount }, 'Discount retrieved successfully'));
+    return ApiResponse.success(res, 200, 'Discount retrieved successfully', { discount });
   } catch (error) {
     if (error instanceof ApiError) throw error;
     console.error('Error fetching discount:', error);
@@ -114,7 +114,7 @@ exports.createDiscount = asyncHandler(async (req, res) => {
     createdBy: req.user._id
   });
   
-  res.status(201).json(ApiResponse.success({ discount }, 'Discount created successfully'));
+  return ApiResponse.success(res, 201, 'Discount created successfully', { discount });
 });
 
 /**
@@ -193,7 +193,7 @@ exports.deleteDiscount = asyncHandler(async (req, res) => {
   
   await discount.deleteOne();
   
-  res.status(200).json(ApiResponse.success(null, 'Discount deleted successfully'));
+  return ApiResponse.success(res, 200, 'Discount deleted successfully', null);
 });
 
 /**
@@ -245,7 +245,7 @@ exports.validateDiscountCode = asyncHandler(async (req, res) => {
     discountAmount = discount.maxDiscountAmount;
   }
   
-  res.status(200).json(ApiResponse.success({
+  return ApiResponse.success(res, 200, 'Discount code is valid', {
     discount: {
       id: discount._id,
       name: discount.name,
@@ -255,7 +255,7 @@ exports.validateDiscountCode = asyncHandler(async (req, res) => {
       discountAmount,
       isStackable: discount.isStackable
     }
-  }, 'Discount code is valid'));
+  });
 });
 
 /**
@@ -299,16 +299,16 @@ exports.getApplicableDiscounts = asyncHandler(async (req, res) => {
       return discount;
     });
     
-    res.status(200).json(ApiResponse.success({
+    return ApiResponse.success(res, 200, 'Applicable discounts retrieved successfully', {
       count: discountsWithValues.length,
       discounts: discountsWithValues
-    }, 'Applicable discounts retrieved successfully'));
+    });
   } catch (error) {
     console.error('Error fetching applicable discounts:', error);
-    res.status(200).json(ApiResponse.success({
+    return ApiResponse.success(res, 200, 'Applicable discounts retrieved successfully', {
       count: 0,
       discounts: []
-    }, 'Applicable discounts retrieved successfully'));
+    });
   }
 });
 
@@ -331,5 +331,5 @@ exports.incrementDiscountUsage = asyncHandler(async (req, res) => {
   discount.usageCount += 1;
   await discount.save();
   
-  res.status(200).json(ApiResponse.success({ discount }, 'Discount usage incremented'));
+  return ApiResponse.success(res, 200, 'Discount usage incremented', { discount });
 });

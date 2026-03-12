@@ -22,17 +22,17 @@ exports.getAllServiceCharges = asyncHandler(async (req, res) => {
       .populate('updatedBy', 'firstName lastName email')
       .lean();
     
-    res.status(200).json(ApiResponse.success({
+    return ApiResponse.success(res, 200, 'Service charges retrieved successfully', {
       count: serviceCharges.length,
       serviceCharges
-    }, 'Service charges retrieved successfully'));
+    });
   } catch (error) {
     console.error('Error fetching service charges:', error);
     // Return empty array if there's an error (e.g., collection doesn't exist)
-    res.status(200).json(ApiResponse.success({
+    return ApiResponse.success(res, 200, 'Service charges retrieved successfully', {
       count: 0,
       serviceCharges: []
-    }, 'Service charges retrieved successfully'));
+    });
   }
 });
 
@@ -52,7 +52,7 @@ exports.getServiceCharge = asyncHandler(async (req, res) => {
       throw new ApiError(404, 'Service charge not found');
     }
     
-    res.status(200).json(ApiResponse.success({ serviceCharge }, 'Service charge retrieved successfully'));
+    return ApiResponse.success(res, 200, 'Service charge retrieved successfully', { serviceCharge });
   } catch (error) {
     if (error instanceof ApiError) throw error;
     console.error('Error fetching service charge:', error);
@@ -79,7 +79,7 @@ exports.createServiceCharge = asyncHandler(async (req, res) => {
     createdBy: req.user._id
   });
   
-  res.status(201).json(ApiResponse.success({ serviceCharge }, 'Service charge created successfully'));
+  return ApiResponse.success(res, 201, 'Service charge created successfully', { serviceCharge });
 });
 
 /**
@@ -107,7 +107,7 @@ exports.updateServiceCharge = asyncHandler(async (req, res) => {
   
   await serviceCharge.save();
   
-  res.status(200).json(ApiResponse.success({ serviceCharge }, 'Service charge updated successfully'));
+  return ApiResponse.success(res, 200, 'Service charge updated successfully', { serviceCharge });
 });
 
 /**
@@ -124,7 +124,7 @@ exports.deleteServiceCharge = asyncHandler(async (req, res) => {
   
   await serviceCharge.deleteOne();
   
-  res.status(200).json(ApiResponse.success(null, 'Service charge deleted successfully'));
+  return ApiResponse.success(res, 200, 'Service charge deleted successfully', null);
 });
 
 /**
@@ -144,15 +144,15 @@ exports.getApplicableServiceCharges = asyncHandler(async (req, res) => {
       ]
     }).sort({ priority: -1 }).lean();
     
-    res.status(200).json(ApiResponse.success({
+    return ApiResponse.success(res, 200, 'Applicable service charges retrieved successfully', {
       count: serviceCharges.length,
       serviceCharges
-    }, 'Applicable service charges retrieved successfully'));
+    });
   } catch (error) {
     console.error('Error fetching applicable service charges:', error);
-    res.status(200).json(ApiResponse.success({
+    return ApiResponse.success(res, 200, 'Applicable service charges retrieved successfully', {
       count: 0,
       serviceCharges: []
-    }, 'Applicable service charges retrieved successfully'));
+    });
   }
 });

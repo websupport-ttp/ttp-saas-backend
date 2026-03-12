@@ -23,17 +23,17 @@ exports.getAllTaxes = asyncHandler(async (req, res) => {
       .populate('updatedBy', 'firstName lastName email')
       .lean();
     
-    res.status(200).json(ApiResponse.success({
+    return ApiResponse.success(res, 200, 'Taxes retrieved successfully', {
       count: taxes.length,
       taxes
-    }, 'Taxes retrieved successfully'));
+    });
   } catch (error) {
     console.error('Error fetching taxes:', error);
     // Return empty array if there's an error (e.g., collection doesn't exist)
-    res.status(200).json(ApiResponse.success({
+    return ApiResponse.success(res, 200, 'Taxes retrieved successfully', {
       count: 0,
       taxes: []
-    }, 'Taxes retrieved successfully'));
+    });
   }
 });
 
@@ -53,7 +53,7 @@ exports.getTax = asyncHandler(async (req, res) => {
       throw new ApiError(404, 'Tax not found');
     }
     
-    res.status(200).json(ApiResponse.success({ tax }, 'Tax retrieved successfully'));
+    return ApiResponse.success(res, 200, 'Tax retrieved successfully', { tax });
   } catch (error) {
     if (error instanceof ApiError) throw error;
     console.error('Error fetching tax:', error);
@@ -82,7 +82,7 @@ exports.createTax = asyncHandler(async (req, res) => {
     createdBy: req.user._id
   });
   
-  res.status(201).json(ApiResponse.success({ tax }, 'Tax created successfully'));
+  return ApiResponse.success(res, 201, 'Tax created successfully', { tax });
 });
 
 /**
@@ -112,7 +112,7 @@ exports.updateTax = asyncHandler(async (req, res) => {
   
   await tax.save();
   
-  res.status(200).json(ApiResponse.success({ tax }, 'Tax updated successfully'));
+  return ApiResponse.success(res, 200, 'Tax updated successfully', { tax });
 });
 
 /**
@@ -129,7 +129,7 @@ exports.deleteTax = asyncHandler(async (req, res) => {
   
   await tax.deleteOne();
   
-  res.status(200).json(ApiResponse.success(null, 'Tax deleted successfully'));
+  return ApiResponse.success(res, 200, 'Tax deleted successfully', null);
 });
 
 /**
@@ -151,15 +151,15 @@ exports.getApplicableTaxes = asyncHandler(async (req, res) => {
       ]
     }).sort({ priority: -1 }).lean();
     
-    res.status(200).json(ApiResponse.success({
+    return ApiResponse.success(res, 200, 'Applicable taxes retrieved successfully', {
       count: taxes.length,
       taxes
-    }, 'Applicable taxes retrieved successfully'));
+    });
   } catch (error) {
     console.error('Error fetching applicable taxes:', error);
-    res.status(200).json(ApiResponse.success({
+    return ApiResponse.success(res, 200, 'Applicable taxes retrieved successfully', {
       count: 0,
       taxes: []
-    }, 'Applicable taxes retrieved successfully'));
+    });
   }
 });

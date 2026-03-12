@@ -9,7 +9,6 @@ const bookingRoutes = require('./bookingRoutes');
 const messageRoutes = require('./messageRoutes');
 const postRoutes = require('./postRoutes');
 const categoryRoutes = require('./categoryRoutes');
-const analyticsRoutes = require('./analyticsRoutes');
 const affiliateRoutes = require('./affiliateRoutes');
 const affiliateNotificationRoutes = require('./affiliateNotificationRoutes');
 const walletRoutes = require('./walletRoutes');
@@ -78,7 +77,6 @@ router.use('/bookings', paymentLimiter); // Bookings involve payments
 router.use('/messages', apiLimiter);
 router.use('/posts', apiLimiter);
 router.use('/categories', apiLimiter);
-router.use('/analytics', apiLimiter);
 router.use('/affiliates', affiliateLimiter); // Affiliate-specific rate limiting
 router.use('/affiliate-notifications', affiliateNotificationLimiter); // Notification-specific rate limiting
 router.use('/wallets', paymentLimiter); // Wallets involve financial operations
@@ -108,7 +106,6 @@ router.use('/bookings', bookingRoutes);
 router.use('/messages', messageRoutes);
 router.use('/posts', postRoutes);
 router.use('/categories', categoryRoutes);
-router.use('/analytics', analyticsRoutes);
 router.use('/affiliates', affiliateRoutes);
 router.use('/affiliate-notifications', affiliateNotificationRoutes);
 router.use('/wallets', walletRoutes);

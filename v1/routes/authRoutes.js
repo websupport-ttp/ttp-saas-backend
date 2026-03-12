@@ -4,6 +4,7 @@ const {
   register,
   login,
   logout,
+  refreshTokens,
   googleLogin,
   forgotPassword,
   resetPassword,
@@ -106,6 +107,49 @@ router.post('/login',
   validate(loginSchema),
   createAuditMiddleware.auth('USER_LOGIN'),
   login
+);
+
+/**
+ * @openapi
+ * /auth/refresh:
+ *   post:
+ *     summary: Refresh authentication tokens
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: The refresh token (optional if using cookies)
+ *                 example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *     responses:
+ *       200:
+ *         description: Tokens refreshed successfully
+ *         headers:
+ *           Set-Cookie:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: string
+ *               example: accessToken=jwttoken; HttpOnly; Secure; SameSite=Lax
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StandardSuccessResponse'
+ *       401:
+ *         description: Unauthorized (invalid or expired refresh token)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StandardErrorResponse'
+ */
+router.post('/refresh',
+  authLimiter,
+  refreshTokens
 );
 
 /**

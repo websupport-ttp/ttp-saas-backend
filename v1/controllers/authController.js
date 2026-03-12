@@ -5,7 +5,7 @@ const Token = require('../models/tokenModel');
 const { ApiError } = require('../utils/apiError');
 const ApiResponse = require('../utils/apiResponse');
 const asyncHandler = require('../middleware/asyncHandler');
-const { attachCookiesToResponse, generateToken, verifyToken, clearAuthCookies, blacklistToken } = require('../utils/jwt');
+const { attachCookiesToResponse, generateToken, verifyToken, clearAuthCookies, blacklistToken, rotateRefreshToken } = require('../utils/jwt');
 const { sendEmail } = require('../utils/emailService');
 const { sendSMS } = require('../utils/smsService');
 const { 
@@ -745,11 +745,117 @@ const resendPhoneVerification = asyncHandler(async (req, res) => {
   }
 });
 
+/**
+ * @description Refresh authentication tokens using refresh token.
+ * @route POST /api/v1/auth/refresh
+ * @access Public (uses refresh token from cookies or body)
+ */
+const refreshTokens = asyncHandler(async (req, res) => {
+  const { refreshToken: bodyRefreshToken } = req.body;
+  const { refreshToken: cookieRefreshToken } = req.signedCookies;
+  
+  const refreshToken = bodyRefreshToken || cookieRefreshToken;
+
+  if (!refreshToken) {
+    logger.logSecurityEvent('TOKEN_REFRESH_FAILED', {
+      reason: 'no_refresh_token',
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+    }, 'medium');
+    throw new ApiError('No refresh token provided', StatusCodes.UNAUTHORIZED);
+  }
+
+  try {
+    // Verify and decode the refresh token
+    const decoded = verifyToken(refreshToken, process.env.JWT_REFRESH_SECRET, { skipEnhancedChecks: true });
+    
+    // Find user
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      logger.logSecurityEvent('TOKEN_REFRESH_FAILED', {
+        reason: 'user_not_found',
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+      }, 'medium');
+      clearAuthCookies(res);
+      throw new ApiError('User not found', StatusCodes.UNAUTHORIZED);
+    }
+
+    // Verify token is still valid in database
+    const tokenRecord = await Token.findOne({ user: user._id, refreshToken });
+    if (!tokenRecord || !tokenRecord.isValid) {
+      logger.logSecurityEvent('TOKEN_REFRESH_FAILED', {
+        userId: user._id,
+        reason: 'token_invalid_or_revoked',
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+      }, 'medium');
+      clearAuthCookies(res);
+      throw new ApiError('Refresh token is invalid or has been revoked', StatusCodes.UNAUTHORIZED);
+    }
+
+    // Rotate the refresh token
+    const sessionInfo = {
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+    };
+
+    const newTokenPair = await rotateRefreshToken(refreshToken, sessionInfo);
+    
+    if (!newTokenPair) {
+      logger.logSecurityEvent('TOKEN_REFRESH_FAILED', {
+        userId: user._id,
+        reason: 'token_rotation_failed',
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+      }, 'medium');
+      clearAuthCookies(res);
+      throw new ApiError('Token rotation failed', StatusCodes.UNAUTHORIZED);
+    }
+
+    // Update token in database
+    tokenRecord.refreshToken = newTokenPair.refreshToken;
+    tokenRecord.isValid = true;
+    tokenRecord.ip = req.ip;
+    tokenRecord.userAgent = req.get('User-Agent');
+    await tokenRecord.save();
+
+    // Attach new cookies to response
+    attachCookiesToResponse(res, { _id: user._id, role: user.role }, sessionInfo);
+
+    logger.logSecurityEvent('TOKEN_REFRESHED', {
+      userId: user._id,
+      sessionId: newTokenPair.sessionId,
+      ip: req.ip,
+    }, 'low');
+
+    // Return new tokens
+    ApiResponse.success(res, StatusCodes.OK, 'Tokens refreshed successfully', {
+      token: newTokenPair.accessToken,
+      refreshToken: newTokenPair.refreshToken,
+    });
+
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    logger.logSecurityEvent('TOKEN_REFRESH_ERROR', {
+      error: error.message,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+    }, 'medium');
+    
+    clearAuthCookies(res);
+    throw new ApiError('Token refresh failed', StatusCodes.UNAUTHORIZED);
+  }
+});
 
 module.exports = {
   register,
   login,
   logout,
+  refreshTokens,
   googleLogin,
   forgotPassword,
   resetPassword,

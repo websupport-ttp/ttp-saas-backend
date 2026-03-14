@@ -144,7 +144,12 @@ const securityConfig = {
           ? [...defaultAllowedOrigins, ...allowedOrigins]
           : defaultAllowedOrigins;
         
-        if (allAllowedOrigins.includes(origin)) {
+        // Check if origin matches exactly or matches Vercel preview pattern
+        const isAllowed = allAllowedOrigins.includes(origin) || 
+                         /^https:\/\/ttp-saas-frontend-[a-z0-9]+-websupport-ttps-projects\.vercel\.app$/.test(origin) ||
+                         /^https:\/\/ttp-saas-frontend-[a-z0-9]+\.vercel\.app$/.test(origin);
+        
+        if (isAllowed) {
           console.log(`CORS allowed for origin: ${origin}`);
           return callback(null, true);
         } else {

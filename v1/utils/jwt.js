@@ -238,7 +238,8 @@ const rotateRefreshToken = async (oldRefreshToken, sessionInfo = {}) => {
     // Verify the old refresh token
     const decoded = verifyToken(oldRefreshToken, process.env.JWT_REFRESH_SECRET);
     
-    // Validate session information
+    // Validate session information - log mismatches but don't fail
+    // IP and User-Agent can change legitimately (network switch, browser update, etc.)
     const { ip, userAgent } = sessionInfo;
     if (decoded.ip && ip) {
       const hashedIP = crypto.createHash('sha256').update(ip).digest('hex').substring(0, 16);
@@ -248,8 +249,7 @@ const rotateRefreshToken = async (oldRefreshToken, sessionInfo = {}) => {
           sessionId: decoded.sessionId,
           expectedIP: decoded.ip,
           actualIP: hashedIP,
-        }, 'high');
-        return null;
+        }, 'low'); // Changed from 'high' to 'low' - this is normal
       }
     }
 
@@ -259,7 +259,7 @@ const rotateRefreshToken = async (oldRefreshToken, sessionInfo = {}) => {
         logger.logSecurityEvent('TOKEN_ROTATION_UA_MISMATCH', {
           userId: decoded.userId,
           sessionId: decoded.sessionId,
-        }, 'medium');
+        }, 'low'); // Changed from 'medium' to 'low' - this is normal
       }
     }
 

@@ -230,17 +230,6 @@ const cookieSecret = process.env.COOKIE_SECRET ||
 
 app.use(cookieParser(cookieSecret));
 
-// File upload middleware
-const fileUpload = require('express-fileupload');
-app.use(fileUpload({
-  useTempFiles: true,
-  tempFileDir: '/tmp/',
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
-  abortOnLimit: true,
-  responseOnLimit: 'File size exceeds the maximum limit of 50MB',
-  createParentPath: true,
-}));
-
 // Enhanced CORS configuration
 app.use(cors(securityConfig.corsOptions));
 

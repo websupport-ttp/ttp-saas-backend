@@ -176,14 +176,14 @@ const attachCookiesToResponse = (res, user, sessionInfo = {}) => {
     path: '/',
   });
 
-  // Refresh token cookie (longer expiration, more restrictive path)
+  // Refresh token cookie (longer expiration, available on all API paths)
   res.cookie('refreshToken', tokenPair.refreshToken, {
     httpOnly: true,
     secure: isSecure,
     signed: true,
     expires: tokenPair.refreshExpiresAt,
     sameSite,
-    path: '/api/v1/auth', // Restrict to auth endpoints only
+    path: '/', // Available on all paths for token rotation
   });
 
   // Session metadata cookie (for client-side session management)
@@ -218,7 +218,7 @@ const clearAuthCookies = (res) => {
   };
 
   res.clearCookie('accessToken', cookieOptions);
-  res.clearCookie('refreshToken', { ...cookieOptions, path: '/api/v1/auth' });
+  res.clearCookie('refreshToken', { ...cookieOptions, path: '/' });
   res.clearCookie('sessionInfo', {
     ...cookieOptions,
     httpOnly: false,

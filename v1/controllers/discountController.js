@@ -2,6 +2,7 @@ const Discount = require('../models/discountModel');
 const asyncHandler = require('../middleware/asyncHandler');
 const ApiResponse = require('../utils/apiResponse');
 const ApiError = require('../utils/apiError');
+const { StatusCodes } = require('http-status-codes');
 
 /**
  * @desc    Get all discounts
@@ -23,14 +24,14 @@ exports.getAllDiscounts = asyncHandler(async (req, res) => {
       .populate('updatedBy', 'firstName lastName email')
       .lean();
     
-    return ApiResponse.success(res, 200, 'Discounts retrieved successfully', {
+    return ApiResponse.success(res, StatusCodes.OK, 'Discounts retrieved successfully', {
       count: discounts.length,
       discounts
     });
   } catch (error) {
     console.error('Error fetching discounts:', error);
     // Return empty array if there's an error (e.g., collection doesn't exist)
-    return ApiResponse.success(res, 200, 'Discounts retrieved successfully', {
+    return ApiResponse.success(res, StatusCodes.OK, 'Discounts retrieved successfully', {
       count: 0,
       discounts: []
     });
@@ -53,7 +54,7 @@ exports.getDiscount = asyncHandler(async (req, res) => {
       throw new ApiError(404, 'Discount not found');
     }
     
-    return ApiResponse.success(res, 200, 'Discount retrieved successfully', { discount });
+    return ApiResponse.success(res, StatusCodes.OK, 'Discount retrieved successfully', { discount });
   } catch (error) {
     if (error instanceof ApiError) throw error;
     console.error('Error fetching discount:', error);
@@ -114,7 +115,7 @@ exports.createDiscount = asyncHandler(async (req, res) => {
     createdBy: req.user._id
   });
   
-  return ApiResponse.success(res, 201, 'Discount created successfully', { discount });
+  return ApiResponse.success(res, StatusCodes.CREATED, 'Discount created successfully', { discount });
 });
 
 /**
@@ -176,7 +177,7 @@ exports.updateDiscount = asyncHandler(async (req, res) => {
   
   await discount.save();
   
-  res.status(200).json(ApiResponse.success({ discount }, 'Discount updated successfully'));
+  return ApiResponse.success(res, StatusCodes.OK, 'Discount updated successfully', { discount });
 });
 
 /**
@@ -193,7 +194,7 @@ exports.deleteDiscount = asyncHandler(async (req, res) => {
   
   await discount.deleteOne();
   
-  return ApiResponse.success(res, 200, 'Discount deleted successfully', null);
+  return ApiResponse.success(res, StatusCodes.OK, 'Discount deleted successfully', {});
 });
 
 /**
@@ -245,7 +246,7 @@ exports.validateDiscountCode = asyncHandler(async (req, res) => {
     discountAmount = discount.maxDiscountAmount;
   }
   
-  return ApiResponse.success(res, 200, 'Discount code is valid', {
+  return ApiResponse.success(res, StatusCodes.OK, 'Discount code is valid', {
     discount: {
       id: discount._id,
       name: discount.name,
@@ -299,13 +300,13 @@ exports.getApplicableDiscounts = asyncHandler(async (req, res) => {
       return discount;
     });
     
-    return ApiResponse.success(res, 200, 'Applicable discounts retrieved successfully', {
+    return ApiResponse.success(res, StatusCodes.OK, 'Applicable discounts retrieved successfully', {
       count: discountsWithValues.length,
       discounts: discountsWithValues
     });
   } catch (error) {
     console.error('Error fetching applicable discounts:', error);
-    return ApiResponse.success(res, 200, 'Applicable discounts retrieved successfully', {
+    return ApiResponse.success(res, StatusCodes.OK, 'Applicable discounts retrieved successfully', {
       count: 0,
       discounts: []
     });
@@ -331,5 +332,5 @@ exports.incrementDiscountUsage = asyncHandler(async (req, res) => {
   discount.usageCount += 1;
   await discount.save();
   
-  return ApiResponse.success(res, 200, 'Discount usage incremented', { discount });
+  return ApiResponse.success(res, StatusCodes.OK, 'Discount usage incremented', { discount });
 });

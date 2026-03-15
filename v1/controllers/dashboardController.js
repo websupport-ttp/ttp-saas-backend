@@ -147,7 +147,9 @@ const getAdminStats = asyncHandler(async (req, res) => {
       recentActivity
     };
 
-    ApiResponse.success(res, StatusCodes.OK, 'Admin statistics retrieved successfully', stats);
+    res.status(StatusCodes.OK).json(
+      ApiResponse.success(stats, 'Admin statistics retrieved successfully')
+    );
   } catch (error) {
     logger.error('Error in getAdminStats:', error);
     throw error;

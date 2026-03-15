@@ -102,7 +102,10 @@ const getAdminStats = asyncHandler(async (req, res) => {
 
   // Get total revenue
   const paidBookings = await CarBooking.find({ paymentStatus: 'paid' });
-  const totalRevenue = paidBookings.reduce((sum, booking) => sum + booking.totalAmount, 0);
+  const totalRevenue = paidBookings.reduce((sum, booking) => sum + (booking.totalAmount || 0), 0);
+
+  // Log for debugging
+  logger.info(`Admin Stats - Users: ${totalUsers}, Bookings: ${totalBookings}, Cars: ${totalCars}, Revenue: ${totalRevenue}`);
 
   // Get users by role
   const usersByRole = await User.aggregate([

@@ -18,6 +18,7 @@ const amadeusXmlService = require('../services/amadeusXmlService');
 const ratehawkService = require('../services/ratehawkService');
 const sanlamAllianzService = require('../services/allianzService');
 const paystackService = require('../services/paystackService');
+const pricingService = require('../services/pricingService');
 
 /**
  * @description Flight search controller
@@ -108,7 +109,8 @@ const bookFlight = asyncHandler(async (req, res) => {
     contactInfo,
     paymentMethod = 'paystack',
     itinerary,
-    pricing
+    pricing,
+    discountCode
   } = req.body;
 
   if (!passengers || !contactInfo || !itinerary || !pricing) {
@@ -116,13 +118,36 @@ const bookFlight = asyncHandler(async (req, res) => {
   }
 
   try {
+    // Calculate final pricing with discounts applied
+    const basePrice = pricing.total || pricing.subtotal || 0;
+    const userRole = req.user?.role || 'User';
+    
+    const calculatedPricing = await pricingService.calculatePrice({
+      basePrice,
+      serviceType: 'flights',
+      userRole,
+      discountCode,
+      country: 'NG'
+    });
+
+    // Use calculated pricing instead of frontend pricing
+    const finalPricing = {
+      basePrice: calculatedPricing.basePrice,
+      subtotal: calculatedPricing.subtotal,
+      serviceCharges: calculatedPricing.totalServiceCharges,
+      discounts: calculatedPricing.totalDiscounts,
+      taxes: calculatedPricing.totalTaxes,
+      total: calculatedPricing.finalPrice,
+      breakdown: calculatedPricing
+    };
+
     // Create flight booking record
     const flightBooking = new FlightBooking({
       userId: req.user.id,
       contactInfo,
       passengers,
       itinerary,
-      pricing,
+      pricing: finalPricing,
       tripType: itinerary.return && itinerary.return.length > 0 ? 'round-trip' : 'one-way',
       amadeusData: {
         offerId,
@@ -138,7 +163,7 @@ const bookFlight = asyncHandler(async (req, res) => {
       type: 'flight',
       flightBooking: flightBooking._id,
       contactInfo,
-      pricing,
+      pricing: finalPricing,
       metadata: {
         source: 'web',
         userAgent: req.get('User-Agent'),
@@ -152,7 +177,7 @@ const bookFlight = asyncHandler(async (req, res) => {
     if (paymentMethod === 'paystack') {
       const paymentData = await paystackService.initializePayment({
         email: contactInfo.email,
-        amount: pricing.total, // Amount in Naira, Paystack service will convert to kobo
+        amount: finalPricing.total, // Amount in Naira, Paystack service will convert to kobo
         reference: booking.bookingReference,
         callback_url: `${process.env.FRONTEND_URL}/success?service=flight`
       });
@@ -171,7 +196,8 @@ const bookFlight = asyncHandler(async (req, res) => {
           {
             booking: booking.toObject(),
             flightBooking: flightBooking.toObject(),
-            paymentUrl: paymentData.authorization_url
+            paymentUrl: paymentData.authorization_url,
+            pricing: finalPricing
           },
           'Flight booking created successfully'
         )
@@ -182,7 +208,8 @@ const bookFlight = asyncHandler(async (req, res) => {
           StatusCodes.CREATED,
           {
             booking: booking.toObject(),
-            flightBooking: flightBooking.toObject()
+            flightBooking: flightBooking.toObject(),
+            pricing: finalPricing
           },
           'Flight booking created successfully'
         )
@@ -279,7 +306,8 @@ const bookHotel = asyncHandler(async (req, res) => {
     guests,
     contactInfo,
     pricing,
-    paymentMethod = 'paystack'
+    paymentMethod = 'paystack',
+    discountCode
   } = req.body;
 
   if (!hotel || !stay || !rooms || !guests || !contactInfo || !pricing) {
@@ -287,6 +315,29 @@ const bookHotel = asyncHandler(async (req, res) => {
   }
 
   try {
+    // Calculate final pricing with discounts applied
+    const basePrice = pricing.total || pricing.subtotal || 0;
+    const userRole = req.user?.role || 'User';
+    
+    const calculatedPricing = await pricingService.calculatePrice({
+      basePrice,
+      serviceType: 'hotels',
+      userRole,
+      discountCode,
+      country: 'NG'
+    });
+
+    // Use calculated pricing instead of frontend pricing
+    const finalPricing = {
+      basePrice: calculatedPricing.basePrice,
+      subtotal: calculatedPricing.subtotal,
+      serviceCharges: calculatedPricing.totalServiceCharges,
+      discounts: calculatedPricing.totalDiscounts,
+      taxes: calculatedPricing.totalTaxes,
+      total: calculatedPricing.finalPrice,
+      breakdown: calculatedPricing
+    };
+
     // Create hotel booking record
     const hotelBooking = new HotelBooking({
       userId: req.user.id,
@@ -295,7 +346,7 @@ const bookHotel = asyncHandler(async (req, res) => {
       stay,
       rooms,
       guests,
-      pricing,
+      pricing: finalPricing,
       ratehawkData: {
         searchId: req.body.searchId,
         hotelId: hotel.id,
@@ -311,7 +362,7 @@ const bookHotel = asyncHandler(async (req, res) => {
       type: 'hotel',
       hotelBooking: hotelBooking._id,
       contactInfo,
-      pricing,
+      pricing: finalPricing,
       metadata: {
         source: 'web',
         userAgent: req.get('User-Agent'),
@@ -325,7 +376,7 @@ const bookHotel = asyncHandler(async (req, res) => {
     if (paymentMethod === 'paystack') {
       const paymentData = await paystackService.initializePayment({
         email: contactInfo.email,
-        amount: pricing.total, // Amount in Naira, Paystack service will convert to kobo
+        amount: finalPricing.total, // Amount in Naira, Paystack service will convert to kobo
         reference: booking.bookingReference,
         callback_url: `${process.env.FRONTEND_URL}/hotels/payment/callback`
       });
@@ -344,7 +395,8 @@ const bookHotel = asyncHandler(async (req, res) => {
           {
             booking: booking.toObject(),
             hotelBooking: hotelBooking.toObject(),
-            paymentUrl: paymentData.authorization_url
+            paymentUrl: paymentData.authorization_url,
+            pricing: finalPricing
           },
           'Hotel booking created successfully'
         )
@@ -355,7 +407,8 @@ const bookHotel = asyncHandler(async (req, res) => {
           StatusCodes.CREATED,
           {
             booking: booking.toObject(),
-            hotelBooking: hotelBooking.toObject()
+            hotelBooking: hotelBooking.toObject(),
+            pricing: finalPricing
           },
           'Hotel booking created successfully'
         )

@@ -43,9 +43,7 @@ const getUserStats = asyncHandler(async (req, res) => {
     recentBookings
   };
 
-  res.status(StatusCodes.OK).json(
-    ApiResponse.success(stats, 'User statistics retrieved successfully')
-  );
+  return ApiResponse.success(res, StatusCodes.OK, 'User statistics retrieved successfully', stats);
 });
 
 /**
@@ -81,9 +79,7 @@ const getStaffStats = asyncHandler(async (req, res) => {
     totalCars
   };
 
-  res.status(StatusCodes.OK).json(
-    ApiResponse.success(stats, 'Staff statistics retrieved successfully')
-  );
+  return ApiResponse.success(res, StatusCodes.OK, 'Staff statistics retrieved successfully', stats);
 });
 
 /**
@@ -155,9 +151,7 @@ const getAdminStats = asyncHandler(async (req, res) => {
     };
 
     logger.info('Admin stats retrieved successfully');
-    res.status(StatusCodes.OK).json(
-      ApiResponse.success(stats, 'Admin statistics retrieved successfully')
-    );
+    return ApiResponse.success(res, StatusCodes.OK, 'Admin statistics retrieved successfully', stats);
   } catch (error) {
     logger.error('Error in getAdminStats:', error);
     throw error;
@@ -221,9 +215,7 @@ const getManagerStats = asyncHandler(async (req, res) => {
     revenueByDay
   };
 
-  res.status(StatusCodes.OK).json(
-    ApiResponse.success(stats, 'Manager statistics retrieved successfully')
-  );
+  return ApiResponse.success(res, StatusCodes.OK, 'Manager statistics retrieved successfully', stats);
 });
 
 /**
@@ -458,7 +450,7 @@ const getManagementFinancialStats = asyncHandler(async (req, res) => {
     revenueByChannel
   };
 
-  ApiResponse.success(res, StatusCodes.OK, 'Management financial statistics retrieved successfully', stats);
+  return ApiResponse.success(res, StatusCodes.OK, 'Management financial statistics retrieved successfully', stats);
 });
 
 module.exports = {

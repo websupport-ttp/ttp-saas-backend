@@ -92,61 +92,66 @@ const getStaffStats = asyncHandler(async (req, res) => {
  * @access  Private (Admin only)
  */
 const getAdminStats = asyncHandler(async (req, res) => {
-  // Get total users
-  const totalUsers = await User.countDocuments();
+  try {
+    // Get total users
+    const totalUsers = await User.countDocuments();
 
-  // Get total bookings
-  const totalBookings = await CarBooking.countDocuments();
+    // Get total bookings
+    const totalBookings = await CarBooking.countDocuments();
 
-  // Get total cars
-  const totalCars = await Car.countDocuments();
+    // Get total cars
+    const totalCars = await Car.countDocuments();
 
-  // Get total revenue
-  const paidBookings = await CarBooking.find({ paymentStatus: 'paid' });
-  const totalRevenue = paidBookings.reduce((sum, booking) => sum + (booking.totalAmount || 0), 0);
+    // Get total revenue
+    const paidBookings = await CarBooking.find({ paymentStatus: 'paid' });
+    const totalRevenue = paidBookings.reduce((sum, booking) => sum + (booking.totalAmount || 0), 0);
 
-  // Log for debugging
-  logger.info(`Admin Stats - Users: ${totalUsers}, Bookings: ${totalBookings}, Cars: ${totalCars}, Revenue: ${totalRevenue}`);
+    // Log for debugging
+    logger.info(`Admin Stats - Users: ${totalUsers}, Bookings: ${totalBookings}, Cars: ${totalCars}, Revenue: ${totalRevenue}`);
 
-  // Get users by role
-  const usersByRole = await User.aggregate([
-    {
-      $group: {
-        _id: '$role',
-        count: { $sum: 1 }
+    // Get users by role
+    const usersByRole = await User.aggregate([
+      {
+        $group: {
+          _id: '$role',
+          count: { $sum: 1 }
+        }
       }
-    }
-  ]);
+    ]);
 
-  // Get bookings by status
-  const bookingsByStatus = await CarBooking.aggregate([
-    {
-      $group: {
-        _id: '$status',
-        count: { $sum: 1 }
+    // Get bookings by status
+    const bookingsByStatus = await CarBooking.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
       }
-    }
-  ]);
+    ]);
 
-  // Get recent activity (last 10 bookings)
-  const recentActivity = await CarBooking.find()
-    .sort({ createdAt: -1 })
-    .limit(10)
-    .populate('user', 'firstName lastName email')
-    .populate('car', 'name brand model')
-    .select('bookingReference status totalAmount createdAt');
+    // Get recent activity (last 10 bookings)
+    const recentActivity = await CarBooking.find()
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('user', 'firstName lastName email')
+      .populate('car', 'name brand model')
+      .select('bookingReference status totalAmount createdAt');
 
-  const stats = {
-    totalUsers,
-    totalBookings,
-    totalCars,
-    totalRevenue,
-    usersByRole,
-    bookingsByStatus,
-    recentActivity
-  };
+    const stats = {
+      totalUsers,
+      totalBookings,
+      totalCars,
+      totalRevenue,
+      usersByRole,
+      bookingsByStatus,
+      recentActivity
+    };
 
-  ApiResponse.success(res, StatusCodes.OK, 'Admin statistics retrieved successfully', stats);
+    ApiResponse.success(res, StatusCodes.OK, 'Admin statistics retrieved successfully', stats);
+  } catch (error) {
+    logger.error('Error in getAdminStats:', error);
+    throw error;
+  }
 });
 
 /**

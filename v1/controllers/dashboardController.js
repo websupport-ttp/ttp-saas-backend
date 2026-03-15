@@ -93,21 +93,25 @@ const getStaffStats = asyncHandler(async (req, res) => {
  */
 const getAdminStats = asyncHandler(async (req, res) => {
   try {
+    logger.info('Starting getAdminStats...');
+    
     // Get total users
     const totalUsers = await User.countDocuments();
+    logger.info(`Total users: ${totalUsers}`);
 
     // Get total bookings
     const totalBookings = await CarBooking.countDocuments();
+    logger.info(`Total bookings: ${totalBookings}`);
 
     // Get total cars
     const totalCars = await Car.countDocuments();
+    logger.info(`Total cars: ${totalCars}`);
 
     // Get total revenue
     const paidBookings = await CarBooking.find({ paymentStatus: 'paid' });
+    logger.info(`Paid bookings count: ${paidBookings.length}`);
     const totalRevenue = paidBookings.reduce((sum, booking) => sum + (booking.totalAmount || 0), 0);
-
-    // Log for debugging
-    logger.info(`Admin Stats - Users: ${totalUsers}, Bookings: ${totalBookings}, Cars: ${totalCars}, Revenue: ${totalRevenue}`);
+    logger.info(`Total revenue: ${totalRevenue}`);
 
     // Get users by role
     const usersByRole = await User.aggregate([
@@ -118,6 +122,7 @@ const getAdminStats = asyncHandler(async (req, res) => {
         }
       }
     ]);
+    logger.info(`Users by role: ${JSON.stringify(usersByRole)}`);
 
     // Get bookings by status
     const bookingsByStatus = await CarBooking.aggregate([
@@ -128,6 +133,7 @@ const getAdminStats = asyncHandler(async (req, res) => {
         }
       }
     ]);
+    logger.info(`Bookings by status: ${JSON.stringify(bookingsByStatus)}`);
 
     // Get recent activity (last 10 bookings)
     const recentActivity = await CarBooking.find()
@@ -136,6 +142,7 @@ const getAdminStats = asyncHandler(async (req, res) => {
       .populate('user', 'firstName lastName email')
       .populate('car', 'name brand model')
       .select('bookingReference status totalAmount createdAt');
+    logger.info(`Recent activity count: ${recentActivity.length}`);
 
     const stats = {
       totalUsers,
@@ -147,6 +154,7 @@ const getAdminStats = asyncHandler(async (req, res) => {
       recentActivity
     };
 
+    logger.info('Admin stats retrieved successfully');
     res.status(StatusCodes.OK).json(
       ApiResponse.success(stats, 'Admin statistics retrieved successfully')
     );

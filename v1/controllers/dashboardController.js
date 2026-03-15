@@ -91,17 +91,24 @@ const getAdminStats = asyncHandler(async (req, res) => {
   try {
     logger.info('Starting getAdminStats...');
     
+    // Debug: Check database connection
+    logger.info(`Database connection state: ${require('mongoose').connection.readyState}`);
+    
     // Get total users
     const totalUsers = await User.countDocuments();
-    logger.info(`Total users: ${totalUsers}`);
+    logger.info(`Total users count: ${totalUsers}`);
+    
+    // Debug: Get sample users to verify data exists
+    const sampleUsers = await User.find().limit(3).select('firstName lastName email role');
+    logger.info(`Sample users: ${JSON.stringify(sampleUsers)}`);
 
     // Get total bookings
     const totalBookings = await CarBooking.countDocuments();
-    logger.info(`Total bookings: ${totalBookings}`);
+    logger.info(`Total bookings count: ${totalBookings}`);
 
     // Get total cars
     const totalCars = await Car.countDocuments();
-    logger.info(`Total cars: ${totalCars}`);
+    logger.info(`Total cars count: ${totalCars}`);
 
     // Get total revenue
     const paidBookings = await CarBooking.find({ paymentStatus: 'paid' });

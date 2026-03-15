@@ -4,6 +4,7 @@ const CarBooking = require('../models/carBookingModel');
 const Car = require('../models/carModel');
 const { StatusCodes } = require('http-status-codes');
 const ApiResponse = require('../utils/apiResponse');
+const logger = require('../utils/logger');
 
 /**
  * @desc    Get dashboard statistics for user

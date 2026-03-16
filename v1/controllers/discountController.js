@@ -276,10 +276,7 @@ exports.getApplicableDiscounts = asyncHandler(async (req, res) => {
     
     const filter = {
       isActive: true,
-      $or: [
-        { appliesTo: 'all' },
-        { appliesTo: serviceType }
-      ]
+      appliesTo: { $in: ['all', serviceType] }
     };
     
     // Add date filter

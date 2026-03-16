@@ -140,13 +140,14 @@ exports.getApplicableServiceCharges = asyncHandler(async (req, res) => {
   try {
     const { serviceType } = req.params;
     
+    console.log('getApplicableServiceCharges - serviceType:', serviceType);
+    
     const serviceCharges = await ServiceCharge.find({
       isActive: true,
-      $or: [
-        { appliesTo: 'all' },
-        { appliesTo: serviceType }
-      ]
+      appliesTo: { $in: ['all', serviceType] }
     }).sort({ priority: -1 }).lean();
+    
+    console.log('getApplicableServiceCharges - Found service charges:', serviceCharges.length);
     
     return ApiResponse.success(res, 200, 'Applicable service charges retrieved successfully', {
       count: serviceCharges.length,

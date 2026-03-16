@@ -145,10 +145,7 @@ exports.getApplicableTaxes = asyncHandler(async (req, res) => {
     const taxes = await Tax.find({
       isActive: true,
       country,
-      $or: [
-        { appliesTo: 'all' },
-        { appliesTo: serviceType }
-      ]
+      appliesTo: { $in: ['all', serviceType] }
     }).sort({ priority: -1 }).lean();
     
     return ApiResponse.success(res, 200, 'Applicable taxes retrieved successfully', {

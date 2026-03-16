@@ -154,10 +154,7 @@ class PricingService {
   async getApplicableServiceCharges(serviceType) {
     return await ServiceCharge.find({
       isActive: true,
-      $or: [
-        { appliesTo: 'all' },
-        { appliesTo: serviceType }
-      ]
+      appliesTo: { $in: ['all', serviceType] }
     }).sort({ priority: -1 });
   }
 
@@ -168,10 +165,7 @@ class PricingService {
     return await Tax.find({
       isActive: true,
       country,
-      $or: [
-        { appliesTo: 'all' },
-        { appliesTo: serviceType }
-      ]
+      appliesTo: { $in: ['all', serviceType] }
     }).sort({ priority: -1 });
   }
 
@@ -181,10 +175,7 @@ class PricingService {
   async getApplicableDiscounts({ serviceType, userRole, discountCode, providerCode }) {
     const filter = {
       isActive: true,
-      $or: [
-        { appliesTo: 'all' },
-        { appliesTo: serviceType }
-      ]
+      appliesTo: { $in: ['all', serviceType] }
     };
 
     // Add date filter
@@ -213,10 +204,7 @@ class PricingService {
         isActive: true,
         type: 'provider-specific',
         'provider.code': providerCode.toUpperCase(),
-        $or: [
-          { appliesTo: 'all' },
-          { appliesTo: serviceType }
-        ]
+        appliesTo: { $in: ['all', serviceType] }
       }).sort({ priority: -1 });
 
       if (providerDiscounts.length > 0) {

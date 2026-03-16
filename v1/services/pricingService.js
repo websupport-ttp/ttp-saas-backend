@@ -207,22 +207,28 @@ class PricingService {
       }
     }
 
+    // Get provider-specific discounts if provider code is provided
+    if (providerCode) {
+      const providerDiscounts = await Discount.find({
+        isActive: true,
+        type: 'provider-specific',
+        'provider.code': providerCode.toUpperCase(),
+        $or: [
+          { appliesTo: 'all' },
+          { appliesTo: serviceType }
+        ]
+      }).sort({ priority: -1 });
+
+      if (providerDiscounts.length > 0) {
+        return providerDiscounts;
+      }
+    }
+
     // Get role-based discounts
     const roleDiscounts = await Discount.find({
       ...filter,
       type: 'role-based'
     }).sort({ priority: -1 });
-
-    // Get provider-specific discounts if provider code is provided
-    if (providerCode) {
-      const providerDiscounts = await Discount.find({
-        ...filter,
-        type: 'provider-specific',
-        'provider.code': providerCode
-      }).sort({ priority: -1 });
-
-      return [...providerDiscounts, ...roleDiscounts];
-    }
 
     return roleDiscounts;
   }

@@ -18,11 +18,16 @@ exports.getAllDiscounts = asyncHandler(async (req, res) => {
     if (type) filter.type = type;
     if (appliesTo) filter.appliesTo = appliesTo;
     
+    console.log('getAllDiscounts - Filter:', filter);
+    console.log('getAllDiscounts - Query params:', { isActive, type, appliesTo });
+    
     const discounts = await Discount.find(filter)
       .sort({ priority: -1, createdAt: -1 })
       .populate('createdBy', 'firstName lastName email')
       .populate('updatedBy', 'firstName lastName email')
       .lean();
+    
+    console.log('getAllDiscounts - Found discounts:', discounts.length);
     
     return ApiResponse.success(res, StatusCodes.OK, 'Discounts retrieved successfully', {
       count: discounts.length,

@@ -16,11 +16,15 @@ exports.getAllServiceCharges = asyncHandler(async (req, res) => {
     if (isActive !== undefined) filter.isActive = isActive === 'true';
     if (appliesTo) filter.appliesTo = appliesTo;
     
+    console.log('getAllServiceCharges - Filter:', filter);
+    
     const serviceCharges = await ServiceCharge.find(filter)
       .sort({ priority: -1, createdAt: -1 })
       .populate('createdBy', 'firstName lastName email')
       .populate('updatedBy', 'firstName lastName email')
       .lean();
+    
+    console.log('getAllServiceCharges - Found service charges:', serviceCharges.length);
     
     return ApiResponse.success(res, 200, 'Service charges retrieved successfully', {
       count: serviceCharges.length,

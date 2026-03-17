@@ -82,9 +82,10 @@ class PricingService {
       }
 
       let discountAmount = 0;
-      if (discount.type === 'percentage' || discount.type === 'role-based' || discount.type === 'provider-role-based') {
+      if (discount.type === 'percentage' || discount.type === 'provider-specific' || discount.type === 'role-based' || discount.type === 'provider-role-based') {
         discountAmount = (breakdown.subtotal * discountValue) / 100;
       } else {
+        // fixed
         discountAmount = discountValue;
       }
 

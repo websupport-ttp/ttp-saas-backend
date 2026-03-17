@@ -120,17 +120,26 @@ discountSchema.methods.canApplyToService = function(serviceType) {
 discountSchema.methods.getDiscountForRole = function(userRole) {
   if (this.type !== 'role-based' && this.type !== 'provider-role-based') return this.value || 0;
 
-  // Normalise role string to the key used in roleDiscounts
+  // Normalise role string — handle both capitalised and lowercase
   const roleMap = {
-    'Customer': 'customer',
-    'User':     'customer', // legacy alias
-    'Business': 'business',
-    'Staff':    'staff',
-    'Vendor':   'vendor',
-    'Agent':    'agent',
-    'Manager':  'manager',
-    'Executive':'executive',
-    'Admin':    'admin',
+    'customer':  'customer',
+    'Customer':  'customer',
+    'user':      'customer', // legacy alias
+    'User':      'customer', // legacy alias
+    'business':  'business',
+    'Business':  'business',
+    'staff':     'staff',
+    'Staff':     'staff',
+    'vendor':    'vendor',
+    'Vendor':    'vendor',
+    'agent':     'agent',
+    'Agent':     'agent',
+    'manager':   'manager',
+    'Manager':   'manager',
+    'executive': 'executive',
+    'Executive': 'executive',
+    'admin':     'admin',
+    'Admin':     'admin',
   };
 
   const key = roleMap[userRole] || 'customer';

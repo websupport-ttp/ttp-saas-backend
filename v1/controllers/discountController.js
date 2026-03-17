@@ -298,10 +298,15 @@ exports.getApplicableDiscounts = asyncHandler(async (req, res) => {
     const discountsWithValues = discounts.map(discount => {
       if ((discount.type === 'role-based' || discount.type === 'provider-role-based') && userRole && discount.roleDiscounts) {
         const roleMap = {
-          Customer: 'customer', User: 'customer',
-          Business: 'business', Staff: 'staff',
-          Vendor: 'vendor', Agent: 'agent',
-          Manager: 'manager', Executive: 'executive', Admin: 'admin'
+          customer: 'customer', Customer: 'customer',
+          user: 'customer', User: 'customer',
+          business: 'business', Business: 'business',
+          staff: 'staff', Staff: 'staff',
+          vendor: 'vendor', Vendor: 'vendor',
+          agent: 'agent', Agent: 'agent',
+          manager: 'manager', Manager: 'manager',
+          executive: 'executive', Executive: 'executive',
+          admin: 'admin', Admin: 'admin'
         };
         const role = roleMap[userRole] || 'customer';
         discount.applicableValue = discount.roleDiscounts[role] ?? 0;

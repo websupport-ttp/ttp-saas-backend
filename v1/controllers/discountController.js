@@ -288,16 +288,18 @@ exports.getApplicableDiscounts = asyncHandler(async (req, res) => {
     
     // Filter by provider if specified
     if (providerCode) {
-      filter['provider.code'] = providerCode;
+      filter.type = { $in: ['provider-specific', 'provider-role-based'] };
+      filter['provider.code'] = providerCode.toUpperCase();
     }
     
     const discounts = await Discount.find(filter).sort({ priority: -1 }).lean();
     
-    // Calculate discount values for role-based discounts
+    // Calculate discount values for role-based / provider-role-based discounts
     const discountsWithValues = discounts.map(discount => {
-      if (discount.type === 'role-based' && userRole && discount.roleDiscounts) {
-        const roleDiscount = discount.roleDiscounts.find(rd => rd.role === userRole);
-        discount.applicableValue = roleDiscount ? roleDiscount.value : 0;
+      if ((discount.type === 'role-based' || discount.type === 'provider-role-based') && userRole && discount.roleDiscounts) {
+        const roleMap = { User: 'user', Customer: 'user', Staff: 'staff', Agent: 'agent', Business: 'business' };
+        const role = roleMap[userRole] || 'user';
+        discount.applicableValue = discount.roleDiscounts[role] ?? 0;
       }
       return discount;
     });

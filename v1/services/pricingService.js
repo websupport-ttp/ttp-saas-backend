@@ -75,14 +75,14 @@ class PricingService {
     for (const discount of discounts) {
       let discountValue = 0;
       
-      if (discount.type === 'role-based') {
+      if (discount.type === 'role-based' || discount.type === 'provider-role-based') {
         discountValue = discount.getDiscountForRole(userRole);
       } else {
         discountValue = discount.value || 0;
       }
 
       let discountAmount = 0;
-      if (discount.type === 'percentage' || discount.type === 'role-based') {
+      if (discount.type === 'percentage' || discount.type === 'role-based' || discount.type === 'provider-role-based') {
         discountAmount = (breakdown.subtotal * discountValue) / 100;
       } else {
         discountAmount = discountValue;
@@ -202,7 +202,7 @@ class PricingService {
     if (providerCode) {
       const providerDiscounts = await Discount.find({
         isActive: true,
-        type: 'provider-specific',
+        type: { $in: ['provider-specific', 'provider-role-based'] },
         'provider.code': providerCode.toUpperCase(),
         appliesTo: { $in: ['all', serviceType] }
       }).sort({ priority: -1 });
@@ -215,7 +215,7 @@ class PricingService {
     // Get role-based discounts
     const roleDiscounts = await Discount.find({
       ...filter,
-      type: 'role-based'
+      type: { $in: ['role-based', 'provider-role-based'] }
     }).sort({ priority: -1 });
 
     return roleDiscounts;

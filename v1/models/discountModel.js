@@ -19,21 +19,22 @@ const discountSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['percentage', 'fixed', 'role-based', 'provider-specific'],
+    // provider-role-based: tied to a specific provider AND has per-role amounts
+    enum: ['percentage', 'fixed', 'role-based', 'provider-specific', 'provider-role-based'],
     required: true
   },
   value: {
     type: Number,
     min: 0
   },
-  // Role-based discounts
+  // Role-based discounts (used by 'role-based' and 'provider-role-based')
   roleDiscounts: {
-    user: { type: Number, default: 0, min: 0, max: 100 },
-    staff: { type: Number, default: 10, min: 0, max: 100 },
-    agent: { type: Number, default: 15, min: 0, max: 100 },
+    user:     { type: Number, default: 0,  min: 0, max: 100 },
+    staff:    { type: Number, default: 10, min: 0, max: 100 },
+    agent:    { type: Number, default: 15, min: 0, max: 100 },
     business: { type: Number, default: 20, min: 0, max: 100 }
   },
-  // Provider-specific discounts
+  // Provider info (used by 'provider-specific' and 'provider-role-based')
   provider: {
     type: {
       type: String,
@@ -113,17 +114,18 @@ discountSchema.methods.canApplyToService = function(serviceType) {
 };
 
 discountSchema.methods.getDiscountForRole = function(userRole) {
-  if (this.type !== 'role-based') return this.value || 0;
+  if (this.type !== 'role-based' && this.type !== 'provider-role-based') return this.value || 0;
   
   const roleMap = {
     'User': 'user',
+    'Customer': 'user',
     'Staff': 'staff',
     'Agent': 'agent',
     'Business': 'business'
   };
   
   const role = roleMap[userRole] || 'user';
-  return this.roleDiscounts[role] || 0;
+  return this.roleDiscounts?.[role] ?? 0;
 };
 
 module.exports = mongoose.model('Discount', discountSchema);

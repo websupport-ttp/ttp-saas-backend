@@ -28,6 +28,7 @@ const serviceChargeRoutes = require('./serviceChargeRoutes');
 const taxRoutes = require('./taxRoutes');
 const discountRoutes = require('./discountRoutes');
 const pricingRoutes = require('./pricingRoutes');
+const analyticsRoutes = require('./analyticsRoutes');
 const vendorAgentApplicationRoutes = require('./vendorAgentApplicationRoutes');
 
 // Import security middleware
@@ -96,6 +97,7 @@ router.use('/service-charges', apiLimiter); // Service charges with standard rat
 router.use('/taxes', apiLimiter); // Taxes with standard rate limiting
 router.use('/discounts', apiLimiter); // Discounts with standard rate limiting
 router.use('/pricing', apiLimiter); // Pricing calculation with standard rate limiting
+router.use('/analytics', apiLimiter); // Analytics with standard rate limiting
 router.use('/vendor-agent-applications', apiLimiter); // Vendor/Agent applications with standard rate limiting
 
 // Define base routes for each module
@@ -127,6 +129,7 @@ router.use('/service-charges', serviceChargeRoutes); // Service charge managemen
 router.use('/taxes', taxRoutes); // Tax management endpoints
 router.use('/discounts', discountRoutes); // Discount management endpoints
 router.use('/pricing', pricingRoutes); // Pricing calculation endpoints
+router.use('/analytics', analyticsRoutes); // Analytics endpoints
 router.use('/vendor-agent-applications', vendorAgentApplicationRoutes); // Vendor/Agent application endpoints
 router.use('/health', require('./healthRoutes')); // Health check endpoints
 

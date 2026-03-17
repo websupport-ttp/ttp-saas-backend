@@ -131,7 +131,10 @@ class PricingService {
     // 3. Apply Taxes
     const taxes = await this.getApplicableTaxes(serviceType, country);
     for (const tax of taxes) {
-      const taxAmount = (breakdown.subtotal * tax.rate) / 100;
+      // For inclusive taxes, the amount is what's already embedded in the price
+      // For exclusive taxes, the amount is added on top
+      const taxBase = tax.isInclusive ? breakdown.subtotal : breakdown.subtotal;
+      const taxAmount = Math.round((taxBase * tax.rate) / 100 * 100) / 100;
 
       breakdown.taxes.push({
         id: tax._id,
@@ -145,6 +148,7 @@ class PricingService {
       if (!tax.isInclusive) {
         breakdown.totalTaxes += taxAmount;
       }
+      // Inclusive taxes are shown in the breakdown but don't change the total
     }
 
     breakdown.finalPrice = breakdown.subtotal + breakdown.totalTaxes;

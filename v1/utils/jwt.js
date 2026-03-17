@@ -126,19 +126,32 @@ const generateTokenPair = (user, sessionInfo = {}) => {
     userAgent: userAgent ? crypto.createHash('sha256').update(userAgent).digest('hex').substring(0, 16) : null,
   };
 
+  const accessLifetime = process.env.JWT_ACCESS_LIFETIME || '15m';
+  const refreshLifetime = process.env.JWT_REFRESH_LIFETIME || '90d';
+
   const accessToken = generateToken(
     accessPayload,
     process.env.JWT_ACCESS_SECRET,
-    process.env.JWT_ACCESS_LIFETIME || '15m',
+    accessLifetime,
     { jwtid: accessTokenId }
   );
 
   const refreshToken = generateToken(
     refreshPayload,
     process.env.JWT_REFRESH_SECRET,
-    process.env.JWT_REFRESH_LIFETIME || '7d',
+    refreshLifetime,
     { jwtid: refreshTokenId }
   );
+
+  // Parse lifetime strings like '15m', '7d', '90d' into seconds
+  const parseLifetimeSeconds = (lifetime) => {
+    const match = String(lifetime).match(/^(\d+)([smhd])$/);
+    if (!match) return 7 * 24 * 60 * 60; // default 7d
+    const value = parseInt(match[1]);
+    const unit = match[2];
+    const multipliers = { s: 1, m: 60, h: 3600, d: 86400 };
+    return value * (multipliers[unit] || 86400);
+  };
 
   return {
     accessToken,
@@ -146,8 +159,8 @@ const generateTokenPair = (user, sessionInfo = {}) => {
     accessTokenId,
     refreshTokenId,
     sessionId,
-    expiresAt: new Date((now + (15 * 60)) * 1000), // 15 minutes from now
-    refreshExpiresAt: new Date((now + (7 * 24 * 60 * 60)) * 1000), // 7 days from now
+    expiresAt: new Date((now + parseLifetimeSeconds(accessLifetime)) * 1000),
+    refreshExpiresAt: new Date((now + parseLifetimeSeconds(refreshLifetime)) * 1000),
   };
 };
 

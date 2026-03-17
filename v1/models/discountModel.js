@@ -29,10 +29,14 @@ const discountSchema = new mongoose.Schema({
   },
   // Role-based discounts (used by 'role-based' and 'provider-role-based')
   roleDiscounts: {
-    user:     { type: Number, default: 0,  min: 0, max: 100 },
-    staff:    { type: Number, default: 10, min: 0, max: 100 },
-    agent:    { type: Number, default: 15, min: 0, max: 100 },
-    business: { type: Number, default: 20, min: 0, max: 100 }
+    customer:  { type: Number, default: 0,  min: 0, max: 100 },
+    business:  { type: Number, default: 0,  min: 0, max: 100 },
+    staff:     { type: Number, default: 0,  min: 0, max: 100 },
+    vendor:    { type: Number, default: 0,  min: 0, max: 100 },
+    agent:     { type: Number, default: 0,  min: 0, max: 100 },
+    manager:   { type: Number, default: 0,  min: 0, max: 100 },
+    executive: { type: Number, default: 0,  min: 0, max: 100 },
+    admin:     { type: Number, default: 0,  min: 0, max: 100 }
   },
   // Provider info (used by 'provider-specific' and 'provider-role-based')
   provider: {
@@ -115,17 +119,22 @@ discountSchema.methods.canApplyToService = function(serviceType) {
 
 discountSchema.methods.getDiscountForRole = function(userRole) {
   if (this.type !== 'role-based' && this.type !== 'provider-role-based') return this.value || 0;
-  
+
+  // Normalise role string to the key used in roleDiscounts
   const roleMap = {
-    'User': 'user',
-    'Customer': 'user',
-    'Staff': 'staff',
-    'Agent': 'agent',
-    'Business': 'business'
+    'Customer': 'customer',
+    'User':     'customer', // legacy alias
+    'Business': 'business',
+    'Staff':    'staff',
+    'Vendor':   'vendor',
+    'Agent':    'agent',
+    'Manager':  'manager',
+    'Executive':'executive',
+    'Admin':    'admin',
   };
-  
-  const role = roleMap[userRole] || 'user';
-  return this.roleDiscounts?.[role] ?? 0;
+
+  const key = roleMap[userRole] || 'customer';
+  return this.roleDiscounts?.[key] ?? 0;
 };
 
 module.exports = mongoose.model('Discount', discountSchema);

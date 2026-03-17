@@ -118,14 +118,27 @@ discountSchema.methods.canApplyToService = function(serviceType) {
 };
 
 discountSchema.methods.getDiscountForRole = function(userRole) {
-  if (this.type !== 'role-based' && this.type !== 'provider-role-based') return this.value || 0;
+  if (this.type !== 'role-based' && this.type !== 'provider-role-based') {
+    // For provider-specific: only use roleDiscounts if they exist and have values
+    if (this.type === 'provider-specific') {
+      const rd = this.roleDiscounts;
+      if (!rd) return this.value || 0;
+      const hasValues = Object.values(rd.toObject ? rd.toObject() : rd).some(v => v > 0);
+      if (!hasValues) return this.value || 0;
+      // fall through to role lookup below
+    } else {
+      return this.value || 0;
+    }
+  }
 
-  // Normalise role string — handle both capitalised and lowercase
+  // Normalise role string — handle both capitalised and lowercase, plus guest
   const roleMap = {
     'customer':  'customer',
     'Customer':  'customer',
     'user':      'customer', // legacy alias
     'User':      'customer', // legacy alias
+    'guest':     'customer', // guest checkout gets customer rate
+    'Guest':     'customer',
     'business':  'business',
     'Business':  'business',
     'staff':     'staff',

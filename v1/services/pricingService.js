@@ -18,7 +18,7 @@ class PricingService {
     const {
       basePrice,
       serviceType,
-      userRole = 'User',
+      userRole = 'guest',
       discountCode,
       providerCode,
       country = 'NG'
@@ -74,19 +74,29 @@ class PricingService {
 
     for (const discount of discounts) {
       let discountValue = 0;
-      
+
       if (discount.type === 'role-based' || discount.type === 'provider-role-based') {
         discountValue = discount.getDiscountForRole(userRole);
+      } else if (discount.type === 'provider-specific') {
+        // If roleDiscounts are set, use the role-specific value; otherwise fall back to flat value
+        const hasRoleDiscounts = discount.roleDiscounts &&
+          Object.values(discount.roleDiscounts.toObject ? discount.roleDiscounts.toObject() : discount.roleDiscounts)
+            .some(v => v > 0);
+        if (hasRoleDiscounts) {
+          discountValue = discount.getDiscountForRole(userRole);
+        } else {
+          discountValue = discount.value || 0;
+        }
       } else {
         discountValue = discount.value || 0;
       }
 
       let discountAmount = 0;
-      if (discount.type === 'percentage' || discount.type === 'provider-specific' || discount.type === 'role-based' || discount.type === 'provider-role-based') {
-        discountAmount = (breakdown.subtotal * discountValue) / 100;
-      } else {
-        // fixed
+      if (discount.type === 'fixed') {
         discountAmount = discountValue;
+      } else {
+        // percentage, provider-specific, role-based, provider-role-based — all percentage-based
+        discountAmount = (breakdown.subtotal * discountValue) / 100;
       }
 
       // Apply max discount limit
@@ -96,7 +106,7 @@ class PricingService {
 
       // Check min purchase amount
       if (discount.minPurchaseAmount && breakdown.subtotal < discount.minPurchaseAmount) {
-        continue; // Skip this discount
+        continue;
       }
 
       breakdown.discounts.push({

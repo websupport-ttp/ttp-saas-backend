@@ -171,8 +171,9 @@ exports.updateDiscount = asyncHandler(async (req, res) => {
   if (provider) discount.provider = provider;
   if (appliesTo) discount.appliesTo = appliesTo;
   if (minPurchaseAmount !== undefined) discount.minPurchaseAmount = minPurchaseAmount;
-  if (maxDiscountAmount !== undefined) discount.maxDiscountAmount = maxDiscountAmount;
-  if (usageLimit !== undefined) discount.usageLimit = usageLimit;
+  // Explicitly allow clearing maxDiscountAmount and usageLimit by setting to undefined
+  discount.maxDiscountAmount = maxDiscountAmount || undefined;
+  discount.usageLimit = usageLimit || undefined;
   if (validFrom) discount.validFrom = validFrom;
   if (validUntil) discount.validUntil = validUntil;
   if (isActive !== undefined) discount.isActive = isActive;
@@ -300,6 +301,7 @@ exports.getApplicableDiscounts = asyncHandler(async (req, res) => {
         const roleMap = {
           customer: 'customer', Customer: 'customer',
           user: 'customer', User: 'customer',
+          guest: 'customer', Guest: 'customer',
           business: 'business', Business: 'business',
           staff: 'staff', Staff: 'staff',
           vendor: 'vendor', Vendor: 'vendor',

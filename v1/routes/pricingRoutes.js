@@ -18,7 +18,7 @@ router.post('/calculate', asyncHandler(async (req, res) => {
   const breakdown = await pricingService.calculatePrice({
     basePrice,
     serviceType,
-    userRole,
+    userRole: userRole || 'guest',
     discountCode,
     providerCode,
     country

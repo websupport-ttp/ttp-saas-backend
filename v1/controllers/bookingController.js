@@ -230,71 +230,167 @@ const bookFlight = asyncHandler(async (req, res) => {
  * @access Public
  */
 const searchHotels = asyncHandler(async (req, res) => {
-  const { 
-    destination, 
-    checkIn, 
-    checkOut, 
-    guests,
-    rooms = 1
-  } = req.body;
+  const { destination, checkInDate, checkOutDate, guests, residency, currency } = req.body;
 
-  if (!destination || !checkIn || !checkOut || !guests) {
-    throw new ApiError('Missing required fields', StatusCodes.BAD_REQUEST);
+  if (!destination || !checkInDate || !checkOutDate) {
+    throw new ApiError('destination, checkInDate, and checkOutDate are required', StatusCodes.BAD_REQUEST);
   }
 
-  try {
-    const searchResults = await ratehawkService.searchHotels({
-      destination,
-      checkIn,
-      checkOut,
-      guests,
-      rooms
-    });
+  const searchResults = await ratehawkService.searchHotels({
+    destination, checkInDate, checkOutDate,
+    guests, residency, currency,
+  });
 
-    res.status(StatusCodes.OK).json(
-      new ApiResponse(
-        StatusCodes.OK,
-        searchResults,
-        'Hotel search completed successfully'
-      )
-    );
-  } catch (error) {
-    logger.error('Hotel search error:', error);
-    
-    // Fallback to mock data
-    const mockResults = {
-      data: [
-        {
-          id: 'MOCK-HTL-001',
-          name: 'Sample Hotel',
-          address: {
-            city: destination,
-            country: 'Nigeria'
-          },
-          rating: { stars: 4, score: 8.5 },
-          pricing: {
-            total: 85000,
-            currency: 'NGN',
-            perNight: 42500
-          },
-          amenities: ['WiFi', 'Pool', 'Gym', 'Restaurant']
-        }
-      ],
-      meta: { count: 1 }
-    };
-    
-    res.status(StatusCodes.OK).json(
-      new ApiResponse(
-        StatusCodes.OK,
-        mockResults,
-        'Hotel search completed (mock data - service unavailable)'
-      )
-    );
-  }
+  res.status(StatusCodes.OK).json(
+    new ApiResponse(StatusCodes.OK, searchResults, 'Hotel search completed successfully')
+  );
 });
 
 /**
- * @description Hotel booking controller
+ * @description Retrieve hotelpage (all rates for a single hotel)
+ * @route POST /api/v1/bookings/hotels/hotelpage
+ * @access Public
+ */
+const getHotelPage = asyncHandler(async (req, res) => {
+  const { hotelId, checkin, checkout, guests, residency, currency } = req.body;
+  if (!hotelId || !checkin || !checkout) {
+    throw new ApiError('hotelId, checkin, and checkout are required', StatusCodes.BAD_REQUEST);
+  }
+
+  const result = await ratehawkService.getHotelPage({ hotelId, checkin, checkout, guests, residency, currency });
+  res.status(StatusCodes.OK).json(new ApiResponse(StatusCodes.OK, result, 'Hotel page retrieved'));
+});
+
+/**
+ * @description Prebook a rate (confirms availability, returns p-... book_hash)
+ * @route POST /api/v1/bookings/hotels/prebook
+ * @access Public
+ */
+const prebookRate = asyncHandler(async (req, res) => {
+  const { bookHash, priceIncreasePercent = 0 } = req.body;
+  if (!bookHash) throw new ApiError('bookHash is required', StatusCodes.BAD_REQUEST);
+
+  const result = await ratehawkService.prebookRate({ bookHash, priceIncreasePercent });
+  res.status(StatusCodes.OK).json(new ApiResponse(StatusCodes.OK, result, 'Rate prebooked'));
+});
+
+/**
+ * @description Create booking form (links order to our system)
+ * @route POST /api/v1/bookings/hotels/booking-form
+ * @access Private
+ */
+const createHotelBookingForm = asyncHandler(async (req, res) => {
+  const { bookHash, guests: roomGuests, userEmail, userPhone } = req.body;
+  if (!bookHash || !roomGuests) throw new ApiError('bookHash and guests are required', StatusCodes.BAD_REQUEST);
+
+  const partnerOrderId = `TTP-HTL-${Date.now()}`;
+  const corporateEmail = process.env.CORPORATE_EMAIL || userEmail;
+
+  const result = await ratehawkService.createBookingForm({
+    bookHash, partnerOrderId,
+    guests: roomGuests,
+    userEmail: corporateEmail,
+    userPhone,
+  });
+
+  res.status(StatusCodes.OK).json(new ApiResponse(StatusCodes.OK, { ...result, partnerOrderId }, 'Booking form created'));
+});
+
+/**
+ * @description Start booking process + poll for final status
+ * @route POST /api/v1/bookings/hotels/start-booking
+ * @access Private
+ */
+const startHotelBooking = asyncHandler(async (req, res) => {
+  const { orderId, partnerOrderId, userPhone } = req.body;
+  if (!orderId) throw new ApiError('orderId is required', StatusCodes.BAD_REQUEST);
+
+  const corporateEmail = process.env.CORPORATE_EMAIL || req.user?.email;
+
+  // Start the booking
+  await ratehawkService.startBooking({ orderId, partnerOrderId, userEmail: corporateEmail, userPhone });
+
+  // Poll for final status (up to 60s)
+  const finalStatus = await ratehawkService.pollBookingStatus(orderId);
+
+  res.status(StatusCodes.OK).json(new ApiResponse(StatusCodes.OK, finalStatus,
+    finalStatus.status === 'ok' ? 'Booking confirmed' : 'Booking failed'
+  ));
+});
+
+/**
+ * @description Check booking status manually
+ * @route POST /api/v1/bookings/hotels/booking-status
+ * @access Private
+ */
+const checkHotelBookingStatus = asyncHandler(async (req, res) => {
+  const { orderId } = req.body;
+  if (!orderId) throw new ApiError('orderId is required', StatusCodes.BAD_REQUEST);
+
+  const result = await ratehawkService.checkBookingStatus(orderId);
+  res.status(StatusCodes.OK).json(new ApiResponse(StatusCodes.OK, result, 'Booking status retrieved'));
+});
+
+/**
+ * @description Get hotel static content
+ * @route GET /api/v1/bookings/hotels/static/:hotelId
+ * @access Public
+ */
+const getHotelStaticContent = asyncHandler(async (req, res) => {
+  const { hotelId } = req.params;
+  const result = await ratehawkService.getHotelDetails(hotelId);
+  res.status(StatusCodes.OK).json(new ApiResponse(StatusCodes.OK, result, 'Hotel content retrieved'));
+});
+
+/**
+ * @description Get hotel dump URL (weekly static data)
+ * @route GET /api/v1/bookings/hotels/dump
+ * @access Private/Admin
+ */
+const getHotelDump = asyncHandler(async (req, res) => {
+  const result = await ratehawkService.getHotelDump();
+  res.status(StatusCodes.OK).json(new ApiResponse(StatusCodes.OK, result, 'Hotel dump URL retrieved'));
+});
+
+/**
+ * @description Get hotel incremental dump URL (daily updates)
+ * @route GET /api/v1/bookings/hotels/dump/incremental
+ * @access Private/Admin
+ */
+const getHotelIncrementalDump = asyncHandler(async (req, res) => {
+  const { date } = req.query;
+  const result = await ratehawkService.getHotelIncrementalDump(date);
+  res.status(StatusCodes.OK).json(new ApiResponse(StatusCodes.OK, result, 'Incremental dump URL retrieved'));
+});
+
+/**
+ * @description Cancel hotel booking
+ * @route POST /api/v1/bookings/hotels/cancel
+ * @access Private
+ */
+const cancelHotelBooking = asyncHandler(async (req, res) => {
+  const { orderId } = req.body;
+  if (!orderId) throw new ApiError('orderId is required', StatusCodes.BAD_REQUEST);
+
+  const result = await ratehawkService.cancelBooking(orderId);
+  res.status(StatusCodes.OK).json(new ApiResponse(StatusCodes.OK, result, 'Booking cancelled'));
+});
+
+/**
+ * @description Retrieve booking info post-booking
+ * @route POST /api/v1/bookings/hotels/order-info
+ * @access Private
+ */
+const getHotelOrderInfo = asyncHandler(async (req, res) => {
+  const { orderId } = req.body;
+  if (!orderId) throw new ApiError('orderId is required', StatusCodes.BAD_REQUEST);
+
+  const result = await ratehawkService.getBookingInfo(orderId);
+  res.status(StatusCodes.OK).json(new ApiResponse(StatusCodes.OK, result, 'Order info retrieved'));
+});
+
+/**
+ * @description Hotel booking controller (legacy — use booking-form + start-booking instead)
  * @route POST /api/v1/bookings/hotels/book
  * @access Private
  */
@@ -881,6 +977,16 @@ module.exports = {
   searchFlights,
   bookFlight,
   searchHotels,
+  getHotelPage,
+  prebookRate,
+  createHotelBookingForm,
+  startHotelBooking,
+  checkHotelBookingStatus,
+  getHotelStaticContent,
+  getHotelDump,
+  getHotelIncrementalDump,
+  cancelHotelBooking,
+  getHotelOrderInfo,
   bookHotel,
   applyVisa,
   getInsuranceQuote,

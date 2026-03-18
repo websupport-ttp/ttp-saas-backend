@@ -4,310 +4,337 @@ const logger = require('../utils/logger');
 const { ApiError } = require('../utils/apiError');
 const { StatusCodes } = require('http-status-codes');
 
-const RATEHAWK_BASE_URL = process.env.RATEHAWK_BASE_URL || process.env.RATEHAWK_SANDBOX_URL;
+const RATEHAWK_BASE_URL = process.env.RATEHAWK_BASE_URL || process.env.RATEHAWK_SANDBOX_URL || 'https://api.worldota.net';
 const RATEHAWK_API_KEY_ID = process.env.RATEHAWK_API_KEY_ID;
 const RATEHAWK_API_ACCESS_TOKEN = process.env.RATEHAWK_API_ACCESS_TOKEN;
 
-/**
- * @function getAuthHeaders
- * @description Gets authentication headers for Ratehawk API calls.
- * @returns {object} The authentication headers.
- * @throws {ApiError} If credentials are not set.
- */
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
 const getAuthHeaders = () => {
   if (!RATEHAWK_API_KEY_ID || !RATEHAWK_API_ACCESS_TOKEN) {
     throw new ApiError('Ratehawk API credentials are not set.', StatusCodes.INTERNAL_SERVER_ERROR);
   }
-  
-  const authString = `${RATEHAWK_API_KEY_ID}:${RATEHAWK_API_ACCESS_TOKEN}`;
-  const base64Auth = Buffer.from(authString).toString('base64');
-  
-  logger.info(`Auth credentials - Key ID: ${RATEHAWK_API_KEY_ID}, Token length: ${RATEHAWK_API_ACCESS_TOKEN?.length}`);
-  
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Basic ${base64Auth}`
-  };
+  const base64Auth = Buffer.from(`${RATEHAWK_API_KEY_ID}:${RATEHAWK_API_ACCESS_TOKEN}`).toString('base64');
+  return { 'Content-Type': 'application/json', 'Authorization': `Basic ${base64Auth}` };
 };
 
-/**
- * @function ratehawkApiCall
- * @description Generic function to make authenticated calls to the Ratehawk API.
- * @param {string} endpoint - The API endpoint path.
- * @param {object} data - The request payload.
- * @param {string} method - The HTTP method ('GET' or 'POST').
- * @returns {object} The API response data.
- * @throws {ApiError} If the API call fails.
- */
+// ─── Generic caller ──────────────────────────────────────────────────────────
+
 const ratehawkApiCall = async (endpoint, data, method = 'POST') => {
   try {
     const headers = getAuthHeaders();
     const url = `${RATEHAWK_BASE_URL}${endpoint}`;
-    
-    logger.info(`Making ${method} request to Ratehawk API: ${endpoint}`);
-    logger.info(`Full URL: ${url}`);
-    logger.info(`Request data: ${JSON.stringify(data, null, 2)}`);
-    
-    let response;
-    if (method === 'GET') {
-      response = await axios.get(url, { headers, params: data });
-    } else if (method === 'POST') {
-      response = await axios.post(url, data, { headers });
-    } else {
-      throw new ApiError('Unsupported HTTP method for Ratehawk API call', StatusCodes.BAD_REQUEST);
-    }
-    
-    logger.info(`Ratehawk API response status: ${response.status}`);
+    logger.info(`Ratehawk ${method} ${endpoint}`);
+
+    const response = method === 'GET'
+      ? await axios.get(url, { headers, params: data })
+      : await axios.post(url, data, { headers });
+
     return response.data;
   } catch (error) {
     logger.error(`Ratehawk API call to ${endpoint} failed:`, error.message);
-    
     if (error.response) {
-      logger.error('Ratehawk API response status:', error.response.status);
-      logger.error('Ratehawk API response data:', error.response.data);
-      
-      // Check for specific Ratehawk error messages
-      const errorMessage = error.response.data?.error || error.response.data?.message || 'Ratehawk API request failed';
-      const debugInfo = error.response.data?.debug;
-      
-      if (debugInfo) {
-        logger.error('Ratehawk API debug info:', debugInfo);
-        if (debugInfo.validation_error) {
-          logger.error('Validation error:', debugInfo.validation_error);
-        }
-      }
-      
-      throw new ApiError(
-        errorMessage,
-        error.response.status || StatusCodes.INTERNAL_SERVER_ERROR
-      );
-    } else if (error.request) {
-      logger.error('No response received from Ratehawk API');
-      throw new ApiError('No response from Ratehawk API - possible network or authentication issue', StatusCodes.SERVICE_UNAVAILABLE);
+      const msg = error.response.data?.error || error.response.data?.message || 'Ratehawk API request failed';
+      throw new ApiError(msg, error.response.status || StatusCodes.INTERNAL_SERVER_ERROR);
     }
-    throw new ApiError('Ratehawk API request failed: ' + error.message, StatusCodes.INTERNAL_SERVER_ERROR);
+    throw new ApiError('No response from Ratehawk API', StatusCodes.SERVICE_UNAVAILABLE);
   }
 };
 
-/**
- * @function searchHotels
- * @description Searches for hotels using Ratehawk API.
- * @param {object} searchCriteria - Hotel search criteria.
- * @returns {object} Hotel search results.
- */
-const searchHotels = async (searchCriteria) => {
-  try {
-    logger.info('Starting hotel search for:', searchCriteria.destination);
-    
-    // Get region ID first
-    const regionId = await getRegionId(searchCriteria.destination);
-    logger.info(`Using region ID: ${regionId} for ${searchCriteria.destination}`);
-    
-    // Transform search criteria to Ratehawk format
-    const ratehawkRequest = {
-      checkin: searchCriteria.checkInDate,
-      checkout: searchCriteria.checkOutDate,
-      residency: 'ng', // Nigeria as default residency
-      language: 'en',
-      guests: [
-        {
-          adults: searchCriteria.adults || 2,
-          children: searchCriteria.children || []
-        }
-      ],
-      region_id: regionId,
-      // Use USD for sandbox testing as NGN is not supported in sandbox
-      currency: process.env.NODE_ENV === 'development' ? 'USD' : (searchCriteria.currency || 'USD')
-    };
+// ─── Region lookup ───────────────────────────────────────────────────────────
 
-    logger.info('Searching hotels with criteria:', ratehawkRequest);
-    
-    // Make the search request
-    // Note: Using /serp/region endpoint for region-based search
-    const response = await ratehawkApiCall('/api/b2b/v3/search/serp/region', ratehawkRequest, 'POST');
-    
-    // Transform response to our format
-    return {
-      searchId: response.data?.search_id,
-      hotels: response.data?.hotels?.map(hotel => ({
-        id: hotel.id,
-        name: hotel.name,
-        address: hotel.address,
-        stars: hotel.star_rating,
-        images: hotel.images,
-        amenities: hotel.amenities,
-        rooms: hotel.rates?.map(rate => ({
-          id: rate.match_hash,
-          name: rate.room_name,
-          price: rate.daily_prices?.[0],
-          currency: rate.currency,
-          cancellationPolicy: rate.cancellation_penalties,
-          breakfast: rate.meal,
-          bedding: rate.room_data_trans?.bedding_type
-        })) || [],
-        location: {
-          latitude: hotel.latitude,
-          longitude: hotel.longitude
-        },
-        rating: hotel.review_score,
-        reviewCount: hotel.review_count
-      })) || [],
-      totalResults: response.data?.hotels?.length || 0
-    };
-  } catch (error) {
-    logger.error('Hotel search failed:', error.message);
-    throw error;
-  }
+const REGION_MAP = {
+  'lagos': 6040, 'abuja': 6041, 'port harcourt': 6042,
+  'kano': 6043, 'ibadan': 6044,
 };
 
-/**
- * @function bookHotel
- * @description Books a hotel using Ratehawk API.
- * @param {object} bookingDetails - Hotel booking details.
- * @returns {object} Hotel booking confirmation.
- */
-const bookHotel = async (bookingDetails) => {
-  try {
-    const { searchId, roomId, guestDetails, hotelDetails } = bookingDetails;
-    
-    // Transform booking details to Ratehawk format
-    const ratehawkBookingRequest = {
-      search_id: searchId,
-      room_id: roomId,
-      user_ip: '127.0.0.1', // Should be actual user IP in production
-      partner_order_id: `TTP-${Date.now()}`,
-      book_hash: roomId, // Usually the same as room_id for Ratehawk
-      language: 'en',
-      guests: [
-        {
-          first_name: guestDetails.firstName,
-          last_name: guestDetails.lastName,
-          phone: guestDetails.phoneNumber,
-          email: guestDetails.email
-        }
-      ]
-    };
-
-    logger.info('Booking hotel with details:', ratehawkBookingRequest);
-    
-    // Make the booking request
-    const response = await ratehawkApiCall('/api/b2b/v3/hotel/order/booking/form', ratehawkBookingRequest, 'POST');
-    
-    return {
-      bookingReference: response.data?.partner_order_id,
-      ratehawkOrderId: response.data?.order_id,
-      status: response.data?.status,
-      hotelConfirmation: response.data?.hotel_confirmation_code,
-      totalPrice: response.data?.amount_sell_b2b2c,
-      currency: response.data?.currency,
-      checkIn: response.data?.checkin,
-      checkOut: response.data?.checkout,
-      guestName: `${guestDetails.firstName} ${guestDetails.lastName}`,
-      hotelName: hotelDetails.name,
-      roomType: hotelDetails.roomName
-    };
-  } catch (error) {
-    logger.error('Hotel booking failed:', error.message);
-    throw error;
-  }
-};
-
-/**
- * @function getRegionId
- * @description Gets region ID for a destination (city/country).
- * @param {string} destination - The destination name.
- * @returns {number} The region ID for Ratehawk API.
- */
 const getRegionId = async (destination) => {
+  const key = destination.toLowerCase();
+  if (REGION_MAP[key]) return REGION_MAP[key];
+
   try {
-    // For now, return common region IDs for major Nigerian cities
-    const regionMap = {
-      'lagos': 6040, // Lagos region ID (example)
-      'abuja': 6041, // Abuja region ID (example)
-      'port harcourt': 6042, // Port Harcourt region ID (example)
-      'kano': 6043, // Kano region ID (example)
-      'ibadan': 6044, // Ibadan region ID (example)
-    };
-    
-    const normalizedDestination = destination.toLowerCase();
-    
-    // Check if we have a predefined region ID
-    if (regionMap[normalizedDestination]) {
-      return regionMap[normalizedDestination];
-    }
-    
-    // If not found, search for the region using Ratehawk's multicomplete API
-    const searchResponse = await ratehawkApiCall('/api/b2b/v3/search/multicomplete', {
-      query: destination,
-      language: 'en'
-    }, 'POST');
-    
-    // Check if we got regions in the response
-    if (searchResponse.data && searchResponse.data.regions && searchResponse.data.regions.length > 0) {
-      logger.info(`Found region for ${destination}:`, searchResponse.data.regions[0]);
-      return searchResponse.data.regions[0].id;
-    }
-    
-    // Check if we got hotels in the response (can also extract region from hotel)
-    if (searchResponse.data && searchResponse.data.hotels && searchResponse.data.hotels.length > 0) {
-      logger.info(`Found hotel for ${destination}, using its region`);
-      return searchResponse.data.hotels[0].region_id;
-    }
-    
-    // For sandbox testing, use a known test region ID
-    // The sandbox may have limited data, so we'll use a default test region
-    logger.warn(`No region found for destination: ${destination}, using default test region`);
-    return 2114; // Default test region ID for sandbox (you may need to adjust this)
-  } catch (error) {
-    logger.error('Failed to get region ID:', error.message);
-    // Default to Lagos region ID
-    return 6040;
+    const res = await ratehawkApiCall('/api/b2b/v3/search/multicomplete', { query: destination, language: 'en' }, 'POST');
+    if (res.data?.regions?.length) return res.data.regions[0].id;
+    if (res.data?.hotels?.length) return res.data.hotels[0].region_id;
+  } catch (e) {
+    logger.warn(`Region lookup failed for "${destination}", using fallback`);
   }
+  return 2114; // fallback test region
+};
+
+// ─── Parse helpers ───────────────────────────────────────────────────────────
+
+/**
+ * Parse tax_data.taxes from a rate's payment_options.
+ * Returns { includedTaxes, excludedTaxes } arrays.
+ */
+const parseTaxData = (rate) => {
+  const taxes = rate?.payment_options?.payment_types?.[0]?.tax_data?.taxes || [];
+  const includedTaxes = [];
+  const excludedTaxes = [];
+  for (const t of taxes) {
+    const entry = { name: t.name, amount: t.amount, currency: t.currency_code };
+    if (t.included_by_supplier) includedTaxes.push(entry);
+    else excludedTaxes.push(entry);
+  }
+  return { includedTaxes, excludedTaxes };
 };
 
 /**
- * @function getHotelDetails
- * @description Gets detailed information about a specific hotel.
- * @param {string} hotelId - The hotel ID.
- * @returns {object} Hotel details.
+ * Parse metapolicy_struct into a flat readable object.
  */
+const parseMetapolicy = (hotelStatic) => {
+  const struct = hotelStatic?.metapolicy_struct || {};
+  const extra = hotelStatic?.metapolicy_extra_info || '';
+  return { struct, extra };
+};
+
+/**
+ * Map a raw ETG rate to our standard format.
+ */
+const mapRate = (rate) => {
+  const payType = rate?.payment_options?.payment_types?.[0] || {};
+  const { includedTaxes, excludedTaxes } = parseTaxData(rate);
+  return {
+    matchHash: rate.match_hash,
+    bookHash: rate.book_hash,
+    roomName: rate.room_name,
+    meal: rate.meal,
+    mealData: rate.meal_data,
+    dailyPrice: rate.daily_prices?.[0],
+    showAmount: payType.show_amount,
+    amount: payType.amount,
+    currency: payType.show_currency_code || payType.currency_code,
+    paymentType: payType.type,
+    cancellationPenalties: rate.cancellation_penalties,
+    freeCancellationBefore: rate.cancellation_penalties?.free_cancellation_before,
+    includedTaxes,
+    excludedTaxes,
+    roomDataTrans: rate.room_data_trans,
+  };
+};
+
+// ─── 1. Search by region ─────────────────────────────────────────────────────
+
+const searchHotels = async (searchCriteria) => {
+  const regionId = await getRegionId(searchCriteria.destination);
+
+  const payload = {
+    checkin: searchCriteria.checkInDate,
+    checkout: searchCriteria.checkOutDate,
+    residency: searchCriteria.residency || 'ng',
+    language: 'en',
+    guests: searchCriteria.guests || [{ adults: searchCriteria.adults || 2, children: searchCriteria.children || [] }],
+    region_id: regionId,
+    currency: searchCriteria.currency || 'USD',
+    timeout: 30,
+  };
+
+  const response = await ratehawkApiCall('/api/b2b/v3/search/serp/region/', payload, 'POST');
+
+  const hotels = (response.data?.hotels || []).map(hotel => ({
+    id: hotel.id,
+    hid: hotel.hid,
+    name: hotel.name,
+    address: hotel.address,
+    stars: hotel.star_rating,
+    images: hotel.images || [],
+    amenities: hotel.amenities || [],
+    location: { latitude: hotel.latitude, longitude: hotel.longitude },
+    rating: hotel.review_score,
+    reviewCount: hotel.review_count,
+    rates: (hotel.rates || []).map(mapRate),
+  }));
+
+  return { searchId: response.data?.search_id, hotels, totalResults: hotels.length };
+};
+
+// ─── 2. Retrieve hotelpage (/search/hp/) ─────────────────────────────────────
+
+const getHotelPage = async ({ hotelId, checkin, checkout, guests, residency = 'ng', currency = 'USD' }) => {
+  const payload = {
+    id: hotelId,
+    checkin,
+    checkout,
+    residency,
+    language: 'en',
+    guests: guests || [{ adults: 2, children: [] }],
+    currency,
+    timeout: 30,
+  };
+
+  const response = await ratehawkApiCall('/api/b2b/v3/search/hp/', payload, 'POST');
+  const hotel = response.data?.hotel || {};
+
+  return {
+    id: hotel.id,
+    hid: hotel.hid,
+    name: hotel.name,
+    address: hotel.address,
+    stars: hotel.star_rating,
+    images: hotel.images || [],
+    amenities: hotel.amenities || [],
+    description: hotel.description_struct,
+    metapolicy: parseMetapolicy(hotel),
+    rates: (hotel.rates || []).map(mapRate),
+  };
+};
+
+// ─── 3. Prebook rate (/hotel/prebook/) ───────────────────────────────────────
+
+const prebookRate = async ({ bookHash, priceIncreasePercent = 0 }) => {
+  const payload = { book_hash: bookHash, price_increase_percent: priceIncreasePercent };
+  const response = await ratehawkApiCall('/api/b2b/v3/hotel/prebook/', payload, 'POST');
+  const data = response.data || {};
+
+  return {
+    bookHash: data.book_hash,        // starts with "p-..."
+    priceChanged: data.price_changed || false,
+    newPrice: data.new_price,
+    oldPrice: data.old_price,
+    currency: data.currency,
+    rate: data.rate ? mapRate(data.rate) : null,
+  };
+};
+
+// ─── 4. Create booking form (/order/booking/form/) ───────────────────────────
+
+const createBookingForm = async ({ bookHash, partnerOrderId, guests, userEmail, userPhone, language = 'en' }) => {
+  const payload = {
+    book_hash: bookHash,
+    partner_order_id: partnerOrderId,
+    language,
+    user: { email: userEmail, phone: userPhone },
+    rooms: guests, // [{ guests: [{ first_name, last_name, age? }] }]
+  };
+
+  const response = await ratehawkApiCall('/api/b2b/v3/hotel/order/booking/form/', payload, 'POST');
+  return { orderId: response.data?.order_id, status: response.data?.status };
+};
+
+// ─── 5. Start booking (/order/booking/finish/) ───────────────────────────────
+
+const startBooking = async ({ orderId, partnerOrderId, userEmail, userPhone, language = 'en' }) => {
+  const payload = {
+    order_id: orderId,
+    partner_order_id: partnerOrderId,
+    language,
+    user: { email: userEmail, phone: userPhone },
+    payment_type: { type: 'deposit' },
+  };
+
+  const response = await ratehawkApiCall('/api/b2b/v3/hotel/order/booking/finish/', payload, 'POST');
+  return { status: response.data?.status, orderId: response.data?.order_id };
+};
+
+// ─── 6. Check booking status (/order/booking/finish/status/) ─────────────────
+
+const checkBookingStatus = async (orderId) => {
+  const response = await ratehawkApiCall('/api/b2b/v3/hotel/order/booking/finish/status/', { order_id: orderId }, 'POST');
+  return {
+    status: response.data?.status,
+    error: response.data?.error,
+    orderId: response.data?.order_id,
+  };
+};
+
+/**
+ * Poll checkBookingStatus until final status or timeout.
+ * Returns { status, orderId, error }
+ */
+const pollBookingStatus = async (orderId, { intervalMs = 3000, maxWaitMs = 60000 } = {}) => {
+  const deadline = Date.now() + maxWaitMs;
+  const FINAL_FAILURES = new Set(['block', 'charge', '3ds', 'soldout', 'provider', 'book_limit', 'not_allowed', 'booking_finish_did_not_succeed']);
+
+  while (Date.now() < deadline) {
+    let result;
+    try {
+      result = await checkBookingStatus(orderId);
+    } catch (e) {
+      // 5xx / network — keep polling
+      logger.warn(`checkBookingStatus error for ${orderId}: ${e.message}, retrying...`);
+      await new Promise(r => setTimeout(r, intervalMs));
+      continue;
+    }
+
+    const { status, error } = result;
+
+    if (status === 'ok') return result;
+    if (error && FINAL_FAILURES.has(error)) return result;
+    if (status === 'processing' || error === 'timeout' || error === 'unknown') {
+      await new Promise(r => setTimeout(r, intervalMs));
+      continue;
+    }
+
+    // Unknown status — keep polling
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+
+  return { status: 'timeout', orderId, error: 'timeout' };
+};
+
+// ─── 7. Hotel static content (/hotel/info/) ──────────────────────────────────
+
 const getHotelDetails = async (hotelId) => {
-  try {
-    const response = await ratehawkApiCall(`/api/b2b/v3/hotel/info`, {
-      hotel_id: hotelId,
-      language: 'en'
-    }, 'POST');
-    
-    return response.data;
-  } catch (error) {
-    logger.error('Failed to get hotel details:', error.message);
-    throw error;
-  }
+  const response = await ratehawkApiCall('/api/b2b/v3/hotel/info/', { id: hotelId, language: 'en' }, 'POST');
+  const hotel = response.data || {};
+  return {
+    id: hotel.id,
+    hid: hotel.hid,
+    name: hotel.name,
+    address: hotel.address,
+    stars: hotel.star_rating,
+    images: hotel.images || [],
+    amenities: hotel.amenities || [],
+    description: hotel.description_struct,
+    metapolicy: parseMetapolicy(hotel),
+    roomGroups: hotel.room_groups || [],
+  };
 };
 
-/**
- * @function cancelBooking
- * @description Cancels a hotel booking.
- * @param {string} orderId - The Ratehawk order ID.
- * @returns {object} Cancellation response.
- */
+// ─── 8. Hotel dump (/hotel/info/dump/) ───────────────────────────────────────
+
+const getHotelDump = async () => {
+  const response = await ratehawkApiCall('/api/b2b/v3/hotel/info/dump/', {}, 'POST');
+  return { url: response.data?.url, lastUpdate: response.data?.last_update };
+};
+
+// ─── 9. Hotel incremental dump (/hotel/info/incremental_dump/) ───────────────
+
+const getHotelIncrementalDump = async (date) => {
+  const payload = date ? { date } : {};
+  const response = await ratehawkApiCall('/api/b2b/v3/hotel/info/incremental_dump/', payload, 'POST');
+  return { url: response.data?.url, lastUpdate: response.data?.last_update };
+};
+
+// ─── 10. Cancel booking ──────────────────────────────────────────────────────
+
 const cancelBooking = async (orderId) => {
-  try {
-    const response = await ratehawkApiCall('/api/b2b/v3/hotel/order/cancel', {
-      order_id: orderId
-    }, 'POST');
-    
-    return response.data;
-  } catch (error) {
-    logger.error('Failed to cancel booking:', error.message);
-    throw error;
-  }
+  const response = await ratehawkApiCall('/api/b2b/v3/hotel/order/cancel/', { order_id: orderId }, 'POST');
+  return response.data;
+};
+
+// ─── 11. Retrieve booking info (/order/info/) ────────────────────────────────
+
+const getBookingInfo = async (orderId) => {
+  const response = await ratehawkApiCall('/api/b2b/v3/hotel/order/info/', { order_id: orderId }, 'POST');
+  return response.data;
 };
 
 module.exports = {
   searchHotels,
-  bookHotel,
+  getHotelPage,
+  prebookRate,
+  createBookingForm,
+  startBooking,
+  checkBookingStatus,
+  pollBookingStatus,
   getHotelDetails,
+  getHotelDump,
+  getHotelIncrementalDump,
   cancelBooking,
-  getRegionId
+  getBookingInfo,
+  getRegionId,
+  parseTaxData,
+  parseMetapolicy,
 };

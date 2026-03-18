@@ -284,12 +284,18 @@ const createHotelBookingForm = asyncHandler(async (req, res) => {
   if (!bookHash || !roomGuests) throw new ApiError('bookHash and guests are required', StatusCodes.BAD_REQUEST);
 
   const partnerOrderId = `TTP-HTL-${Date.now()}`;
-  const corporateEmail = process.env.CORPORATE_EMAIL || userEmail;
+
+  // ETG is a B2B API — always use the corporate email for the booking account.
+  // userEmail is stored for our records but not sent to ETG.
+  const corporateEmail = process.env.CORPORATE_EMAIL;
+  if (!corporateEmail) {
+    logger.warn('CORPORATE_EMAIL env var is not set — ETG booking-form may fail');
+  }
 
   const result = await ratehawkService.createBookingForm({
     bookHash, partnerOrderId,
     guests: roomGuests,
-    userEmail: corporateEmail,
+    userEmail: corporateEmail || userEmail,
     userPhone,
   });
 
@@ -305,10 +311,12 @@ const startHotelBooking = asyncHandler(async (req, res) => {
   const { orderId, partnerOrderId, userPhone } = req.body;
   if (!orderId) throw new ApiError('orderId is required', StatusCodes.BAD_REQUEST);
 
-  const corporateEmail = process.env.CORPORATE_EMAIL || req.user?.email;
+  const corporateEmail = process.env.CORPORATE_EMAIL;
+  if (!corporateEmail) {
+    logger.warn('CORPORATE_EMAIL env var is not set — ETG start-booking may fail');
+  }
 
-  // Start the booking
-  await ratehawkService.startBooking({ orderId, partnerOrderId, userEmail: corporateEmail, userPhone });
+  await ratehawkService.startBooking({ orderId, partnerOrderId, userEmail: corporateEmail || req.user?.email, userPhone });
 
   // Poll for final status (up to 60s)
   const finalStatus = await ratehawkService.pollBookingStatus(orderId);

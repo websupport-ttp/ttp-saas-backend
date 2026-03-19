@@ -20,7 +20,6 @@ const sanlamAllianzService = require('../services/allianzService');
 const paystackService = require('../services/paystackService');
 const pricingService = require('../services/pricingService');
 const { sendEmail } = require('../utils/emailService');
-const { sendSMS } = require('../utils/smsService');
 
 /**
  * @description Flight search controller
@@ -367,12 +366,6 @@ const startHotelBooking = asyncHandler(async (req, res) => {
           </div>
         `,
       }).catch(err => logger.warn('Hotel booking confirmation email failed:', err.message));
-    }
-
-    // SMS confirmation
-    if (userPhone) {
-      const smsBody = `TravelPlace: Booking confirmed! Hotel: ${hotelDisplayName}. Order: ${orderId}.${checkinDisplay ? ` Check-in: ${checkinDisplay}.` : ''} Show this at reception.`;
-      sendSMS(userPhone, smsBody).catch(err => logger.warn('Hotel booking confirmation SMS failed:', err.message));
     }
   }
 

@@ -19,6 +19,8 @@ const ratehawkService = require('../services/ratehawkService');
 const sanlamAllianzService = require('../services/allianzService');
 const paystackService = require('../services/paystackService');
 const pricingService = require('../services/pricingService');
+const { sendEmail } = require('../utils/emailService');
+const { sendSMS } = require('../utils/smsService');
 
 /**
  * @description Flight search controller
@@ -308,7 +310,8 @@ const createHotelBookingForm = asyncHandler(async (req, res) => {
  * @access Private
  */
 const startHotelBooking = asyncHandler(async (req, res) => {
-  const { orderId, partnerOrderId, userPhone } = req.body;
+  // userEmail / guestName / hotelName are optional — used for confirmation notifications only
+  const { orderId, partnerOrderId, userPhone, userEmail, guestName, hotelName, checkin, checkout } = req.body;
   if (!orderId) throw new ApiError('orderId is required', StatusCodes.BAD_REQUEST);
 
   const corporateEmail = process.env.CORPORATE_EMAIL;
@@ -320,6 +323,58 @@ const startHotelBooking = asyncHandler(async (req, res) => {
 
   // Poll for final status (up to 60s)
   const finalStatus = await ratehawkService.pollBookingStatus(orderId);
+
+  // Fire confirmation notifications (non-blocking — never fail the booking response)
+  if (finalStatus.status === 'ok') {
+    const guestEmail = userEmail || req.user?.email;
+    const guestDisplayName = guestName || 'Guest';
+    const hotelDisplayName = hotelName || 'your hotel';
+    const checkinDisplay = checkin || '';
+    const checkoutDisplay = checkout || '';
+
+    // Email confirmation
+    if (guestEmail) {
+      sendEmail({
+        to: guestEmail,
+        subject: `Booking Confirmed — ${hotelDisplayName} (Order: ${orderId})`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1f2937">
+            <div style="background:#ef4444;padding:20px 24px;border-radius:8px 8px 0 0">
+              <h1 style="color:#fff;margin:0;font-size:22px">Booking Confirmed</h1>
+            </div>
+            <div style="border:1px solid #e5e7eb;border-top:none;padding:24px;border-radius:0 0 8px 8px">
+              <p style="margin:0 0 16px">Hi ${guestDisplayName},</p>
+              <p style="margin:0 0 16px">Your hotel booking has been confirmed. Here are your details:</p>
+              <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+                <tr style="background:#f9fafb">
+                  <td style="padding:10px 12px;font-weight:600;width:40%">Order ID</td>
+                  <td style="padding:10px 12px">${orderId}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 12px;font-weight:600">Hotel</td>
+                  <td style="padding:10px 12px">${hotelDisplayName}</td>
+                </tr>
+                ${checkinDisplay ? `<tr style="background:#f9fafb"><td style="padding:10px 12px;font-weight:600">Check-in</td><td style="padding:10px 12px">${checkinDisplay}</td></tr>` : ''}
+                ${checkoutDisplay ? `<tr><td style="padding:10px 12px;font-weight:600">Check-out</td><td style="padding:10px 12px">${checkoutDisplay}</td></tr>` : ''}
+              </table>
+              <p style="margin:0 0 8px;font-size:13px;color:#6b7280">
+                Please present this confirmation at check-in. For any changes or cancellations, contact our support team.
+              </p>
+              <p style="margin:16px 0 0;font-size:13px;color:#6b7280">
+                — The Travel Place Team
+              </p>
+            </div>
+          </div>
+        `,
+      }).catch(err => logger.warn('Hotel booking confirmation email failed:', err.message));
+    }
+
+    // SMS confirmation
+    if (userPhone) {
+      const smsBody = `TravelPlace: Booking confirmed! Hotel: ${hotelDisplayName}. Order: ${orderId}.${checkinDisplay ? ` Check-in: ${checkinDisplay}.` : ''} Show this at reception.`;
+      sendSMS(userPhone, smsBody).catch(err => logger.warn('Hotel booking confirmation SMS failed:', err.message));
+    }
+  }
 
   res.status(StatusCodes.OK).json(new ApiResponse(StatusCodes.OK, finalStatus,
     finalStatus.status === 'ok' ? 'Booking confirmed' : 'Booking failed'

@@ -297,7 +297,7 @@ exports.getApplicableDiscounts = asyncHandler(async (req, res) => {
     
     // Calculate discount values for role-based / provider-role-based discounts
     const discountsWithValues = discounts.map(discount => {
-      if ((discount.type === 'role-based' || discount.type === 'provider-role-based') && userRole && discount.roleDiscounts) {
+      if ((discount.type === 'role-based' || discount.type === 'provider-role-based') && discount.roleDiscounts) {
         const roleMap = {
           customer: 'customer', Customer: 'customer',
           user: 'customer', User: 'customer',
@@ -311,9 +311,16 @@ exports.getApplicableDiscounts = asyncHandler(async (req, res) => {
           admin: 'admin', Admin: 'admin'
         };
         const role = roleMap[userRole] || 'customer';
-        discount.applicableValue = discount.roleDiscounts[role] ?? 0;
+        const effectiveValue = discount.roleDiscounts[role] ?? 0;
+        discount.applicableValue = effectiveValue;
+        // Normalise: always expose as `value` so frontend has one field to read
+        discount.value = effectiveValue;
       }
       return discount;
+    // Filter out discounts with zero effective value
+    }).filter(d => {
+      const v = d.value ?? 0;
+      return v > 0;
     });
     
     return ApiResponse.success(res, StatusCodes.OK, 'Applicable discounts retrieved successfully', {

@@ -7,25 +7,31 @@ const { ApiError } = require('../utils/apiError');
 const logger = require('../utils/logger');
 
 /**
- * S3 Service for file storage operations
- * AWS S3 storage service for file operations
+ * S3-compatible Storage Service
+ * Uses Cloudflare R2 (S3-compatible API) — no egress fees, ~10x cheaper than AWS S3
+ * Drop-in replacement: same @aws-sdk/client-s3 package, just different endpoint + credentials
  */
 class S3Service {
   constructor() {
     this.contextLogger = logger.createContextualLogger('S3Service');
 
-    // AWS S3 Configuration
-    this.region = process.env.AWS_REGION || 'us-east-1';
-    this.bucketName = process.env.AWS_S3_BUCKET_NAME;
-    this.accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-    this.secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+    // Cloudflare R2 Configuration (S3-compatible)
+    // R2 env vars: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME
+    // Falls back to AWS S3 env vars for backward compatibility
+    this.accountId = process.env.R2_ACCOUNT_ID;
+    this.bucketName = process.env.R2_BUCKET_NAME || process.env.AWS_S3_BUCKET_NAME;
+    this.accessKeyId = process.env.R2_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+    this.secretAccessKey = process.env.R2_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+    // R2 public domain (set after enabling public access on the bucket in Cloudflare dashboard)
+    this.publicDomain = process.env.R2_PUBLIC_DOMAIN; // e.g. pub-xxxx.r2.dev or your custom domain
 
-    // Validate required environment variables
     this.validateConfig();
 
-    // Initialize S3 client
+    // R2 uses a custom S3-compatible endpoint: https://<accountId>.r2.cloudflarestorage.com
+    // Region must be 'auto' for R2
     this.s3Client = new S3Client({
-      region: this.region,
+      region: 'auto',
+      endpoint: `https://${this.accountId}.r2.cloudflarestorage.com`,
       credentials: {
         accessKeyId: this.accessKeyId,
         secretAccessKey: this.secretAccessKey,
@@ -33,28 +39,32 @@ class S3Service {
     });
 
     // Default configuration
-    this.defaultACL = process.env.AWS_S3_DEFAULT_ACL || 'private';
-    this.signedUrlExpiration = parseInt(process.env.AWS_S3_SIGNED_URL_EXPIRATION) || 3600; // 1 hour
-    this.maxFileSize = parseInt(process.env.AWS_S3_MAX_FILE_SIZE) || 10 * 1024 * 1024; // 10MB
+    this.defaultACL = 'public-read';
+    this.signedUrlExpiration = parseInt(process.env.R2_SIGNED_URL_EXPIRATION) || 3600;
+    this.maxFileSize = parseInt(process.env.R2_MAX_FILE_SIZE) || 10 * 1024 * 1024; // 10MB
 
     // Retry configuration
     this.retryConfig = {
       maxRetries: 3,
-      baseDelay: 1000, // 1 second
-      maxDelay: 10000  // 10 seconds
+      baseDelay: 1000,
+      maxDelay: 10000
     };
   }
 
   /**
    * Validate required configuration
-   * @throws {Error} If required environment variables are missing
    */
   validateConfig() {
-    const required = ['AWS_S3_BUCKET_NAME', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'];
+    const required = ['R2_ACCOUNT_ID', 'R2_BUCKET_NAME', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'];
     const missing = required.filter(key => !process.env[key]);
-
     if (missing.length > 0) {
-      throw new Error(`Missing required AWS S3 environment variables: ${missing.join(', ')}`);
+      // Warn but don't throw — fall back to AWS S3 vars if set
+      const awsFallback = ['AWS_S3_BUCKET_NAME', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'];
+      const awsMissing = awsFallback.filter(key => !process.env[key]);
+      if (awsMissing.length > 0) {
+        throw new Error(`Missing storage env vars. Set R2_* vars for Cloudflare R2, or AWS_* vars for S3. Missing: ${missing.join(', ')}`);
+      }
+      logger.warn('R2 env vars not set — falling back to AWS S3 credentials');
     }
   }
 
@@ -131,9 +141,11 @@ class S3Service {
       const uploadDuration = performance.now() - uploadStartTime;
 
       // Generate URLs
-      // For public buckets, use direct public URL
-      // For private buckets, use signed URL (max 7 days for AWS S3)
-      const publicUrl = `https://${this.bucketName}.s3.${this.region}.amazonaws.com/${s3Key}`;
+      // R2: use custom public domain if set, otherwise use r2.dev subdomain
+      // For private files, use signed URL
+      const publicUrl = this.publicDomain
+        ? `https://${this.publicDomain}/${s3Key}`
+        : `https://${this.bucketName}.${this.accountId}.r2.cloudflarestorage.com/${s3Key}`;
       const signedUrl = await this.getSignedUrl(s3Key, 'getObject', 604800); // 7 days (max allowed)
 
       const result = {
@@ -323,7 +335,9 @@ class S3Service {
    * @returns {string} Public URL
    */
   getPublicUrl(key) {
-    return `https://${this.bucketName}.s3.${this.region}.amazonaws.com/${key}`;
+    return this.publicDomain
+      ? `https://${this.publicDomain}/${key}`
+      : `https://${this.bucketName}.${this.accountId}.r2.cloudflarestorage.com/${key}`;
   }
 
   /**

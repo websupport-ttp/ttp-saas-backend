@@ -73,7 +73,6 @@ const UserSchema = new mongoose.Schema({
     },
     employeeId: {
       type: String,
-      unique: true,
       sparse: true,
     },
     managerId: {
@@ -135,7 +134,6 @@ const UserSchema = new mongoose.Schema({
     },
     agentCode: {
       type: String,
-      unique: true,
       sparse: true,
       trim: true,
     },
@@ -177,7 +175,6 @@ const UserSchema = new mongoose.Schema({
   staffEmployeeId: {
     type: String,
     trim: true,
-    unique: true,
     sparse: true,
     default: null,
   },

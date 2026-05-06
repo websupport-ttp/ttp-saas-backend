@@ -8,9 +8,9 @@ try {
 } catch (error) {
   // Fallback logger for test environments
   logger = {
-    info: (msg) => process.env.NODE_ENV !== 'test' && console.log(msg),
-    error: (msg) => process.env.NODE_ENV !== 'test' && console.error(msg),
-    warn: (msg) => process.env.NODE_ENV !== 'test' && console.warn(msg),
+    info: (msg) => process.env.JEST_WORKER_ID ? undefined : console.log(msg),
+    error: (msg) => process.env.JEST_WORKER_ID ? undefined : console.error(msg),
+    warn: (msg) => process.env.JEST_WORKER_ID ? undefined : console.warn(msg),
   };
 }
 
@@ -21,9 +21,9 @@ try {
  */
 const connectDB = async () => {
   try {
-    // Skip actual connection during tests - test setup handles this
-    if (process.env.NODE_ENV === 'test') {
-      logger.info('Skipping MongoDB connection during tests - handled by test setup');
+    // Skip actual connection only during Jest unit tests (not deployment environments)
+    if (process.env.NODE_ENV === 'test' && process.env.JEST_WORKER_ID) {
+      logger.info('Skipping MongoDB connection during Jest tests - handled by test setup');
       return;
     }
 
@@ -48,8 +48,8 @@ const connectDB = async () => {
   } catch (error) {
     logger.error(`MongoDB Connection Error: ${error.message}`);
     
-    // Don't exit process during tests
-    if (process.env.NODE_ENV === 'test') {
+    // Don't exit process during Jest unit tests
+    if (process.env.NODE_ENV === 'test' && process.env.JEST_WORKER_ID) {
       logger.warn('MongoDB connection failed during tests, continuing...');
       return;
     }

@@ -134,11 +134,11 @@ const createTransports = () => {
   const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
   const transportsArray = [];
 
-  // Console transport (always present, but silent in test)
+  // Console transport (always present, but silent during Jest unit tests)
   transportsArray.push(
     new transports.Console({
       format: isProduction ? productionFormat : developmentFormat,
-      silent: isTest, // Don't log to console during tests
+      silent: !!process.env.JEST_WORKER_ID, // Only silence during Jest, not deployment
     })
   );
 
@@ -178,14 +178,14 @@ try {
     exceptionHandlers: [
       new transports.Console({
         format: isProduction ? productionFormat : developmentFormat,
-        silent: process.env.NODE_ENV === 'test',
+        silent: !!process.env.JEST_WORKER_ID,
       }),
       ...(isProduction && !isVercel ? [createFileTransport('exceptions.log')].filter(t => t !== null) : [])
     ],
     rejectionHandlers: [
       new transports.Console({
         format: isProduction ? productionFormat : developmentFormat,
-        silent: process.env.NODE_ENV === 'test',
+        silent: !!process.env.JEST_WORKER_ID,
       }),
       ...(isProduction && !isVercel ? [createFileTransport('rejections.log')].filter(t => t !== null) : [])
     ],

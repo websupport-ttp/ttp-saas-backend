@@ -98,7 +98,6 @@ const discountSchema = new mongoose.Schema({
 });
 
 // Indexes
-discountSchema.index({ code: 1 });
 discountSchema.index({ isActive: 1, appliesTo: 1 });
 discountSchema.index({ validFrom: 1, validUntil: 1 });
 discountSchema.index({ 'provider.type': 1, 'provider.code': 1 });

@@ -71,7 +71,6 @@ articleSchema.pre('save', function(next) {
   next();
 });
 
-articleSchema.index({ slug: 1 });
 articleSchema.index({ isPublished: 1, publishedAt: -1 });
 articleSchema.index({ category: 1, isPublished: 1 });
 

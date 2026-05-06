@@ -343,17 +343,17 @@ UserSchema.index({ createdAt: -1 });
 UserSchema.index({ firstPurchaseAt: -1 });
 UserSchema.index({ lastPurchaseAt: -1 });
 UserSchema.index({ staffClearanceLevel: 1 });
-UserSchema.index({ staffEmployeeId: 1 });
+// staffEmployeeId already has unique+sparse in field definition — no separate index needed
 
 // New indexes for organizational structure
 UserSchema.index({ 'staffDetails.department': 1 });
 UserSchema.index({ 'staffDetails.tier': 1 });
 UserSchema.index({ 'staffDetails.designation': 1 });
-UserSchema.index({ 'staffDetails.employeeId': 1 });
-UserSchema.index({ 'staffDetails.managerId': 1 });
+// staffDetails.employeeId already has unique+sparse in field definition
+// staffDetails.managerId already has unique+sparse in field definition
 UserSchema.index({ 'vendorDetails.isApproved': 1 });
 UserSchema.index({ 'agentDetails.isApproved': 1 });
-UserSchema.index({ 'agentDetails.agentCode': 1 });
+// agentDetails.agentCode already has unique+sparse in field definition
 
 // Compound indexes for analytics
 UserSchema.index({ customerSegment: 1, totalSpent: -1 });

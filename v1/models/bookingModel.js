@@ -219,7 +219,6 @@ const BookingSchema = new mongoose.Schema({
 
 // Indexes
 BookingSchema.index({ userId: 1, type: 1, status: 1 });
-BookingSchema.index({ bookingReference: 1 });
 BookingSchema.index({ 'payment.reference': 1 });
 BookingSchema.index({ 'payment.status': 1 });
 BookingSchema.index({ 'affiliate.referralCode': 1 });

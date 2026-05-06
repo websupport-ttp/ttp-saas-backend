@@ -206,7 +206,6 @@ const HotelBookingSchema = new mongoose.Schema({
 
 // Indexes
 HotelBookingSchema.index({ userId: 1, status: 1 });
-HotelBookingSchema.index({ bookingReference: 1 });
 HotelBookingSchema.index({ 'payment.reference': 1 });
 HotelBookingSchema.index({ createdAt: -1 });
 HotelBookingSchema.index({ 'stay.checkIn': 1 });

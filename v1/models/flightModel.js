@@ -203,7 +203,6 @@ const FlightBookingSchema = new mongoose.Schema({
 
 // Indexes
 FlightBookingSchema.index({ userId: 1, status: 1 });
-FlightBookingSchema.index({ bookingReference: 1 });
 FlightBookingSchema.index({ 'payment.reference': 1 });
 FlightBookingSchema.index({ createdAt: -1 });
 FlightBookingSchema.index({ 'itinerary.outbound.departure.dateTime': 1 });

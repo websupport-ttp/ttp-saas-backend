@@ -268,7 +268,6 @@ const InsurancePolicySchema = new mongoose.Schema({
 
 // Indexes
 InsurancePolicySchema.index({ userId: 1, status: 1 });
-InsurancePolicySchema.index({ policyNumber: 1 });
 InsurancePolicySchema.index({ 'payment.reference': 1 });
 InsurancePolicySchema.index({ effectiveDate: 1, expiryDate: 1 });
 InsurancePolicySchema.index({ 'trip.startDate': 1 });

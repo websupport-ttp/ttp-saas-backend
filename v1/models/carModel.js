@@ -141,7 +141,6 @@ const CarSchema = new mongoose.Schema({
 CarSchema.index({ type: 1, availability: 1 });
 CarSchema.index({ location: 1, availability: 1 });
 CarSchema.index({ pricePerDay: 1 });
-CarSchema.index({ registrationNumber: 1 });
 CarSchema.index({ managedBy: 1 });
 CarSchema.index({ isActive: 1 });
 

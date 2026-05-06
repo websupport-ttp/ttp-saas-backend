@@ -17,6 +17,23 @@ const getRedis = () => {
   return redisClient?.isReady ? redisClient : null;
 };
 
+// Use prefixed helpers when available (isolates keys per environment on shared Redis)
+const _get = async (key) => {
+  const r = getRedis();
+  if (!r) return null;
+  return r.prefixedGet ? r.prefixedGet(key) : r.get(key);
+};
+const _set = async (key, value, options) => {
+  const r = getRedis();
+  if (!r) return;
+  return r.prefixedSet ? r.prefixedSet(key, value, options) : r.set(key, value, options);
+};
+const _del = async (key) => {
+  const r = getRedis();
+  if (!r) return;
+  return r.prefixedDel ? r.prefixedDel(key) : r.del(key);
+};
+
 // Redis key prefixes & TTLs
 const REDIS_KEYS = {
   ALL_AIRPORTS:  'airportdb:airports:all',
@@ -40,9 +57,7 @@ const AUTOCOMPLETE_CACHE_DURATION = 60 * 60 * 1000;
 
 const redisGet = async (key) => {
   try {
-    const r = getRedis();
-    if (!r) return null;
-    const val = await r.get(key);
+    const val = await _get(key);
     return val ? JSON.parse(val) : null;
   } catch (e) {
     logger.warn(`Redis GET failed for ${key}:`, e.message);
@@ -52,9 +67,7 @@ const redisGet = async (key) => {
 
 const redisSet = async (key, value, ttl) => {
   try {
-    const r = getRedis();
-    if (!r) return;
-    await r.set(key, JSON.stringify(value), { EX: ttl });
+    await _set(key, JSON.stringify(value), { EX: ttl });
   } catch (e) {
     logger.warn(`Redis SET failed for ${key}:`, e.message);
   }
@@ -323,8 +336,8 @@ const clearCache = () => {
   cacheTimestamp  = null;
   const r = getRedis();
   if (r) {
-    r.del(REDIS_KEYS.ALL_AIRPORTS).catch(() => {});
-    r.del(REDIS_KEYS.COUNTRIES).catch(() => {});
+    _del(REDIS_KEYS.ALL_AIRPORTS).catch(() => {});
+    _del(REDIS_KEYS.COUNTRIES).catch(() => {});
   }
   logger.info('AirportDB cache cleared');
   return { success: true, message: 'All caches cleared', timestamp: new Date().toISOString() };

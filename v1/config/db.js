@@ -32,6 +32,10 @@ const connectDB = async () => {
       throw new Error('MONGO_URI environment variable is not defined');
     }
 
+    // Log masked URI so we can confirm the database name in deployment logs
+    const maskedUri = process.env.MONGO_URI.replace(/:([^@]+)@/, ':***@');
+    logger.info(`Connecting to MongoDB: ${maskedUri}`);
+
     const conn = await mongoose.connect(process.env.MONGO_URI, {
       maxPoolSize: 10,
       minPoolSize: 2,

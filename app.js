@@ -24,6 +24,11 @@ try {
   process.exit(1);
 }
 
+// Trust proxy — required when running behind Render/Railway/Vercel load balancers.
+// Without this, express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+// and req.ip returns the proxy IP instead of the real client IP.
+app.set('trust proxy', 1);
+
 // Initialize Express app
 const app = express();
 

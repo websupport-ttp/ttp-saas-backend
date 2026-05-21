@@ -111,7 +111,8 @@ const register = asyncHandler(async (req, res) => {
       const verificationToken = user.getEmailVerificationToken();
       await user.save({ validateBeforeSave: false }); // Save user with token
 
-      const verificationUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/verify-email?token=${verificationToken}`;
+      const apiBaseUrl = process.env.API_URL || `https://${req.get('host')}`;
+      const verificationUrl = `${apiBaseUrl}/api/v1/auth/verify-email?token=${verificationToken}`;
       const message = `Please verify your email by clicking on this link: <a href="${verificationUrl}">${verificationUrl}</a>`;
 
       try {
@@ -627,7 +628,8 @@ const resendVerification = asyncHandler(async (req, res) => {
     const verificationToken = user.getEmailVerificationToken();
     await user.save({ validateBeforeSave: false });
 
-    const verificationUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/verify-email?token=${verificationToken}`;
+    const apiBaseUrl = process.env.API_URL || `https://${req.get('host')}`;
+    const verificationUrl = `${apiBaseUrl}/api/v1/auth/verify-email?token=${verificationToken}`;
     const message = `Please verify your email by clicking on this link: <a href="${verificationUrl}">${verificationUrl}</a>`;
 
     try {
@@ -693,7 +695,8 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
   const verificationToken = user.getEmailVerificationToken();
   await user.save({ validateBeforeSave: false });
 
-  const verificationUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/verify-email?token=${verificationToken}`;
+  const apiBaseUrl = process.env.API_URL || `https://${req.get('host')}`;
+  const verificationUrl = `${apiBaseUrl}/api/v1/auth/verify-email?token=${verificationToken}`;
   const message = `Please verify your email by clicking on this link: <a href="${verificationUrl}">${verificationUrl}</a>`;
 
   try {

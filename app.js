@@ -6,6 +6,7 @@ const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
+const rateLimit = require('express-rate-limit');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
@@ -134,6 +135,8 @@ const securityConfig = {
       if (process.env.NODE_ENV === 'production') {
         // Default allowed origins for production
         const defaultAllowedOrigins = [
+          'https://dev.ttp.ng',
+          'https://www.dev.ttp.ng',
           'https://test.ttp.ng',
           'https://www.test.ttp.ng',
           'https://ttp.ng',
@@ -325,6 +328,35 @@ app.use(compression({
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
+
+// Rate limiting
+// General limiter — applied to all /api/ routes
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  standardHeaders: true,  // Return rate limit info in RateLimit-* headers
+  legacyHeaders: false,   // Disable X-RateLimit-* headers
+  message: {
+    status: 'error',
+    message: 'Too many requests from this IP, please try again after 15 minutes.',
+  },
+  skip: (req) => req.ip === '127.0.0.1' || req.ip === '::1', // Skip localhost
+});
+
+// Strict limiter for auth endpoints — prevents brute force
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 'error',
+    message: 'Too many authentication attempts from this IP, please try again after 15 minutes.',
+  },
+});
+
+app.use('/api/', apiLimiter);
+app.use('/api/v1/auth/', authLimiter);
 
 // Performance monitoring middleware
 const performanceMiddleware = require('./v1/middleware/performanceMiddleware');

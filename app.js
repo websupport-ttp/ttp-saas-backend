@@ -135,12 +135,16 @@ const securityConfig = {
       if (process.env.NODE_ENV === 'production') {
         // Default allowed origins for production
         const defaultAllowedOrigins = [
+          // Dev
           'https://dev.ttp.ng',
           'https://www.dev.ttp.ng',
-          'https://test.ttp.ng',
-          'https://www.test.ttp.ng',
+          // Staging
+          'https://staging.ttp.ng',
+          'https://www.staging.ttp.ng',
+          // Production
           'https://ttp.ng',
           'https://www.ttp.ng',
+          // Vercel preview deployments
           'https://ttp-saas-frontend.vercel.app',
           'https://ttp-saas-frontend-git-main.vercel.app'
         ];

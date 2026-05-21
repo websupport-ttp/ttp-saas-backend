@@ -97,7 +97,7 @@ const sendViaTermii = async (to, message) => {
     const termiiBaseUrl = process.env.TERMII_BASE_URL || 'https://v3.api.termii.com';
     const response = await axios.post(`${termiiBaseUrl}/api/sms/send`, {
       to: to.replace('+', ''), // Termii expects without +
-      from: process.env.TERMII_SENDER_ID || 'TravelPlace',
+      from: process.env.TERMII_SENDER_ID || 'fastbeep',
       sms: message,
       type: 'plain',
       channel: 'generic',
@@ -154,7 +154,6 @@ const sendOTPViaTermii = async (to, options = {}) => {
     // Use configured sender ID from environment variable
     // For testing, use 'fastbeep' (test sender ID provided by Termii)
     const senderId = options.senderId || process.env.TERMII_SENDER_ID || 'fastbeep';
-    
     const payload = {
       api_key: process.env.TERMII_API_KEY,
       pin_type: pinType,

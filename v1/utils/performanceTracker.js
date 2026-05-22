@@ -305,7 +305,7 @@ class PerformanceTracker {
    * @description Start collecting system-level metrics
    */
   startSystemMetricsCollection() {
-    // Collect system metrics every 30 seconds
+    // Collect system metrics every 5 minutes (reduced from 30s to save compute on Railway)
     // Use unref() so this timer doesn't prevent the process from exiting
     // and doesn't keep Railway billing the compute unnecessarily
     const interval = setInterval(() => {
@@ -339,7 +339,7 @@ class PerformanceTracker {
       } catch (error) {
         logger.error('Failed to collect system metrics:', error.message);
       }
-    }, 30000);
+    }, 5 * 60 * 1000); // 5 minutes
     interval.unref(); // Don't keep process alive just for metrics
   }
 

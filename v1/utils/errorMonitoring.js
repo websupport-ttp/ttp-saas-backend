@@ -22,7 +22,7 @@ class ErrorMonitor {
       critical: 3 // Alert after 3 critical errors in monitoring window
     };
     this.monitoringWindow = 5 * 60 * 1000; // 5 minutes
-    this.cleanupInterval = 60 * 1000; // 1 minute
+    this.cleanupInterval = 10 * 60 * 1000; // 10 minutes (reduced from 1 min to save compute)
     
     // Start cleanup interval
     this.startCleanupInterval();
@@ -443,9 +443,10 @@ class ErrorMonitor {
    * Start cleanup interval to remove old error data
    */
   startCleanupInterval() {
+    // unref() so this timer doesn't keep the process alive on Railway
     setInterval(() => {
       this.cleanupOldErrors();
-    }, this.cleanupInterval);
+    }, this.cleanupInterval).unref();
   }
 
   /**

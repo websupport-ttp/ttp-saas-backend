@@ -6,6 +6,16 @@ const ApiResponse = require('../utils/apiResponse');
 const asyncHandler = require('../middleware/asyncHandler');
 const { updateExchangeRates, convertCurrency } = require('../services/currencyService');
 const logger = require('../utils/logger');
+const redisClient = require('../config/redis');
+
+const CURRENCIES_CACHE_KEY = 'currencies:active';
+const CURRENCIES_TTL = 5 * 60; // 5 minutes
+
+const invalidateCurrencyCache = async () => {
+  try {
+    if (redisClient.isReady) await redisClient.del(CURRENCIES_CACHE_KEY);
+  } catch { /* non-fatal */ }
+};
 
 /**
  * @desc    Get all active currencies
@@ -13,22 +23,40 @@ const logger = require('../utils/logger');
  * @access  Public
  */
 const getAllCurrencies = asyncHandler(async (req, res) => {
+  try {
+    if (redisClient.isReady) {
+      const cached = await redisClient.get(CURRENCIES_CACHE_KEY);
+      if (cached) {
+        return ApiResponse.success(res, StatusCodes.OK, 'Currencies fetched successfully', JSON.parse(cached));
+      }
+    }
+  } catch { /* non-fatal */ }
+
   const currencies = await Currency.find({ isActive: true })
     .select('-createdBy -updatedBy')
-    .sort({ code: 1 });
+    .sort({ code: 1 })
+    .lean();
 
-  ApiResponse.success(res, StatusCodes.OK, 'Currencies fetched successfully', {
+  const payload = {
     count: currencies.length,
     currencies: currencies.map(c => ({
       code: c.code,
       name: c.name,
       symbol: c.symbol,
-      rate: c.getEffectiveRate(),
+      rate: c.exchangeRate * (1 + (c.markup || 0) / 100),
       markup: c.markup,
       lastUpdated: c.lastUpdated,
       isBaseCurrency: c.isBaseCurrency,
     })),
-  });
+  };
+
+  try {
+    if (redisClient.isReady) {
+      await redisClient.setEx(CURRENCIES_CACHE_KEY, CURRENCIES_TTL, JSON.stringify(payload));
+    }
+  } catch { /* non-fatal */ }
+
+  ApiResponse.success(res, StatusCodes.OK, 'Currencies fetched successfully', payload);
 });
 
 /**
@@ -82,7 +110,7 @@ const createCurrency = asyncHandler(async (req, res) => {
   });
 
   logger.info(`Currency ${code} created by user ${req.user.userId}`);
-
+  await invalidateCurrencyCache();
   ApiResponse.success(res, StatusCodes.CREATED, 'Currency created successfully', { currency });
 });
 
@@ -121,7 +149,7 @@ const updateCurrency = asyncHandler(async (req, res) => {
   await currency.save();
 
   logger.info(`Currency ${code} updated by user ${req.user.userId}`);
-
+  await invalidateCurrencyCache();
   ApiResponse.success(res, StatusCodes.OK, 'Currency updated successfully', { currency });
 });
 
@@ -147,7 +175,7 @@ const deleteCurrency = asyncHandler(async (req, res) => {
   await currency.deleteOne();
 
   logger.info(`Currency ${code} deleted by user ${req.user.userId}`);
-
+  await invalidateCurrencyCache();
   ApiResponse.success(res, StatusCodes.OK, 'Currency deleted successfully');
 });
 
@@ -164,7 +192,7 @@ const updateRates = asyncHandler(async (req, res) => {
   }
 
   logger.info(`Exchange rates updated by user ${req.user.userId}`);
-
+  await invalidateCurrencyCache();
   ApiResponse.success(res, StatusCodes.OK, 'Exchange rates updated successfully', result);
 });
 

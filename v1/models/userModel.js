@@ -340,6 +340,10 @@ UserSchema.index({ createdAt: -1 });
 UserSchema.index({ firstPurchaseAt: -1 });
 UserSchema.index({ lastPurchaseAt: -1 });
 UserSchema.index({ staffClearanceLevel: 1 });
+
+// Token lookup indexes — these fields are queried directly during auth flows
+UserSchema.index({ emailVerificationToken: 1 }, { sparse: true });
+UserSchema.index({ passwordResetToken: 1 }, { sparse: true });
 // staffEmployeeId already has unique+sparse in field definition — no separate index needed
 
 // New indexes for organizational structure

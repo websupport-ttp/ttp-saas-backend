@@ -148,14 +148,7 @@ const getAirportDetails = async (req, res, next) => {
 const getPopularAirports = async (req, res, next) => {
   try {
     const { limit = 50, country } = req.query;
-    const limitNum = Math.min(parseInt(limit) || 50, 100); // Max 100 results
-
-    logger.info(`Popular airports request: limit=${limitNum}, country=${country || 'all'}`, {
-      userAgent: req.get('User-Agent'),
-      ip: req.ip,
-      limit: limitNum,
-      country
-    });
+    const limitNum = Math.min(parseInt(limit) || 50, 100);
 
     const airports = await airportDbService.getPopularAirports({
       limit: limitNum,
@@ -187,12 +180,7 @@ const getPopularAirports = async (req, res, next) => {
     });
 
   } catch (error) {
-    logger.error('Popular airports request failed:', error.message, {
-      limit: req.query.limit,
-      country: req.query.country,
-      error: error.message,
-      stack: error.stack
-    });
+    logger.error('Popular airports request failed:', error.message);
     next(error);
   }
 };

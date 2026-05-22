@@ -81,9 +81,10 @@ const siteSettingsSchema = new mongoose.Schema(
 
 // Ensure only one settings document exists
 siteSettingsSchema.statics.getSettings = async function () {
-  let settings = await this.findOne();
+  let settings = await this.findOne().lean();
   if (!settings) {
-    settings = await this.create({});
+    // Need a full document to call .save(), so create without lean
+    settings = (await this.create({})).toObject();
   }
   return settings;
 };

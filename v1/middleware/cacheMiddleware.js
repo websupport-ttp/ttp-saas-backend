@@ -110,6 +110,23 @@ const generateCacheKey = (req, keyPrefix) => {
 };
 
 /**
+ * @function scanKeys
+ * @description Safe replacement for KEYS command using SCAN (non-blocking)
+ * @param {string} pattern - Key pattern to match
+ * @returns {Promise<Array>} Matching keys
+ */
+const scanKeys = async (pattern) => {
+  const keys = [];
+  let cursor = 0;
+  do {
+    const reply = await redisClient.scan(cursor, { MATCH: pattern, COUNT: 100 });
+    cursor = reply.cursor;
+    keys.push(...reply.keys);
+  } while (cursor !== 0);
+  return keys;
+};
+
+/**
  * @function invalidateCache
  * @description Middleware to invalidate cache patterns
  * @param {string|Array} patterns - Cache key patterns to invalidate
@@ -126,7 +143,7 @@ const invalidateCache = (patterns) => {
       const patternsArray = Array.isArray(patterns) ? patterns : [patterns];
       
       for (const pattern of patternsArray) {
-        const keys = await redisClient.keys(pattern);
+        const keys = await scanKeys(pattern);
         if (keys.length > 0) {
           await redisClient.del(keys);
           logger.info(`Invalidated ${keys.length} cache keys matching pattern: ${pattern}`);
@@ -159,7 +176,7 @@ const clearAnalyticsCache = async (category = null) => {
       pattern = `analytics:*${category}*`;
     }
 
-    const keys = await redisClient.keys(pattern);
+    const keys = await scanKeys(pattern);
     if (keys.length > 0) {
       const deletedCount = await redisClient.del(keys);
       logger.info(`Cleared ${deletedCount} analytics cache entries`);
@@ -184,7 +201,7 @@ const getCacheStats = async () => {
       return { connected: false, error: 'Redis client not connected' };
     }
 
-    const analyticsKeys = await redisClient.keys('analytics:*');
+    const analyticsKeys = await scanKeys('analytics:*');
     const info = await redisClient.info('memory');
     
     return {

@@ -356,9 +356,9 @@ class SanlamAllianzErrorHandler {
 // Create singleton instance
 const sanlamAllianzErrorHandler = new SanlamAllianzErrorHandler();
 
-// Clean up old errors every hour
+// Clean up old errors every hour — unref so this doesn't keep the process alive
 setInterval(() => {
   sanlamAllianzErrorHandler.clearOldErrors();
-}, 60 * 60 * 1000);
+}, 60 * 60 * 1000).unref();
 
 module.exports = sanlamAllianzErrorHandler;

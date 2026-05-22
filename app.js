@@ -36,7 +36,6 @@ app.set('trust proxy', 1);
 // Import configurations
 const connectDB = require('./v1/config/db');
 const redisClient = require('./v1/config/redis');
-const { serviceChargeEnum } = require('./v1/utils/constants');
 
 // Connect to MongoDB
 connectDB();
@@ -60,36 +59,19 @@ setTimeout(() => {
 // Connect to Redis and set initial service charge enum
 (async () => {
   try {
-    // Import logger inside the async function to ensure it's fully initialized
     const logger = require('./v1/utils/logger');
     
     if (!redisClient.isReady) {
       await redisClient.connect();
     }
     
-    // Safely check if logger methods exist
     if (logger && typeof logger.info === 'function') {
       logger.info('Connected to Redis');
     } else {
       console.log('Connected to Redis');
     }
-
-    // Set service charge enum in Redis if not already set
-    for (const key in serviceChargeEnum) {
-      if (serviceChargeEnum.hasOwnProperty(key)) {
-        const field = key.replace(/([A-Z])/g, '_$1').toUpperCase(); // Convert camelCase to SNAKE_CASE
-        const value = serviceChargeEnum[key];
-        const exists = await redisClient.hExists('serviceCharges', field);
-        if (!exists) {
-          await redisClient.hSet('serviceCharges', field, value);
-          if (logger && typeof logger.info === 'function') {
-            logger.info(`Set Redis service charge: ${field} = ${value}`);
-          } else {
-            console.log(`Set Redis service charge: ${field} = ${value}`);
-          }
-        }
-      }
-    }
+    // Note: serviceChargeEnum is written to Redis by initializeApp.warmUpCache()
+    // No need to duplicate it here
   } catch (err) {
     try {
       const logger = require('./v1/utils/logger');

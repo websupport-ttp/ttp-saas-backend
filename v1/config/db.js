@@ -38,7 +38,7 @@ const connectDB = async () => {
 
     const conn = await mongoose.connect(process.env.MONGO_URI, {
       maxPoolSize: 10,
-      minPoolSize: 2,
+      minPoolSize: 1,  // Reduced from 2 — saves idle connection overhead on Railway
       maxIdleTimeMS: 30000,
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,

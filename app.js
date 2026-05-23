@@ -344,9 +344,11 @@ const authLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 app.use('/api/v1/auth/', authLimiter);
 
-// Performance monitoring middleware
-const performanceMiddleware = require('./v1/middleware/performanceMiddleware');
-app.use(performanceMiddleware);
+// Performance monitoring middleware — dev only, disabled in production to save compute
+if (process.env.NODE_ENV !== 'production') {
+  const performanceMiddleware = require('./v1/middleware/performanceMiddleware');
+  app.use(performanceMiddleware);
+}
 
 // Centralized OpenAPI documentation setup
 const swaggerOptions = {

@@ -692,14 +692,9 @@ class HealthCheckService {
     }
     metric.lastUpdated = now;
 
-    // Check for performance alerts
-    this.checkPerformanceAlerts(key, metric);
-
-    // Trigger alerting system performance checks
-    try {
-      alertingSystem.checkPerformanceAlerts({ metrics: { [key]: metric } });
-    } catch (alertError) {
-      logger.error('Failed to check performance alerts:', alertError.message);
+    // Check for performance alerts (only in non-production to avoid per-request overhead)
+    if (process.env.NODE_ENV !== 'production') {
+      this.checkPerformanceAlerts(key, metric);
     }
   }
 

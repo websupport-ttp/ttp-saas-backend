@@ -204,52 +204,59 @@ class PricingService {
       ]
     };
 
-    const filter = {
+    const baseFilter = {
       isActive: true,
       ...serviceFilter
     };
 
-    // Add date filter
+    // Add date and usage filters
     const now = new Date();
-    filter.$and = [
+    baseFilter.$and = [
       { $or: [{ validFrom: { $exists: false } }, { validFrom: { $lte: now } }] },
       { $or: [{ validUntil: { $exists: false } }, { validUntil: { $gte: now } }] },
       { $or: [{ usageLimit: { $exists: false } }, { $expr: { $lt: ['$usageCount', '$usageLimit'] } }] }
     ];
 
-    // If discount code provided, prioritize it
+    // 1. If an explicit discount code was provided, return only that code
     if (discountCode) {
       const codeDiscount = await Discount.findOne({
-        ...filter,
+        ...baseFilter,
         code: discountCode.toUpperCase()
       });
-      
+
       if (codeDiscount && codeDiscount.isValid()) {
         return [codeDiscount];
       }
     }
 
-    // Get provider-specific discounts if provider code is provided
-    if (providerCode) {
-      const providerDiscounts = await Discount.find({
-        isActive: true,
-        type: { $in: ['provider-specific', 'provider-role-based'] },
-        'provider.code': providerCode.toUpperCase(),
-        ...serviceFilter
-      }).sort({ priority: -1 });
-
-      if (providerDiscounts.length > 0) {
-        return providerDiscounts;
-      }
-    }
-
-    // Get role-based discounts
-    const roleDiscounts = await Discount.find({
-      ...filter,
-      type: { $in: ['role-based', 'provider-role-based'] }
+    // 2. Collect all applicable discounts — provider-specific, role-based, and general (percentage/fixed)
+    const allDiscounts = await Discount.find({
+      ...baseFilter
     }).sort({ priority: -1 });
 
-    return roleDiscounts;
+    // 3. Filter to only relevant types; if a providerCode is given, prefer provider-specific
+    //    discounts but still include general discounts so "all flights" rules apply too.
+    const providerDiscounts = providerCode
+      ? allDiscounts.filter(d =>
+          (d.type === 'provider-specific' || d.type === 'provider-role-based') &&
+          d.provider?.code === providerCode.toUpperCase()
+        )
+      : [];
+
+    const generalDiscounts = allDiscounts.filter(d =>
+      d.type === 'percentage' ||
+      d.type === 'fixed' ||
+      d.type === 'role-based' ||
+      d.type === 'provider-role-based'
+    );
+
+    // Provider-specific discounts take priority; general ones fill in the rest
+    const combined = [
+      ...providerDiscounts,
+      ...generalDiscounts.filter(d => !providerDiscounts.some(p => p._id.toString() === d._id.toString()))
+    ];
+
+    return combined;
   }
 
   /**

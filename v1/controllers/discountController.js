@@ -275,53 +275,71 @@ exports.getApplicableDiscounts = asyncHandler(async (req, res) => {
     const { serviceType } = req.params;
     const { userRole, providerCode } = req.query;
     
-    const filter = {
-      isActive: true,
-      appliesTo: { $in: ['all', serviceType] }
-    };
-    
-    // Add date filter
     const now = new Date();
-    filter.$and = [
-      { $or: [{ validFrom: { $exists: false } }, { validFrom: { $lte: now } }] },
-      { $or: [{ validUntil: { $exists: false } }, { validUntil: { $gte: now } }] }
-    ];
-    
-    // Filter by provider if specified
-    if (providerCode) {
-      filter.type = { $in: ['provider-specific', 'provider-role-based'] };
-      filter['provider.code'] = providerCode.toUpperCase();
-    }
-    
-    const discounts = await Discount.find(filter).sort({ priority: -1 }).lean();
-    
-    // Calculate discount values for role-based / provider-role-based discounts
-    const discountsWithValues = discounts.map(discount => {
-      if ((discount.type === 'role-based' || discount.type === 'provider-role-based') && discount.roleDiscounts) {
-        const roleMap = {
-          customer: 'customer', Customer: 'customer',
-          user: 'customer', User: 'customer',
-          guest: 'customer', Guest: 'customer',
-          business: 'business', Business: 'business',
-          staff: 'staff', Staff: 'staff',
-          vendor: 'vendor', Vendor: 'vendor',
-          agent: 'agent', Agent: 'agent',
-          manager: 'manager', Manager: 'manager',
-          executive: 'executive', Executive: 'executive',
-          admin: 'admin', Admin: 'admin'
-        };
-        const role = roleMap[userRole] || 'customer';
-        const effectiveValue = discount.roleDiscounts[role] ?? 0;
-        discount.applicableValue = effectiveValue;
-        // Normalise: always expose as `value` so frontend has one field to read
-        discount.value = effectiveValue;
+    const baseFilter = {
+      isActive: true,
+      appliesTo: { $in: ['all', serviceType] },
+      $and: [
+        { $or: [{ validFrom: { $exists: false } }, { validFrom: { $lte: now } }] },
+        { $or: [{ validUntil: { $exists: false } }, { validUntil: { $gte: now } }] },
+        { $or: [{ usageLimit: { $exists: false } }, { $expr: { $lt: ['$usageCount', '$usageLimit'] } }] }
+      ]
+    };
+
+    // Fetch all matching discounts — never restrict by type here so general
+    // percentage/fixed discounts (e.g. "all flights") are always included.
+    // Provider-specific discounts are prioritised in JS after fetching.
+    const allDiscounts = await Discount.find(baseFilter).sort({ priority: -1 }).lean();
+
+    const roleMap = {
+      customer: 'customer', Customer: 'customer',
+      user: 'customer', User: 'customer',
+      guest: 'customer', Guest: 'customer',
+      business: 'business', Business: 'business',
+      staff: 'staff', Staff: 'staff',
+      vendor: 'vendor', Vendor: 'vendor',
+      agent: 'agent', Agent: 'agent',
+      manager: 'manager', Manager: 'manager',
+      executive: 'executive', Executive: 'executive',
+      admin: 'admin', Admin: 'admin'
+    };
+    const role = roleMap[userRole] || 'customer';
+
+    // Resolve effective value per discount type
+    const resolved = allDiscounts.map(discount => {
+      let effectiveValue = discount.value ?? 0;
+
+      if (discount.type === 'role-based' || discount.type === 'provider-role-based') {
+        effectiveValue = discount.roleDiscounts?.[role] ?? 0;
+      } else if (discount.type === 'provider-specific') {
+        // If this discount is tied to a provider, only apply it when the provider matches
+        if (discount.provider?.code && providerCode) {
+          if (discount.provider.code.toUpperCase() !== providerCode.toUpperCase()) {
+            return null; // skip — wrong provider
+          }
+        }
+        // Use role value if set, otherwise flat value
+        const hasRoleValues = discount.roleDiscounts &&
+          Object.values(discount.roleDiscounts).some(v => v > 0);
+        effectiveValue = hasRoleValues
+          ? (discount.roleDiscounts?.[role] ?? 0)
+          : (discount.value ?? 0);
       }
-      return discount;
-    // Filter out discounts with zero effective value
-    }).filter(d => {
-      const v = d.value ?? 0;
-      return v > 0;
-    });
+      // percentage and fixed types: effectiveValue stays as discount.value
+
+      return { ...discount, value: effectiveValue };
+    })
+    // Remove nulls (provider mismatches) and zero-value discounts
+    .filter(d => d !== null && (d.value ?? 0) > 0);
+
+    // Sort: provider-specific first, then by priority
+    const providerSpecific = resolved.filter(d =>
+      d.type === 'provider-specific' || d.type === 'provider-role-based'
+    );
+    const general = resolved.filter(d =>
+      d.type !== 'provider-specific' && d.type !== 'provider-role-based'
+    );
+    const discountsWithValues = [...providerSpecific, ...general];
     
     return ApiResponse.success(res, StatusCodes.OK, 'Applicable discounts retrieved successfully', {
       count: discountsWithValues.length,

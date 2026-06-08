@@ -2,11 +2,12 @@
 
 /**
  * Brand Colors - Matching the modern design
+ * NOTE: Kept for reference. All usage in templates uses inline styles, NOT CSS classes.
  */
 const BRAND_COLORS = {
-  red: '#dc2626',      // Primary red
-  redDark: '#b91c1c',  // Darker red
-  navy: '#1e3a8a',     // Navy blue
+  red: '#dc2626',
+  redDark: '#b91c1c',
+  navy: '#1e3a8a',
   white: '#ffffff',
   gray50: '#f9fafb',
   gray100: '#f3f4f6',
@@ -26,477 +27,412 @@ const BRAND_COLORS = {
   lightGray: '#f5f5f5'
 };
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   SHARED HELPERS
+───────────────────────────────────────────────────────────────────────────── */
+
 /**
- * Base email template with modern, clean styling inspired by the reference design
+ * Renders a shared header block (table-based, no flex/grid).
+ * @param {string} icon       - Emoji icon for the brand-icon square
+ * @param {string} tagline    - Short line under "THE TRAVEL PLACE"
+ * @param {string} refLabel   - Badge label (e.g. "BOOKING REFERENCE"), or '' to hide
+ * @param {string} refValue   - Badge value (e.g. booking ref number), or '' to hide
  */
-const getBaseTemplate = (content, title = 'The Travel Place') => {
+const renderHeader = (icon, tagline, refLabel = '', refValue = '') => {
+  const badgeCell = (refLabel && refValue) ? `
+        <td style="vertical-align:top; text-align:right; padding:0; white-space:nowrap;">
+          <table border="0" cellpadding="0" cellspacing="0" role="presentation">
+            <tr>
+              <td style="background-color:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); border-radius:8px; padding:8px 16px; text-align:right;">
+                <p style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:rgba(255,255,255,0.8); margin:0 0 4px 0; font-family:Arial,Helvetica,sans-serif;">${refLabel}</p>
+                <p style="font-size:16px; font-weight:700; color:#ffffff; letter-spacing:1px; margin:0; font-family:Arial,Helvetica,sans-serif;">${refValue}</p>
+              </td>
+            </tr>
+          </table>
+        </td>` : `<td style="padding:0;"></td>`;
+
   return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: #f5f5f5;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-    .material-icons-outlined {
-      font-family: 'Material Icons Outlined';
-      font-weight: normal;
-      font-style: normal;
-      font-size: 24px;
-      display: inline-block;
-      line-height: 1;
-      text-transform: none;
-      letter-spacing: normal;
-      word-wrap: normal;
-      white-space: nowrap;
-      direction: ltr;
-      vertical-align: middle;
-    }
-    .email-wrapper {
-      background-color: #f5f5f5;
-      padding: 40px 20px;
-    }
-    .email-container {
-      max-width: 600px;
-      margin: 0 auto;
-      background-color: ${BRAND_COLORS.white};
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    }
-    .header {
-      background-color: ${BRAND_COLORS.red};
-      padding: 32px 32px 24px;
-      position: relative;
-    }
-    .header-content {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .brand-icon {
-      width: 40px;
-      height: 40px;
-      background-color: ${BRAND_COLORS.white};
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .brand-text {
-      color: ${BRAND_COLORS.white};
-    }
-    .brand-name {
-      font-size: 18px;
-      font-weight: 700;
-      line-height: 1.2;
-      margin: 0;
-    }
-    .brand-tagline {
-      font-size: 11px;
-      font-weight: 400;
-      opacity: 0.9;
-      margin: 2px 0 0 0;
-    }
-    .booking-ref-badge {
-      background-color: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 8px;
-      padding: 8px 16px;
-      text-align: right;
-    }
-    .booking-ref-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: rgba(255, 255, 255, 0.8);
-      margin: 0 0 4px 0;
-    }
-    .booking-ref-value {
-      font-size: 16px;
-      font-weight: 700;
-      color: ${BRAND_COLORS.white};
-      letter-spacing: 1px;
-      margin: 0;
-    }
-    .content {
-      padding: 32px;
-      background-color: ${BRAND_COLORS.white};
-    }
-    .greeting {
-      font-size: 24px;
-      font-weight: 600;
-      color: ${BRAND_COLORS.gray900};
-      margin: 0 0 12px 0;
-      line-height: 1.3;
-    }
-    .subtext {
-      font-size: 14px;
-      color: ${BRAND_COLORS.gray600};
-      line-height: 1.6;
-      margin: 0 0 32px 0;
-    }
-    .info-card {
-      background-color: ${BRAND_COLORS.lightGray};
-      border-radius: 12px;
-      padding: 24px;
-      margin: 24px 0;
-    }
-    .info-card-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 20px;
-    }
-    .info-card-icon {
-      width: 24px;
-      height: 24px;
-      color: ${BRAND_COLORS.red};
-    }
-    .info-card-title {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: ${BRAND_COLORS.gray500};
-      margin: 0;
-    }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid ${BRAND_COLORS.gray200};
-    }
-    .info-row:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
-    }
-    .info-row:first-child {
-      padding-top: 0;
-    }
-    .info-label {
-      font-size: 13px;
-      color: ${BRAND_COLORS.gray600};
-      font-weight: 400;
-    }
-    .info-value {
-      font-size: 13px;
-      color: ${BRAND_COLORS.gray900};
-      font-weight: 600;
-      text-align: right;
-    }
-    .timeline-card {
-      background-color: ${BRAND_COLORS.lightGray};
-      border-radius: 12px;
-      padding: 24px;
-      margin: 24px 0;
-      position: relative;
-    }
-    .timeline-item {
-      position: relative;
-      padding-left: 32px;
-      margin-bottom: 24px;
-    }
-    .timeline-item:last-child {
-      margin-bottom: 0;
-    }
-    .timeline-dot {
-      position: absolute;
-      left: 0;
-      top: 4px;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      border: 3px solid ${BRAND_COLORS.red};
-      background-color: ${BRAND_COLORS.white};
-    }
-    .timeline-line {
-      position: absolute;
-      left: 5px;
-      top: 20px;
-      bottom: -24px;
-      width: 2px;
-      background-color: ${BRAND_COLORS.gray300};
-    }
-    .timeline-time {
-      font-size: 20px;
-      font-weight: 700;
-      color: ${BRAND_COLORS.gray900};
-      margin: 0 0 4px 0;
-    }
-    .timeline-location {
-      font-size: 15px;
-      font-weight: 600;
-      color: ${BRAND_COLORS.gray900};
-      margin: 0 0 2px 0;
-    }
-    .timeline-details {
-      font-size: 12px;
-      color: ${BRAND_COLORS.gray500};
-      margin: 0;
-    }
-    .duration-badge {
-      text-align: center;
-      padding: 12px 0;
-      margin: 16px 0;
-    }
-    .duration-text {
-      font-size: 12px;
-      color: ${BRAND_COLORS.gray500};
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-    .action-cards {
-      display: flex;
-      gap: 16px;
-      margin: 32px 0;
-    }
-    .action-card {
-      flex: 1;
-      background-color: ${BRAND_COLORS.white};
-      border: 1px solid ${BRAND_COLORS.gray200};
-      border-radius: 12px;
-      padding: 20px 16px;
-      text-align: center;
-      transition: all 0.2s;
-    }
-    .action-card:hover {
-      border-color: ${BRAND_COLORS.red};
-      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.1);
-    }
-    .action-icon {
-      width: 40px;
-      height: 40px;
-      margin: 0 auto 12px;
-      color: ${BRAND_COLORS.red};
-    }
-    .action-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: ${BRAND_COLORS.gray900};
-      margin: 0 0 8px 0;
-    }
-    .action-desc {
-      font-size: 11px;
-      color: ${BRAND_COLORS.gray500};
-      line-height: 1.4;
-      margin: 0;
-    }
-    .action-link {
-      display: inline-block;
-      margin-top: 8px;
-      font-size: 11px;
-      font-weight: 600;
-      color: ${BRAND_COLORS.red};
-      text-decoration: none;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .dark-section {
-      background-color: ${BRAND_COLORS.gray900};
-      color: ${BRAND_COLORS.white};
-      padding: 32px;
-      margin: 32px 0 0 0;
-    }
-    .dark-section-title {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: ${BRAND_COLORS.gray400};
-      margin: 0 0 20px 0;
-    }
-    .dark-info-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
-      margin-bottom: 24px;
-    }
-    .dark-info-item {
-      margin: 0;
-    }
-    .dark-info-label {
-      font-size: 11px;
-      color: ${BRAND_COLORS.gray400};
-      margin: 0 0 6px 0;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .dark-info-value {
-      font-size: 14px;
-      color: ${BRAND_COLORS.white};
-      font-weight: 600;
-      margin: 0;
-    }
-    .price-section {
-      border-top: 1px solid ${BRAND_COLORS.gray800};
-      padding-top: 20px;
-      margin-top: 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .price-label {
-      font-size: 11px;
-      color: ${BRAND_COLORS.gray400};
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .price-value {
-      font-size: 24px;
-      font-weight: 700;
-      color: ${BRAND_COLORS.white};
-    }
-    .footer {
-      background-color: ${BRAND_COLORS.gray900};
-      padding: 32px;
-      text-align: center;
-    }
-    .footer-brand {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-    .footer-brand-icon {
-      width: 24px;
-      height: 24px;
-      color: ${BRAND_COLORS.red};
-    }
-    .footer-brand-name {
-      font-size: 14px;
-      font-weight: 700;
-      color: ${BRAND_COLORS.white};
-    }
-    .footer-text {
-      font-size: 12px;
-      color: ${BRAND_COLORS.gray400};
-      line-height: 1.6;
-      margin: 0 0 20px 0;
-    }
-    .footer-links {
-      display: flex;
-      justify-content: center;
-      gap: 24px;
-      margin: 20px 0;
-    }
-    .footer-link {
-      font-size: 12px;
-      color: ${BRAND_COLORS.gray400};
-      text-decoration: none;
-      transition: color 0.2s;
-    }
-    .footer-link:hover {
-      color: ${BRAND_COLORS.white};
-    }
-    .footer-copyright {
-      font-size: 11px;
-      color: ${BRAND_COLORS.gray500};
-      margin: 20px 0 0 0;
-    }
-    .alert-box {
-      background-color: #fef3c7;
-      border-left: 4px solid ${BRAND_COLORS.yellow};
-      border-radius: 8px;
-      padding: 16px 20px;
-      margin: 24px 0;
-    }
-    .alert-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      color: #92400e;
-      margin: 0 0 8px 0;
-    }
-    .alert-content {
-      font-size: 12px;
-      color: #78350f;
-      line-height: 1.6;
-      margin: 0;
-    }
-    .alert-list {
-      margin: 8px 0 0 0;
-      padding-left: 20px;
-    }
-    .alert-list li {
-      margin: 4px 0;
-    }
-    @media only screen and (max-width: 600px) {
-      .email-wrapper {
-        padding: 20px 10px;
-      }
-      .header {
-        padding: 24px 20px;
-      }
-      .header-content {
-        flex-direction: column;
-        gap: 16px;
-      }
-      .booking-ref-badge {
-        text-align: left;
-      }
-      .content {
-        padding: 24px 20px;
-      }
-      .action-cards {
-        flex-direction: column;
-      }
-      .dark-info-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
-      }
-      .dark-section {
-        padding: 24px 20px;
-      }
-      .footer {
-        padding: 24px 20px;
-      }
-      .footer-links {
-        flex-direction: column;
-        gap: 12px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="email-wrapper">
-    <div class="email-container">
-      ${content}
-    </div>
-  </div>
-</body>
-</html>
-  `;
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+    <tr>
+      <td style="background-color:#dc2626; padding:32px 32px 24px 32px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+          <tr>
+            <td style="vertical-align:top; padding:0;">
+              <table border="0" cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                  <td style="vertical-align:middle; padding:0 12px 0 0;">
+                    <table border="0" cellpadding="0" cellspacing="0" role="presentation">
+                      <tr>
+                        <td style="background-color:#ffffff; border-radius:8px; width:40px; height:40px; text-align:center; vertical-align:middle; padding:0;">
+                          <span style="font-size:22px; line-height:40px;">${icon}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td style="vertical-align:middle; padding:0;">
+                    <p style="font-size:18px; font-weight:700; color:#ffffff; margin:0 0 2px 0; font-family:Arial,Helvetica,sans-serif;">THE TRAVEL PLACE</p>
+                    <p style="font-size:11px; font-weight:400; color:rgba(255,255,255,0.9); margin:0; font-family:Arial,Helvetica,sans-serif;">${tagline}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+            ${badgeCell}
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>`;
 };
 
 /**
- * Travel Insurance Confirmation Email - Modern Design
+ * Renders a single info-row inside an info-card table.
+ * @param {string} label
+ * @param {string} value
+ * @param {boolean} isLast  - If true, no bottom border
+ * @param {string} valueColor - Optional override for value text color
  */
+const renderInfoRow = (label, value, isLast = false, valueColor = '#111827') => {
+  const borderStyle = isLast ? 'none' : '1px solid #e5e7eb';
+  return `
+  <tr>
+    <td style="padding:12px 0; border-bottom:${borderStyle}; font-size:13px; color:#4b5563; font-family:Arial,Helvetica,sans-serif; vertical-align:middle;">${label}</td>
+    <td style="padding:12px 0; border-bottom:${borderStyle}; font-size:13px; color:${valueColor}; font-weight:600; font-family:Arial,Helvetica,sans-serif; vertical-align:middle; text-align:right;">${value}</td>
+  </tr>`;
+};
+
+/**
+ * Renders an info-card with header icon+title and info rows.
+ * @param {string} icon       - Emoji
+ * @param {string} title      - Section title (uppercase small)
+ * @param {string} rowsHtml   - Pre-rendered <tr> rows HTML
+ */
+const renderInfoCard = (icon, title, rowsHtml) => {
+  return `
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="margin:24px 0;">
+    <tr>
+      <td style="background-color:#f5f5f5; border-radius:12px; padding:24px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+          <tr>
+            <td style="padding:0 8px 20px 0; vertical-align:middle; width:24px;">
+              <span style="font-size:20px; color:#dc2626;">${icon}</span>
+            </td>
+            <td style="padding:0 0 20px 0; vertical-align:middle;">
+              <p style="font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#6b7280; margin:0; font-family:Arial,Helvetica,sans-serif;">${title}</p>
+            </td>
+          </tr>
+        </table>
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+          ${rowsHtml}
+        </table>
+      </td>
+    </tr>
+  </table>`;
+};
+
+/**
+ * Renders a timeline card with two endpoints and a middle badge.
+ * @param {string} icon           - Emoji for header
+ * @param {string} title          - Header title
+ * @param {string} startTime      - Top time/title text (large)
+ * @param {string} startLocation  - Top subtitle
+ * @param {string} startDetail    - Top small detail
+ * @param {string} middleBadge    - Center badge text (e.g. duration)
+ * @param {string} endTime
+ * @param {string} endLocation
+ * @param {string} endDetail
+ */
+const renderTimelineCard = (icon, title, startTime, startLocation, startDetail, middleBadge, endTime, endLocation, endDetail) => {
+  return `
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="margin:24px 0;">
+    <tr>
+      <td style="background-color:#f5f5f5; border-radius:12px; padding:24px;">
+        <!-- Header row -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+          <tr>
+            <td style="padding:0 8px 20px 0; vertical-align:middle; width:24px;">
+              <span style="font-size:20px; color:#dc2626;">${icon}</span>
+            </td>
+            <td style="padding:0 0 20px 0; vertical-align:middle;">
+              <p style="font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#6b7280; margin:0; font-family:Arial,Helvetica,sans-serif;">${title}</p>
+            </td>
+          </tr>
+        </table>
+        <!-- Timeline rows -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+          <!-- Start point -->
+          <tr>
+            <td style="vertical-align:top; width:20px; padding:0 12px 0 0; text-align:center;">
+              <span style="font-size:14px; color:#dc2626;">&#9679;</span>
+            </td>
+            <td style="vertical-align:top; padding:0 0 4px 0;">
+              <p style="font-size:20px; font-weight:700; color:#111827; margin:0 0 2px 0; font-family:Arial,Helvetica,sans-serif;">${startTime}</p>
+              <p style="font-size:15px; font-weight:600; color:#111827; margin:0 0 2px 0; font-family:Arial,Helvetica,sans-serif;">${startLocation}</p>
+              <p style="font-size:12px; color:#6b7280; margin:0; font-family:Arial,Helvetica,sans-serif;">${startDetail}</p>
+            </td>
+          </tr>
+          <!-- Vertical line spacer -->
+          <tr>
+            <td style="text-align:center; width:20px; padding:2px 12px 2px 0;">
+              <span style="font-size:14px; color:#d1d5db; line-height:1;">&#9474;</span>
+            </td>
+            <td style="padding:0;"></td>
+          </tr>
+          <tr>
+            <td style="text-align:center; width:20px; padding:2px 12px 2px 0;">
+              <span style="font-size:14px; color:#d1d5db; line-height:1;">&#9474;</span>
+            </td>
+            <td style="padding:4px 0; vertical-align:middle; text-align:center;">
+              <p style="font-size:12px; color:#6b7280; margin:0; font-family:Arial,Helvetica,sans-serif;">${middleBadge}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:center; width:20px; padding:2px 12px 2px 0;">
+              <span style="font-size:14px; color:#d1d5db; line-height:1;">&#9474;</span>
+            </td>
+            <td style="padding:0;"></td>
+          </tr>
+          <!-- End point -->
+          <tr>
+            <td style="vertical-align:top; width:20px; padding:0 12px 0 0; text-align:center;">
+              <span style="font-size:14px; color:#dc2626;">&#9679;</span>
+            </td>
+            <td style="vertical-align:top; padding:4px 0 0 0;">
+              <p style="font-size:20px; font-weight:700; color:#111827; margin:0 0 2px 0; font-family:Arial,Helvetica,sans-serif;">${endTime}</p>
+              <p style="font-size:15px; font-weight:600; color:#111827; margin:0 0 2px 0; font-family:Arial,Helvetica,sans-serif;">${endLocation}</p>
+              <p style="font-size:12px; color:#6b7280; margin:0; font-family:Arial,Helvetica,sans-serif;">${endDetail}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>`;
+};
+
+/**
+ * Renders a 3-column action cards row.
+ * Each card: { icon, title, desc, linkText, linkUrl }
+ */
+const renderActionCards = (sectionTitle, cards) => {
+  const cardCells = cards.map((c, i) => {
+    const isLast = i === cards.length - 1;
+    return `
+      <td style="width:33%; vertical-align:top; padding:0 ${isLast ? '0' : '8px'} 0 ${i === 0 ? '0' : '8px'};">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+          <tr>
+            <td style="background-color:#ffffff; border:1px solid #e5e7eb; border-radius:12px; padding:20px 12px; text-align:center; vertical-align:top;">
+              <p style="font-size:32px; margin:0 0 10px 0; line-height:1;">${c.icon}</p>
+              <p style="font-size:13px; font-weight:600; color:#111827; margin:0 0 6px 0; font-family:Arial,Helvetica,sans-serif;">${c.title}</p>
+              <p style="font-size:11px; color:#6b7280; line-height:1.4; margin:0 0 8px 0; font-family:Arial,Helvetica,sans-serif;">${c.desc}</p>
+              <a href="${c.linkUrl || '#'}" style="font-size:11px; font-weight:600; color:#dc2626; text-decoration:none; text-transform:uppercase; letter-spacing:0.5px; font-family:Arial,Helvetica,sans-serif;">${c.linkText}</a>
+            </td>
+          </tr>
+        </table>
+      </td>`;
+  }).join('');
+
+  return `
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="margin:32px 0 8px 0;">
+    <tr>
+      <td style="padding:0 0 16px 0;">
+        <p style="font-size:14px; font-weight:600; color:#111827; margin:0; text-transform:uppercase; letter-spacing:0.5px; font-family:Arial,Helvetica,sans-serif;">${sectionTitle}</p>
+      </td>
+    </tr>
+    <tr>
+      ${cardCells}
+    </tr>
+  </table>`;
+};
+
+/**
+ * Renders an alert/info box with yellow left border effect.
+ * @param {string} icon     - Emoji
+ * @param {string} title    - Alert title
+ * @param {string} bodyHtml - Inner HTML (e.g. <ul> list or <p>)
+ */
+const renderAlertBox = (icon, title, bodyHtml) => {
+  return `
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="margin:24px 0;">
+    <tr>
+      <!-- Left colored border cell -->
+      <td style="width:4px; background-color:#f59e0b; border-radius:4px 0 0 4px; padding:0;">&nbsp;</td>
+      <!-- Alert content -->
+      <td style="background-color:#fef3c7; border-radius:0 8px 8px 0; padding:16px 20px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+          <tr>
+            <td style="padding:0 0 8px 0;">
+              <table border="0" cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                  <td style="padding:0 8px 0 0; vertical-align:middle;">
+                    <span style="font-size:18px;">${icon}</span>
+                  </td>
+                  <td style="vertical-align:middle;">
+                    <p style="font-size:13px; font-weight:600; color:#92400e; margin:0; font-family:Arial,Helvetica,sans-serif;">${title}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="font-size:12px; color:#78350f; line-height:1.6; font-family:Arial,Helvetica,sans-serif;">
+              ${bodyHtml}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>`;
+};
+
+/**
+ * Renders the dark payment/info section.
+ * @param {string} sectionTitle
+ * @param {Array}  items        - [{label, value, valueColor?}]
+ * @param {string} totalLabel
+ * @param {string} totalValue
+ */
+const renderDarkSection = (sectionTitle, items, totalLabel, totalValue) => {
+  // Pair items into rows of 2
+  const rows = [];
+  for (let i = 0; i < items.length; i += 2) {
+    rows.push([items[i], items[i + 1] || null]);
+  }
+
+  const rowsHtml = rows.map(([left, right]) => {
+    const rightCell = right ? `
+        <td style="width:50%; vertical-align:top; padding:0 0 20px 10px;">
+          <p style="font-size:11px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px; margin:0 0 6px 0; font-family:Arial,Helvetica,sans-serif;">${right.label}</p>
+          <p style="font-size:14px; font-weight:600; color:${right.valueColor || '#ffffff'}; margin:0; font-family:Arial,Helvetica,sans-serif;">${right.value}</p>
+        </td>` : `<td style="width:50%; padding:0;"></td>`;
+    return `
+    <tr>
+      <td style="width:50%; vertical-align:top; padding:0 10px 20px 0;">
+        <p style="font-size:11px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px; margin:0 0 6px 0; font-family:Arial,Helvetica,sans-serif;">${left.label}</p>
+        <p style="font-size:14px; font-weight:600; color:${left.valueColor || '#ffffff'}; margin:0; font-family:Arial,Helvetica,sans-serif;">${left.value}</p>
+      </td>
+      ${rightCell}
+    </tr>`;
+  }).join('');
+
+  return `
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+    <tr>
+      <td style="background-color:#1f2937; padding:32px;">
+        <p style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#9ca3af; margin:0 0 20px 0; font-family:Arial,Helvetica,sans-serif;">${sectionTitle}</p>
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+          ${rowsHtml}
+        </table>
+        <!-- Total price row -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+          <tr>
+            <td style="border-top:1px solid #374151; padding:20px 0 0 0; vertical-align:middle;">
+              <p style="font-size:11px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px; margin:0; font-family:Arial,Helvetica,sans-serif;">${totalLabel}</p>
+            </td>
+            <td style="border-top:1px solid #374151; padding:20px 0 0 0; vertical-align:middle; text-align:right;">
+              <p style="font-size:24px; font-weight:700; color:#ffffff; margin:0; font-family:Arial,Helvetica,sans-serif;">${totalValue}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>`;
+};
+
+/**
+ * Renders the footer.
+ * @param {string} icon        - Emoji
+ * @param {string} bodyText    - Footer description text (may contain <br>)
+ * @param {Array}  links       - [{label, url}]
+ */
+const renderFooter = (icon, bodyText, links) => {
+  const linkCells = links.map(l =>
+    `<td style="padding:0 12px;"><a href="${l.url}" style="font-size:12px; color:#9ca3af; text-decoration:none; font-family:Arial,Helvetica,sans-serif;">${l.label}</a></td>`
+  ).join('');
+
+  return `
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+    <tr>
+      <td style="background-color:#1f2937; padding:32px; text-align:center;">
+        <!-- Brand row -->
+        <table border="0" cellpadding="0" cellspacing="0" align="center" role="presentation" style="margin:0 auto 16px auto;">
+          <tr>
+            <td style="padding:0 8px 0 0; vertical-align:middle;">
+              <span style="font-size:20px; color:#dc2626;">${icon}</span>
+            </td>
+            <td style="vertical-align:middle;">
+              <span style="font-size:14px; font-weight:700; color:#ffffff; font-family:Arial,Helvetica,sans-serif;">THE TRAVEL PLACE</span>
+            </td>
+          </tr>
+        </table>
+        <p style="font-size:12px; color:#9ca3af; line-height:1.6; margin:0 0 20px 0; font-family:Arial,Helvetica,sans-serif;">${bodyText}</p>
+        <!-- Links row -->
+        <table border="0" cellpadding="0" cellspacing="0" align="center" role="presentation" style="margin:0 auto 20px auto;">
+          <tr>
+            ${linkCells}
+          </tr>
+        </table>
+        <p style="font-size:11px; color:#6b7280; margin:0; font-family:Arial,Helvetica,sans-serif;">&#169; ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
+      </td>
+    </tr>
+  </table>`;
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BASE TEMPLATE
+───────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Wraps content in a full, email-client-safe HTML document.
+ * Uses table layout for centering. No flex, no grid.
+ */
+const getBaseTemplate = (content, title = 'The Travel Place') => {
+  return `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>${title}</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style type="text/css">
+    body, table, td, p, a { -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+    table, td { mso-table-lspace:0pt; mso-table-rspace:0pt; }
+    img { -ms-interpolation-mode:bicubic; border:0; outline:none; text-decoration:none; }
+    body { margin:0 !important; padding:0 !important; width:100% !important; background-color:#f5f5f5; }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#f5f5f5; font-family:Arial,Helvetica,sans-serif;">
+  <!-- Outer wrapper table -->
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="background-color:#f5f5f5;">
+    <tr>
+      <td style="padding:40px 20px;" align="center">
+        <!-- Email container (max 600px) -->
+        <table border="0" cellpadding="0" cellspacing="0" width="600" role="presentation" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:16px; overflow:hidden;">
+          <tr>
+            <td style="padding:0;">
+              ${content}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   TRAVEL INSURANCE CONFIRMATION
+───────────────────────────────────────────────────────────────────────────── */
+
 const getTravelInsuranceConfirmationEmail = (data) => {
   const {
     contractNo,
@@ -511,163 +447,70 @@ const getTravelInsuranceConfirmationEmail = (data) => {
     planName
   } = data;
 
+  const feUrl = process.env.FRONTEND_URL || 'https://test.ttp.ng';
+
   const content = `
-    <div class="header">
-      <div class="header-content">
-        <div class="brand">
-          <div class="brand-icon">
-            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">shield</span>
-          </div>
-          <div class="brand-text">
-            <p class="brand-name">THE TRAVEL PLACE</p>
-            <p class="brand-tagline">Insurance Confirmed</p>
-          </div>
-        </div>
-        <div class="booking-ref-badge">
-          <p class="booking-ref-label">POLICY NUMBER</p>
-          <p class="booking-ref-value">${contractNo}</p>
-        </div>
-      </div>
-    </div>
+  ${renderHeader('🛡', 'Insurance Confirmed', 'POLICY NUMBER', contractNo)}
 
-    <div class="content">
-      <h1 class="greeting">You're covered for your journey!</h1>
-      <p class="subtext">Your travel insurance policy has been successfully activated. Your payment has been confirmed and your coverage is now in effect.</p>
+  <!-- Main content area -->
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+    <tr>
+      <td style="background-color:#ffffff; padding:32px;">
+        <h1 style="font-size:24px; font-weight:600; color:#111827; margin:0 0 12px 0; line-height:1.3; font-family:Arial,Helvetica,sans-serif;">You're covered for your journey!</h1>
+        <p style="font-size:14px; color:#4b5563; line-height:1.6; margin:0 0 24px 0; font-family:Arial,Helvetica,sans-serif;">Your travel insurance policy has been successfully activated. Your payment has been confirmed and your coverage is now in effect.</p>
 
-      <div class="info-card">
-        <div class="info-card-header">
-          <span class="material-icons-outlined info-card-icon">verified_user</span>
-          <h3 class="info-card-title">Policy Details</h3>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Plan Name</span>
-          <span class="info-value">${planName || 'Travel Insurance'}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Destination</span>
-          <span class="info-value">${destination || 'N/A'}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Number of Travelers</span>
-          <span class="info-value">${noOfPeople || 1} traveler(s)</span>
-        </div>
-      </div>
+        ${renderInfoCard('🛡', 'Policy Details', `
+          ${renderInfoRow('Plan Name', planName || 'Travel Insurance')}
+          ${renderInfoRow('Destination', destination || 'N/A')}
+          ${renderInfoRow('Number of Travelers', (noOfPeople || 1) + ' traveler(s)', true)}
+        `)}
 
-      <div class="timeline-card">
-        <div class="info-card-header">
-          <span class="material-icons-outlined info-card-icon">date_range</span>
-          <h3 class="info-card-title">Coverage Period</h3>
-        </div>
-        
-        <div class="timeline-item">
-          <div class="timeline-dot"></div>
-          <div class="timeline-line"></div>
-          <p class="timeline-time">Coverage Begins</p>
-          <p class="timeline-location">${coverBegins || 'N/A'}</p>
-          <p class="timeline-details">Policy activation date</p>
-        </div>
+        ${renderTimelineCard(
+          '📅', 'Coverage Period',
+          'Coverage Begins', coverBegins || 'N/A', 'Policy activation date',
+          '&#9201; Full Coverage Active',
+          'Coverage Ends', coverEnds || 'N/A', 'Policy expiration date'
+        )}
 
-        <div class="duration-badge">
-          <p class="duration-text">
-            <span class="material-icons-outlined" style="font-size: 16px;">schedule</span>
-            Full Coverage Active
-          </p>
-        </div>
+        ${renderActionCards('What to do next', [
+          { icon: '⬇', title: 'Download Policy', desc: 'Get your full policy document', linkText: 'Download Now', linkUrl: '#' },
+          { icon: '📄', title: 'Coverage Details', desc: "Review what's covered", linkText: 'View Details', linkUrl: '#' },
+          { icon: '🎧', title: 'Emergency Support', desc: '24/7 assistance hotline', linkText: 'Get Number', linkUrl: '#' }
+        ])}
 
-        <div class="timeline-item">
-          <div class="timeline-dot"></div>
-          <p class="timeline-time">Coverage Ends</p>
-          <p class="timeline-location">${coverEnds || 'N/A'}</p>
-          <p class="timeline-details">Policy expiration date</p>
-        </div>
-      </div>
+        ${renderAlertBox('ℹ', 'Important Information', `
+          <ul style="margin:0; padding:0 0 0 18px;">
+            <li style="margin:4px 0;">Keep your policy number (${contractNo}) safe for reference</li>
+            <li style="margin:4px 0;">Your policy is valid from ${coverBegins || 'your travel start date'}</li>
+            <li style="margin:4px 0;">For claims or emergencies, contact our 24/7 support line</li>
+            <li style="margin:4px 0;">Carry a copy of this confirmation when traveling</li>
+          </ul>
+        `)}
+      </td>
+    </tr>
+  </table>
 
-      <div style="margin: 32px 0;">
-        <h3 style="font-size: 14px; font-weight: 600; color: ${BRAND_COLORS.gray900}; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">What to do next</h3>
-        <div class="action-cards">
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">download</span>
-            <p class="action-title">Download Policy</p>
-            <p class="action-desc">Get your full policy document</p>
-            <a href="#" class="action-link">Download Now</a>
-          </div>
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">description</span>
-            <p class="action-title">Coverage Details</p>
-            <p class="action-desc">Review what's covered</p>
-            <a href="#" class="action-link">View Details</a>
-          </div>
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">support_agent</span>
-            <p class="action-title">Emergency Support</p>
-            <p class="action-desc">24/7 assistance hotline</p>
-            <a href="#" class="action-link">Get Number</a>
-          </div>
-        </div>
-      </div>
+  ${renderDarkSection('Payment Information', [
+    { label: 'Payment Reference', value: paymentReference },
+    { label: 'Payment Date', value: paymentDate || new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' }) },
+    { label: 'Email', value: customerEmail || 'N/A' },
+    { label: 'Payment Status', value: 'Paid', valueColor: '#10b981' }
+  ], 'Total Paid', '&#8358;' + (totalAmount?.toLocaleString() || '0'))}
 
-      <div class="alert-box">
-        <p class="alert-title">
-          <span class="material-icons-outlined" style="font-size: 18px;">info</span>
-          Important Information
-        </p>
-        <ul class="alert-list">
-          <li>Keep your policy number (${contractNo}) safe for reference</li>
-          <li>Your policy is valid from ${coverBegins || 'your travel start date'}</li>
-          <li>For claims or emergencies, contact our 24/7 support line</li>
-          <li>Carry a copy of this confirmation when traveling</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="dark-section">
-      <h3 class="dark-section-title">Payment Information</h3>
-      <div class="dark-info-grid">
-        <div class="dark-info-item">
-          <p class="dark-info-label">Payment Reference</p>
-          <p class="dark-info-value">${paymentReference}</p>
-        </div>
-        <div class="dark-info-item">
-          <p class="dark-info-label">Payment Date</p>
-          <p class="dark-info-value">${paymentDate || new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-        </div>
-        <div class="dark-info-item">
-          <p class="dark-info-label">Email</p>
-          <p class="dark-info-value">${customerEmail || 'N/A'}</p>
-        </div>
-        <div class="dark-info-item">
-          <p class="dark-info-label">Payment Status</p>
-          <p class="dark-info-value" style="color: ${BRAND_COLORS.green};">Paid</p>
-        </div>
-      </div>
-      <div class="price-section">
-        <p class="price-label">Total Paid</p>
-        <p class="price-value">₦${totalAmount?.toLocaleString() || '0'}</p>
-      </div>
-    </div>
-
-    <div class="footer">
-      <div class="footer-brand">
-        <span class="material-icons-outlined footer-brand-icon">shield</span>
-        <span class="footer-brand-name">THE TRAVEL PLACE</span>
-      </div>
-      <p class="footer-text">This is an automated email for your travel insurance confirmation.<br>Please keep this for your records and carry it when traveling.</p>
-      <div class="footer-links">
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Help Center</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">File a Claim</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Terms of Use</a>
-      </div>
-      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
-    </div>
-  `;
+  ${renderFooter('🛡', 'This is an automated email for your travel insurance confirmation.<br>Please keep this for your records and carry it when traveling.', [
+    { label: 'Help Center', url: feUrl },
+    { label: 'Contact Us', url: feUrl + '/contact' },
+    { label: 'File a Claim', url: feUrl },
+    { label: 'Terms of Use', url: feUrl }
+  ])}`;
 
   return getBaseTemplate(content, 'Travel Insurance Confirmed');
 };
 
-/**
- * Hotel Booking Confirmation Email - Modern Design
- */
+/* ─────────────────────────────────────────────────────────────────────────────
+   HOTEL CONFIRMATION
+───────────────────────────────────────────────────────────────────────────── */
+
 const getHotelConfirmationEmail = (data) => {
   const {
     bookingReference,
@@ -683,159 +526,68 @@ const getHotelConfirmationEmail = (data) => {
     guestEmail
   } = data;
 
+  const feUrl = process.env.FRONTEND_URL || 'https://test.ttp.ng';
+
   const content = `
-    <div class="header">
-      <div class="header-content">
-        <div class="brand">
-          <div class="brand-icon">
-            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">hotel</span>
-          </div>
-          <div class="brand-text">
-            <p class="brand-name">THE TRAVEL PLACE</p>
-            <p class="brand-tagline">Booking Confirmed</p>
-          </div>
-        </div>
-        <div class="booking-ref-badge">
-          <p class="booking-ref-label">BOOKING REFERENCE</p>
-          <p class="booking-ref-value">${bookingReference}</p>
-        </div>
-      </div>
-    </div>
+  ${renderHeader('🏨', 'Booking Confirmed', 'BOOKING REFERENCE', bookingReference)}
 
-    <div class="content">
-      <h1 class="greeting">Your stay is confirmed, ${guestName || 'Guest'}!</h1>
-      <p class="subtext">We're excited to welcome you. Your reservation details are below.</p>
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+    <tr>
+      <td style="background-color:#ffffff; padding:32px;">
+        <h1 style="font-size:24px; font-weight:600; color:#111827; margin:0 0 12px 0; line-height:1.3; font-family:Arial,Helvetica,sans-serif;">Your stay is confirmed, ${guestName || 'Guest'}!</h1>
+        <p style="font-size:14px; color:#4b5563; line-height:1.6; margin:0 0 24px 0; font-family:Arial,Helvetica,sans-serif;">We're excited to welcome you. Your reservation details are below.</p>
 
-      <div class="info-card">
-        <div class="info-card-header">
-          <span class="material-icons-outlined info-card-icon">apartment</span>
-          <h3 class="info-card-title">Hotel Details</h3>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Hotel Name</span>
-          <span class="info-value">${hotelName || 'N/A'}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Location</span>
-          <span class="info-value">${location || 'N/A'}</span>
-        </div>
-      </div>
+        ${renderInfoCard('🏢', 'Hotel Details', `
+          ${renderInfoRow('Hotel Name', hotelName || 'N/A')}
+          ${renderInfoRow('Location', location || 'N/A', true)}
+        `)}
 
-      <div class="timeline-card">
-        <div class="info-card-header">
-          <span class="material-icons-outlined info-card-icon">event</span>
-          <h3 class="info-card-title">Stay Details</h3>
-        </div>
-        
-        <div class="timeline-item">
-          <div class="timeline-dot"></div>
-          <div class="timeline-line"></div>
-          <p class="timeline-time">Check-in</p>
-          <p class="timeline-location">${checkIn || 'N/A'}</p>
-          <p class="timeline-details">After 2:00 PM</p>
-        </div>
+        ${renderTimelineCard(
+          '📅', 'Stay Details',
+          'Check-in', checkIn || 'N/A', 'After 2:00 PM',
+          '🌙 ' + (nights || 1) + ' Night(s)',
+          'Check-out', checkOut || 'N/A', 'Before 12:00 PM'
+        )}
 
-        <div class="duration-badge">
-          <p class="duration-text">
-            <span class="material-icons-outlined" style="font-size: 16px;">nights_stay</span>
-            ${nights || 1} Night(s)
-          </p>
-        </div>
+        ${renderActionCards('What to do next', [
+          { icon: '📍', title: 'Directions', desc: 'Get directions to the hotel', linkText: 'View Map', linkUrl: '#' },
+          { icon: '🛎', title: 'Amenities', desc: 'View hotel facilities and services', linkText: 'View Details', linkUrl: '#' },
+          { icon: '📞', title: 'Contact Hotel', desc: 'Call for special requests', linkText: 'Get Number', linkUrl: '#' }
+        ])}
 
-        <div class="timeline-item">
-          <div class="timeline-dot"></div>
-          <p class="timeline-time">Check-out</p>
-          <p class="timeline-location">${checkOut || 'N/A'}</p>
-          <p class="timeline-details">Before 12:00 PM</p>
-        </div>
-      </div>
+        ${renderAlertBox('ℹ', 'Check-in Information', `
+          <ul style="margin:0; padding:0 0 0 18px;">
+            <li style="margin:4px 0;">Standard check-in time: 2:00 PM</li>
+            <li style="margin:4px 0;">Standard check-out time: 12:00 PM</li>
+            <li style="margin:4px 0;">Please bring a valid ID and this confirmation</li>
+            <li style="margin:4px 0;">Early check-in subject to availability</li>
+          </ul>
+        `)}
+      </td>
+    </tr>
+  </table>
 
-      <div style="margin: 32px 0;">
-        <h3 style="font-size: 14px; font-weight: 600; color: ${BRAND_COLORS.gray900}; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">What to do next</h3>
-        <div class="action-cards">
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">location_on</span>
-            <p class="action-title">Directions</p>
-            <p class="action-desc">Get directions to the hotel</p>
-            <a href="#" class="action-link">View Map</a>
-          </div>
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">room_service</span>
-            <p class="action-title">Amenities</p>
-            <p class="action-desc">View hotel facilities and services</p>
-            <a href="#" class="action-link">View Details</a>
-          </div>
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">phone</span>
-            <p class="action-title">Contact Hotel</p>
-            <p class="action-desc">Call for special requests</p>
-            <a href="#" class="action-link">Get Number</a>
-          </div>
-        </div>
-      </div>
+  ${renderDarkSection('Reservation Information', [
+    { label: 'Guest Name', value: guestName || 'Guest' },
+    { label: 'Number of Rooms', value: (rooms || 1) + ' Room(s)' },
+    { label: 'Number of Guests', value: (guests || 1) + ' Guest(s)' },
+    { label: 'Email', value: guestEmail || 'N/A' }
+  ], 'Total Paid', '&#8358;' + (totalAmount?.toLocaleString() || '0'))}
 
-      <div class="alert-box">
-        <p class="alert-title">
-          <span class="material-icons-outlined" style="font-size: 18px;">info</span>
-          Check-in Information
-        </p>
-        <ul class="alert-list">
-          <li>Standard check-in time: 2:00 PM</li>
-          <li>Standard check-out time: 12:00 PM</li>
-          <li>Please bring a valid ID and this confirmation</li>
-          <li>Early check-in subject to availability</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="dark-section">
-      <h3 class="dark-section-title">Reservation Information</h3>
-      <div class="dark-info-grid">
-        <div class="dark-info-item">
-          <p class="dark-info-label">Guest Name</p>
-          <p class="dark-info-value">${guestName || 'Guest'}</p>
-        </div>
-        <div class="dark-info-item">
-          <p class="dark-info-label">Number of Rooms</p>
-          <p class="dark-info-value">${rooms || 1} Room(s)</p>
-        </div>
-        <div class="dark-info-item">
-          <p class="dark-info-label">Number of Guests</p>
-          <p class="dark-info-value">${guests || 1} Guest(s)</p>
-        </div>
-        <div class="dark-info-item">
-          <p class="dark-info-label">Email</p>
-          <p class="dark-info-value">${guestEmail || 'N/A'}</p>
-        </div>
-      </div>
-      <div class="price-section">
-        <p class="price-label">Total Paid</p>
-        <p class="price-value">₦${totalAmount?.toLocaleString() || '0'}</p>
-      </div>
-    </div>
-
-    <div class="footer">
-      <div class="footer-brand">
-        <span class="material-icons-outlined footer-brand-icon">hotel</span>
-        <span class="footer-brand-name">THE TRAVEL PLACE</span>
-      </div>
-      <p class="footer-text">This is an automated email for your hotel reservation.<br>Please keep this for your records and present it at check-in.</p>
-      <div class="footer-links">
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Help Center</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Manage Booking</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Terms of Use</a>
-      </div>
-      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
-    </div>
-  `;
+  ${renderFooter('🏨', 'This is an automated email for your hotel reservation.<br>Please keep this for your records and present it at check-in.', [
+    { label: 'Help Center', url: feUrl },
+    { label: 'Contact Us', url: feUrl + '/contact' },
+    { label: 'Manage Booking', url: feUrl },
+    { label: 'Terms of Use', url: feUrl }
+  ])}`;
 
   return getBaseTemplate(content, 'Hotel Booking Confirmed');
 };
 
-/**
- * Flight Booking Confirmation Email - Modern Design
- */
+/* ─────────────────────────────────────────────────────────────────────────────
+   FLIGHT CONFIRMATION
+───────────────────────────────────────────────────────────────────────────── */
+
 const getFlightConfirmationEmail = (data) => {
   const {
     bookingReference,
@@ -854,150 +606,75 @@ const getFlightConfirmationEmail = (data) => {
     duration
   } = data;
 
+  const feUrl = process.env.FRONTEND_URL || 'https://test.ttp.ng';
+
   const content = `
-    <div class="header">
-      <div class="header-content">
-        <div class="brand">
-          <div class="brand-icon">
-            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">flight</span>
-          </div>
-          <div class="brand-text">
-            <p class="brand-name">THE TRAVEL PLACE</p>
-            <p class="brand-tagline">Booking Confirmed</p>
-          </div>
-        </div>
-        <div class="booking-ref-badge">
-          <p class="booking-ref-label">BOOKING REFERENCE</p>
-          <p class="booking-ref-value">${pnr || bookingReference}</p>
-        </div>
-      </div>
-    </div>
+  ${renderHeader('✈', 'Booking Confirmed', 'BOOKING REFERENCE', pnr || bookingReference)}
 
-    <div class="content">
-      <h1 class="greeting">Ready for take off, ${passengerName || 'Traveler'}?</h1>
-      <p class="subtext">Your flight has been successfully booked. Please find your itinerary details below.</p>
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+    <tr>
+      <td style="background-color:#ffffff; padding:32px;">
+        <h1 style="font-size:24px; font-weight:600; color:#111827; margin:0 0 12px 0; line-height:1.3; font-family:Arial,Helvetica,sans-serif;">Ready for take off, ${passengerName || 'Traveler'}?</h1>
+        <p style="font-size:14px; color:#4b5563; line-height:1.6; margin:0 0 24px 0; font-family:Arial,Helvetica,sans-serif;">Your flight has been successfully booked. Please find your itinerary details below.</p>
 
-      <div class="timeline-card">
-        <div class="info-card-header">
-          <span class="material-icons-outlined info-card-icon">calendar_today</span>
-          <h3 class="info-card-title">${departureDate || 'Flight Date'}</h3>
-        </div>
-        
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
-          <div style="background-color: ${BRAND_COLORS.lightRed}; color: ${BRAND_COLORS.red}; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-            ${flightNumber || 'FLIGHT'}
-          </div>
-        </div>
+        <!-- Flight date + flight number badge -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="margin:0 0 4px 0;">
+          <tr>
+            <td style="padding:0;">
+              <p style="font-size:13px; color:#6b7280; margin:0; font-family:Arial,Helvetica,sans-serif;">&#128197; ${departureDate || 'Flight Date'}</p>
+            </td>
+            <td style="text-align:right; padding:0;">
+              <span style="background-color:#fee2e2; color:#dc2626; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; font-family:Arial,Helvetica,sans-serif;">${flightNumber || 'FLIGHT'}</span>
+            </td>
+          </tr>
+        </table>
 
-        <div class="timeline-item">
-          <div class="timeline-dot"></div>
-          <div class="timeline-line"></div>
-          <p class="timeline-time">${departureTime || '08:30'}</p>
-          <p class="timeline-location">${departure || 'Departure'}</p>
-          <p class="timeline-details">${airline || 'Airline'}</p>
-        </div>
+        ${renderTimelineCard(
+          '✈', 'Flight Itinerary',
+          departureTime || '08:30', departure || 'Departure', airline || 'Airline',
+          '&#9201; ' + (duration || '7h 45m') + ' (Non-stop)',
+          arrivalTime || '20:15', arrival || 'Arrival', airline || 'Airline'
+        )}
 
-        <div class="duration-badge">
-          <p class="duration-text">
-            <span class="material-icons-outlined" style="font-size: 16px;">schedule</span>
-            ${duration || '7h 45m'} (Non-stop)
-          </p>
-        </div>
+        ${renderActionCards('What to do next', [
+          { icon: '✔', title: 'Check-in', desc: 'Opens 24 hours before your flight departure', linkText: 'Check-in Now', linkUrl: '#' },
+          { icon: '🧳', title: 'Baggage', desc: 'Review your baggage allowance and fees', linkText: 'View Details', linkUrl: '#' },
+          { icon: '🎫', title: 'Boarding Pass', desc: 'Get your boarding pass on your phone', linkText: 'Get Pass', linkUrl: '#' }
+        ])}
 
-        <div class="timeline-item">
-          <div class="timeline-dot"></div>
-          <p class="timeline-time">${arrivalTime || '20:15'}</p>
-          <p class="timeline-location">${arrival || 'Arrival'}</p>
-          <p class="timeline-details">${airline || 'Airline'}</p>
-        </div>
-      </div>
+        ${renderAlertBox('ℹ', 'Important Travel Information', `
+          <ul style="margin:0; padding:0 0 0 18px;">
+            <li style="margin:4px 0;">Arrive at the airport at least 2&ndash;3 hours before departure</li>
+            <li style="margin:4px 0;">Bring a valid ID/passport and this confirmation</li>
+            <li style="margin:4px 0;">Check-in online to save time at the airport</li>
+            <li style="margin:4px 0;">Review baggage allowance before packing</li>
+          </ul>
+        `)}
+      </td>
+    </tr>
+  </table>
 
-      <div style="margin: 32px 0;">
-        <h3 style="font-size: 14px; font-weight: 600; color: ${BRAND_COLORS.gray900}; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">What to do next</h3>
-        <div class="action-cards">
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">fact_check</span>
-            <p class="action-title">Check-in</p>
-            <p class="action-desc">Opens 24 hours before your flight departure</p>
-            <a href="#" class="action-link">Check-in Now</a>
-          </div>
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">luggage</span>
-            <p class="action-title">Baggage</p>
-            <p class="action-desc">Review your baggage allowance and fees</p>
-            <a href="#" class="action-link">View Details</a>
-          </div>
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">confirmation_number</span>
-            <p class="action-title">Boarding Pass</p>
-            <p class="action-desc">Get your boarding pass on your phone</p>
-            <a href="#" class="action-link">Get Pass</a>
-          </div>
-        </div>
-      </div>
+  ${renderDarkSection('Traveler Information', [
+    { label: 'Passenger Name', value: passengerName || 'Traveler' },
+    { label: 'Seat Class', value: cabin || 'Economy' },
+    { label: 'Booking Type', value: passengers > 1 ? passengers + ' Passengers' : '1 Adult Traveling' },
+    { label: 'Meal Preference', value: 'Standard' }
+  ], 'Total Paid', '&#8358;' + (totalAmount?.toLocaleString() || '0'))}
 
-      <div class="alert-box">
-        <p class="alert-title">
-          <span class="material-icons-outlined" style="font-size: 18px;">info</span>
-          Important Travel Information
-        </p>
-        <ul class="alert-list">
-          <li>Arrive at the airport at least 2-3 hours before departure</li>
-          <li>Bring a valid ID/passport and this confirmation</li>
-          <li>Check-in online to save time at the airport</li>
-          <li>Review baggage allowance before packing</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="dark-section">
-      <h3 class="dark-section-title">Traveler Information</h3>
-      <div class="dark-info-grid">
-        <div class="dark-info-item">
-          <p class="dark-info-label">Passenger Name</p>
-          <p class="dark-info-value">${passengerName || 'Traveler'}</p>
-        </div>
-        <div class="dark-info-item">
-          <p class="dark-info-label">Seat Class</p>
-          <p class="dark-info-value">${cabin || 'Economy'}</p>
-        </div>
-        <div class="dark-info-item">
-          <p class="dark-info-label">Booking Type</p>
-          <p class="dark-info-value">${passengers > 1 ? passengers + ' Passengers' : '1 Adult Traveling'}</p>
-        </div>
-        <div class="dark-info-item">
-          <p class="dark-info-label">Meal Preference</p>
-          <p class="dark-info-value">Standard</p>
-        </div>
-      </div>
-      <div class="price-section">
-        <p class="price-label">Total Paid</p>
-        <p class="price-value">₦${totalAmount?.toLocaleString() || '0'}</p>
-      </div>
-    </div>
-
-    <div class="footer">
-      <div class="footer-brand">
-        <span class="material-icons-outlined footer-brand-icon">flight</span>
-        <span class="footer-brand-name">THE TRAVEL PLACE</span>
-      </div>
-      <p class="footer-text">This is an automated email for your flight confirmation.<br>Please keep this for your records and present it at check-in.</p>
-      <div class="footer-links">
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Help Center</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Manage Trip</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Terms of Use</a>
-      </div>
-      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
-    </div>
-  `;
+  ${renderFooter('✈', 'This is an automated email for your flight confirmation.<br>Please keep this for your records and present it at check-in.', [
+    { label: 'Help Center', url: feUrl },
+    { label: 'Contact Us', url: feUrl + '/contact' },
+    { label: 'Manage Trip', url: feUrl },
+    { label: 'Terms of Use', url: feUrl }
+  ])}`;
 
   return getBaseTemplate(content, 'Flight Booking Confirmed');
 };
 
-/**
- * Car Hire Confirmation Email - Modern Design
- */
+/* ─────────────────────────────────────────────────────────────────────────────
+   CAR HIRE CONFIRMATION
+───────────────────────────────────────────────────────────────────────────── */
+
 const getCarHireConfirmationEmail = (data) => {
   const {
     bookingReference,
@@ -1016,558 +693,402 @@ const getCarHireConfirmationEmail = (data) => {
     pricePerDay
   } = data;
 
+  const feUrl = process.env.FRONTEND_URL || 'https://test.ttp.ng';
+
   // Calculate rental duration
   const pickup = new Date(pickupDate);
   const returnD = new Date(returnDate);
   const days = Math.max(1, Math.ceil((returnD - pickup) / (1000 * 60 * 60 * 24)));
 
-  // Format dates
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-NG', { 
-      weekday: 'short',
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  };
-
-  const formatTime = (date) => {
-    return new Date(date).toLocaleTimeString('en-NG', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+  const formatDate = (date) => new Date(date).toLocaleDateString('en-NG', {
+    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+  });
+  const formatTime = (date) => new Date(date).toLocaleTimeString('en-NG', {
+    hour: '2-digit', minute: '2-digit', hour12: true
+  });
 
   const content = `
-    <div class="header">
-      <div class="header-content">
-        <div class="brand">
-          <div class="brand-icon">
-            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">directions_car</span>
-          </div>
-          <div class="brand-text">
-            <p class="brand-name">THE TRAVEL PLACE</p>
-            <p class="brand-tagline">Booking Confirmed</p>
-          </div>
-        </div>
-        <div class="booking-ref-badge">
-          <p class="booking-ref-label">BOOKING REFERENCE</p>
-          <p class="booking-ref-value">${bookingReference}</p>
-        </div>
-      </div>
-    </div>
+  ${renderHeader('🚗', 'Booking Confirmed', 'BOOKING REFERENCE', bookingReference)}
 
-    <div class="content">
-      <h1 class="greeting">Your car is ready, ${driverName || 'Driver'}!</h1>
-      <p class="subtext">Your car hire booking has been confirmed. Get ready to hit the road!</p>
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+    <tr>
+      <td style="background-color:#ffffff; padding:32px;">
+        <h1 style="font-size:24px; font-weight:600; color:#111827; margin:0 0 12px 0; line-height:1.3; font-family:Arial,Helvetica,sans-serif;">Your car is ready, ${driverName || 'Driver'}!</h1>
+        <p style="font-size:14px; color:#4b5563; line-height:1.6; margin:0 0 24px 0; font-family:Arial,Helvetica,sans-serif;">Your car hire booking has been confirmed. Get ready to hit the road!</p>
 
-      <div class="info-card">
-        <div class="info-card-header">
-          <span class="material-icons-outlined info-card-icon">directions_car</span>
-          <h3 class="info-card-title">Vehicle Details</h3>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Vehicle</span>
-          <span class="info-value">${carBrand || ''} ${carName || 'N/A'}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Transmission</span>
-          <span class="info-value">${transmission || 'Automatic'}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Capacity</span>
-          <span class="info-value">${capacity || 5} Passengers</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Daily Rate</span>
-          <span class="info-value">₦${pricePerDay?.toLocaleString() || '0'}/day</span>
-        </div>
-      </div>
+        ${renderInfoCard('🚗', 'Vehicle Details', `
+          ${renderInfoRow('Vehicle', (carBrand || '') + ' ' + (carName || 'N/A'))}
+          ${renderInfoRow('Transmission', transmission || 'Automatic')}
+          ${renderInfoRow('Capacity', (capacity || 5) + ' Passengers')}
+          ${renderInfoRow('Daily Rate', '&#8358;' + (pricePerDay?.toLocaleString() || '0') + '/day', true)}
+        `)}
 
-      <div class="timeline-card">
-        <div class="info-card-header">
-          <span class="material-icons-outlined info-card-icon">event</span>
-          <h3 class="info-card-title">Rental Period</h3>
-        </div>
-        
-        <div class="timeline-item">
-          <div class="timeline-dot"></div>
-          <div class="timeline-line"></div>
-          <p class="timeline-time">${formatTime(pickup)}</p>
-          <p class="timeline-location">${pickupLocation || 'Pickup Location'}</p>
-          <p class="timeline-details">${formatDate(pickup)}</p>
-        </div>
+        ${renderTimelineCard(
+          '📅', 'Rental Period',
+          formatTime(pickup), pickupLocation || 'Pickup Location', formatDate(pickup),
+          '&#9201; ' + days + ' Day' + (days > 1 ? 's' : '') + ' Rental',
+          formatTime(returnD), returnLocation || 'Return Location', formatDate(returnD)
+        )}
 
-        <div class="duration-badge">
-          <p class="duration-text">
-            <span class="material-icons-outlined" style="font-size: 16px;">schedule</span>
-            ${days} Day${days > 1 ? 's' : ''} Rental
-          </p>
-        </div>
+        ${renderActionCards('What to do next', [
+          { icon: '🪪', title: 'Required Documents', desc: "Valid driver's license and ID", linkText: 'View List', linkUrl: '#' },
+          { icon: '📍', title: 'Pickup Location', desc: 'Get directions to pickup point', linkText: 'View Map', linkUrl: '#' },
+          { icon: '📞', title: 'Contact Us', desc: 'Questions about your rental?', linkText: 'Get Help', linkUrl: '#' }
+        ])}
 
-        <div class="timeline-item">
-          <div class="timeline-dot"></div>
-          <p class="timeline-time">${formatTime(returnD)}</p>
-          <p class="timeline-location">${returnLocation || 'Return Location'}</p>
-          <p class="timeline-details">${formatDate(returnD)}</p>
-        </div>
-      </div>
+        ${renderAlertBox('ℹ', 'Important Pickup Information', `
+          <ul style="margin:0; padding:0 0 0 18px;">
+            <li style="margin:4px 0;">Bring your valid driver's license and a government-issued ID</li>
+            <li style="margin:4px 0;">Arrive at the pickup location at your scheduled time</li>
+            <li style="margin:4px 0;">Vehicle inspection will be done before handover</li>
+            <li style="margin:4px 0;">Fuel policy: Return with the same fuel level as pickup</li>
+            <li style="margin:4px 0;">Keep this booking reference handy: ${bookingReference}</li>
+          </ul>
+        `)}
+      </td>
+    </tr>
+  </table>
 
-      <div style="margin: 32px 0;">
-        <h3 style="font-size: 14px; font-weight: 600; color: ${BRAND_COLORS.gray900}; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">What to do next</h3>
-        <div class="action-cards">
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">badge</span>
-            <p class="action-title">Required Documents</p>
-            <p class="action-desc">Valid driver's license and ID</p>
-            <a href="#" class="action-link">View List</a>
-          </div>
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">location_on</span>
-            <p class="action-title">Pickup Location</p>
-            <p class="action-desc">Get directions to pickup point</p>
-            <a href="#" class="action-link">View Map</a>
-          </div>
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">phone</span>
-            <p class="action-title">Contact Us</p>
-            <p class="action-desc">Questions about your rental?</p>
-            <a href="#" class="action-link">Get Help</a>
-          </div>
-        </div>
-      </div>
+  ${renderDarkSection('Booking Information', [
+    { label: 'Driver Name', value: driverName || 'Driver' },
+    { label: 'Email', value: driverEmail || 'N/A' },
+    { label: 'Rental Duration', value: days + ' Day' + (days > 1 ? 's' : '') },
+    { label: 'Payment Status', value: 'Paid', valueColor: '#10b981' }
+  ], 'Total Paid', '&#8358;' + (totalAmount?.toLocaleString() || '0'))}
 
-      <div class="alert-box">
-        <p class="alert-title">
-          <span class="material-icons-outlined" style="font-size: 18px;">info</span>
-          Important Pickup Information
-        </p>
-        <ul class="alert-list">
-          <li>Bring your valid driver's license and a government-issued ID</li>
-          <li>Arrive at the pickup location at your scheduled time</li>
-          <li>Vehicle inspection will be done before handover</li>
-          <li>Fuel policy: Return with the same fuel level as pickup</li>
-          <li>Keep this booking reference handy: ${bookingReference}</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="dark-section">
-      <h3 class="dark-section-title">Booking Information</h3>
-      <div class="dark-info-grid">
-        <div class="dark-info-item">
-          <p class="dark-info-label">Driver Name</p>
-          <p class="dark-info-value">${driverName || 'Driver'}</p>
-        </div>
-        <div class="dark-info-item">
-          <p class="dark-info-label">Email</p>
-          <p class="dark-info-value">${driverEmail || 'N/A'}</p>
-        </div>
-        <div class="dark-info-item">
-          <p class="dark-info-label">Rental Duration</p>
-          <p class="dark-info-value">${days} Day${days > 1 ? 's' : ''}</p>
-        </div>
-        <div class="dark-info-item">
-          <p class="dark-info-label">Payment Status</p>
-          <p class="dark-info-value" style="color: ${BRAND_COLORS.green};">Paid</p>
-        </div>
-      </div>
-      <div class="price-section">
-        <p class="price-label">Total Paid</p>
-        <p class="price-value">₦${totalAmount?.toLocaleString() || '0'}</p>
-      </div>
-    </div>
-
-    <div class="footer">
-      <div class="footer-brand">
-        <span class="material-icons-outlined footer-brand-icon">directions_car</span>
-        <span class="footer-brand-name">THE TRAVEL PLACE</span>
-      </div>
-      <p class="footer-text">This is an automated email for your car hire booking.<br>Please keep this for your records and present it at pickup.</p>
-      <div class="footer-links">
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Help Center</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Manage Booking</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}" class="footer-link">Terms of Use</a>
-      </div>
-      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
-    </div>
-  `;
+  ${renderFooter('🚗', 'This is an automated email for your car hire booking.<br>Please keep this for your records and present it at pickup.', [
+    { label: 'Help Center', url: feUrl },
+    { label: 'Contact Us', url: feUrl + '/contact' },
+    { label: 'Manage Booking', url: feUrl },
+    { label: 'Terms of Use', url: feUrl }
+  ])}`;
 
   return getBaseTemplate(content, 'Car Hire Booking Confirmed');
 };
 
-/**
- * Email Verification OTP Email - Modern Design
- */
+/* ─────────────────────────────────────────────────────────────────────────────
+   EMAIL VERIFICATION OTP
+───────────────────────────────────────────────────────────────────────────── */
+
 const getEmailVerificationOtpEmail = (data) => {
   const { otp, email, expiryMinutes = 10 } = data;
 
+  const feUrl = process.env.FRONTEND_URL || 'https://test.ttp.ng';
+
   const content = `
-    <div class="header">
-      <div class="header-content">
-        <div class="brand">
-          <div class="brand-icon">
-            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">verified_user</span>
-          </div>
-          <div class="brand-text">
-            <p class="brand-name">THE TRAVEL PLACE</p>
-            <p class="brand-tagline">Email Verification</p>
-          </div>
-        </div>
-      </div>
-    </div>
+  ${renderHeader('✅', 'Email Verification')}
 
-    <div class="content">
-      <h1 class="greeting">Verify your email address</h1>
-      <p class="subtext">To complete your registration, please enter the verification code below:</p>
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+    <tr>
+      <td style="background-color:#ffffff; padding:32px;">
+        <h1 style="font-size:24px; font-weight:600; color:#111827; margin:0 0 12px 0; line-height:1.3; font-family:Arial,Helvetica,sans-serif;">Verify your email address</h1>
+        <p style="font-size:14px; color:#4b5563; line-height:1.6; margin:0 0 32px 0; font-family:Arial,Helvetica,sans-serif;">To complete your registration, please enter the verification code below:</p>
 
-      <div style="background: linear-gradient(135deg, ${BRAND_COLORS.red} 0%, ${BRAND_COLORS.redDark} 100%); border-radius: 16px; padding: 40px; text-align: center; margin: 32px 0;">
-        <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255, 255, 255, 0.8); margin: 0 0 16px 0;">Your Verification Code</p>
-        <div style="background-color: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; padding: 24px; display: inline-block;">
-          <p style="font-size: 48px; font-weight: 700; letter-spacing: 12px; color: ${BRAND_COLORS.white}; margin: 0; font-family: 'Courier New', monospace;">${otp}</p>
-        </div>
-        <p style="font-size: 13px; color: rgba(255, 255, 255, 0.9); margin: 20px 0 0 0;">This code expires in ${expiryMinutes} minutes</p>
-      </div>
+        <!-- OTP Code Box -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="margin:0 0 32px 0;">
+          <tr>
+            <td style="background-color:#dc2626; border-radius:16px; padding:40px; text-align:center;">
+              <p style="font-size:12px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.8); margin:0 0 16px 0; font-family:Arial,Helvetica,sans-serif;">Your Verification Code</p>
+              <!-- OTP digit box -->
+              <table border="0" cellpadding="0" cellspacing="0" align="center" role="presentation" style="margin:0 auto;">
+                <tr>
+                  <td style="background-color:rgba(255,255,255,0.15); border:2px solid rgba(255,255,255,0.3); border-radius:12px; padding:20px 32px; text-align:center;">
+                    <p style="font-size:48px; font-weight:700; letter-spacing:12px; color:#ffffff; margin:0; font-family:'Courier New',Courier,monospace;">${otp}</p>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-size:13px; color:rgba(255,255,255,0.9); margin:20px 0 0 0; font-family:Arial,Helvetica,sans-serif;">This code expires in ${expiryMinutes} minutes</p>
+            </td>
+          </tr>
+        </table>
 
-      <div class="info-card">
-        <div class="info-card-header">
-          <span class="material-icons-outlined info-card-icon">info</span>
-          <h3 class="info-card-title">Security Tips</h3>
-        </div>
-        <div style="padding: 12px 0;">
-          <p style="font-size: 13px; color: ${BRAND_COLORS.gray700}; line-height: 1.6; margin: 0;">
-            • Never share this code with anyone<br>
-            • The Travel Place will never ask for your verification code<br>
-            • If you didn't request this code, please ignore this email<br>
-            • This code is only valid for ${expiryMinutes} minutes
-          </p>
-        </div>
-      </div>
+        ${renderInfoCard('🔒', 'Security Tips', `
+          <tr>
+            <td colspan="2" style="padding:12px 0;">
+              <p style="font-size:13px; color:#374151; line-height:1.7; margin:0; font-family:Arial,Helvetica,sans-serif;">
+                &#8226;&nbsp; Never share this code with anyone<br>
+                &#8226;&nbsp; The Travel Place will never ask for your verification code<br>
+                &#8226;&nbsp; If you didn't request this code, please ignore this email<br>
+                &#8226;&nbsp; This code is only valid for ${expiryMinutes} minutes
+              </p>
+            </td>
+          </tr>
+        `)}
 
-      <div class="alert-box">
-        <p class="alert-title">
-          <span class="material-icons-outlined" style="font-size: 18px;">help_outline</span>
-          Didn't request this?
-        </p>
-        <p class="alert-content">
-          If you didn't try to register with The Travel Place, you can safely ignore this email. Your account security is important to us.
-        </p>
-      </div>
-    </div>
+        ${renderAlertBox('❓', "Didn't request this?", `
+          <p style="margin:0; font-family:Arial,Helvetica,sans-serif;">If you didn't try to register with The Travel Place, you can safely ignore this email. Your account security is important to us.</p>
+        `)}
+      </td>
+    </tr>
+  </table>
 
-    <div class="footer">
-      <div class="footer-brand">
-        <span class="material-icons-outlined footer-brand-icon">verified_user</span>
-        <span class="footer-brand-name">THE TRAVEL PLACE</span>
-      </div>
-      <p class="footer-text">This is an automated security email for account verification.<br>For your security, do not share this code with anyone.</p>
-      <div class="footer-links">
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/help" class="footer-link">Help Center</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/privacy" class="footer-link">Privacy Policy</a>
-      </div>
-      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
-    </div>
-  `;
+  ${renderFooter('✅', 'This is an automated security email for account verification.<br>For your security, do not share this code with anyone.', [
+    { label: 'Help Center', url: feUrl + '/help' },
+    { label: 'Contact Us', url: feUrl + '/contact' },
+    { label: 'Privacy Policy', url: feUrl + '/privacy' }
+  ])}`;
 
   return getBaseTemplate(content, 'Verify Your Email - The Travel Place');
 };
 
-/**
- * Welcome Email - Modern Design
- */
+/* ─────────────────────────────────────────────────────────────────────────────
+   WELCOME EMAIL
+───────────────────────────────────────────────────────────────────────────── */
+
 const getWelcomeEmail = (data) => {
   const { firstName, email } = data;
 
+  const feUrl = process.env.FRONTEND_URL || 'https://test.ttp.ng';
+
   const content = `
-    <div class="header">
-      <div class="header-content">
-        <div class="brand">
-          <div class="brand-icon">
-            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">celebration</span>
-          </div>
-          <div class="brand-text">
-            <p class="brand-name">THE TRAVEL PLACE</p>
-            <p class="brand-tagline">Welcome Aboard!</p>
-          </div>
-        </div>
-      </div>
-    </div>
+  ${renderHeader('🎉', 'Welcome Aboard!')}
 
-    <div class="content">
-      <h1 class="greeting">Welcome to The Travel Place, ${firstName || 'Traveler'}! 🎉</h1>
-      <p class="subtext">Your account has been successfully created. We're excited to help you explore the world!</p>
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+    <tr>
+      <td style="background-color:#ffffff; padding:32px;">
+        <h1 style="font-size:24px; font-weight:600; color:#111827; margin:0 0 12px 0; line-height:1.3; font-family:Arial,Helvetica,sans-serif;">Welcome to The Travel Place, ${firstName || 'Traveler'}! &#127881;</h1>
+        <p style="font-size:14px; color:#4b5563; line-height:1.6; margin:0 0 32px 0; font-family:Arial,Helvetica,sans-serif;">Your account has been successfully created. We're excited to help you explore the world!</p>
 
-      <div style="background: linear-gradient(135deg, ${BRAND_COLORS.red} 0%, ${BRAND_COLORS.redDark} 100%); border-radius: 16px; padding: 32px; text-align: center; margin: 32px 0;">
-        <span class="material-icons-outlined" style="font-size: 64px; color: ${BRAND_COLORS.white}; margin-bottom: 16px;">luggage</span>
-        <p style="font-size: 18px; font-weight: 600; color: ${BRAND_COLORS.white}; margin: 0 0 8px 0;">Your Journey Starts Here</p>
-        <p style="font-size: 14px; color: rgba(255, 255, 255, 0.9); margin: 0;">Book flights, hotels, car rentals, and more - all in one place</p>
-      </div>
+        <!-- Hero banner -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="margin:0 0 32px 0;">
+          <tr>
+            <td style="background-color:#dc2626; border-radius:16px; padding:32px; text-align:center;">
+              <p style="font-size:56px; margin:0 0 16px 0; line-height:1;">🧳</p>
+              <p style="font-size:18px; font-weight:600; color:#ffffff; margin:0 0 8px 0; font-family:Arial,Helvetica,sans-serif;">Your Journey Starts Here</p>
+              <p style="font-size:14px; color:rgba(255,255,255,0.9); margin:0; font-family:Arial,Helvetica,sans-serif;">Book flights, hotels, car rentals, and more &mdash; all in one place</p>
+            </td>
+          </tr>
+        </table>
 
-      <div style="margin: 32px 0;">
-        <h3 style="font-size: 14px; font-weight: 600; color: ${BRAND_COLORS.gray900}; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">What you can do now</h3>
-        <div class="action-cards">
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">flight</span>
-            <p class="action-title">Book Flights</p>
-            <p class="action-desc">Search and compare flights worldwide</p>
-            <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/flights" class="action-link">Search Flights</a>
-          </div>
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">hotel</span>
-            <p class="action-title">Find Hotels</p>
-            <p class="action-desc">Discover great accommodation deals</p>
-            <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/hotels" class="action-link">Browse Hotels</a>
-          </div>
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">directions_car</span>
-            <p class="action-title">Rent a Car</p>
-            <p class="action-desc">Get the best car rental rates</p>
-            <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/cars" class="action-link">Rent Now</a>
-          </div>
-        </div>
-      </div>
+        ${renderActionCards('What you can do now', [
+          { icon: '✈', title: 'Book Flights', desc: 'Search and compare flights worldwide', linkText: 'Search Flights', linkUrl: feUrl + '/flights' },
+          { icon: '🏨', title: 'Find Hotels', desc: 'Discover great accommodation deals', linkText: 'Browse Hotels', linkUrl: feUrl + '/hotels' },
+          { icon: '🚗', title: 'Rent a Car', desc: 'Get the best car rental rates', linkText: 'Rent Now', linkUrl: feUrl + '/cars' }
+        ])}
 
-      <div class="info-card">
-        <div class="info-card-header">
-          <span class="material-icons-outlined info-card-icon">account_circle</span>
-          <h3 class="info-card-title">Your Account Details</h3>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Email Address</span>
-          <span class="info-value">${email || 'N/A'}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Account Status</span>
-          <span class="info-value" style="color: ${BRAND_COLORS.green};">Active</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Member Since</span>
-          <span class="info-value">${new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-        </div>
-      </div>
+        ${renderInfoCard('👤', 'Your Account Details', `
+          ${renderInfoRow('Email Address', email || 'N/A')}
+          ${renderInfoRow('Account Status', '<span style="color:#10b981;">Active</span>')}
+          ${renderInfoRow('Member Since', new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' }), true)}
+        `)}
 
-      <div class="alert-box">
-        <p class="alert-title">
-          <span class="material-icons-outlined" style="font-size: 18px;">tips_and_updates</span>
-          Pro Tips for Your First Booking
-        </p>
-        <ul class="alert-list">
-          <li>Complete your profile for faster checkout</li>
-          <li>Enable notifications to get the best travel deals</li>
-          <li>Save your favorite destinations for quick access</li>
-          <li>Check out our travel guides and tips</li>
-        </ul>
-      </div>
-    </div>
+        ${renderAlertBox('💡', 'Pro Tips for Your First Booking', `
+          <ul style="margin:0; padding:0 0 0 18px;">
+            <li style="margin:4px 0;">Complete your profile for faster checkout</li>
+            <li style="margin:4px 0;">Enable notifications to get the best travel deals</li>
+            <li style="margin:4px 0;">Save your favorite destinations for quick access</li>
+            <li style="margin:4px 0;">Check out our travel guides and tips</li>
+          </ul>
+        `)}
+      </td>
+    </tr>
+  </table>
 
-    <div class="footer">
-      <div class="footer-brand">
-        <span class="material-icons-outlined footer-brand-icon">celebration</span>
-        <span class="footer-brand-name">THE TRAVEL PLACE</span>
-      </div>
-      <p class="footer-text">Thank you for choosing The Travel Place for your travel needs.<br>We're here to make your journey unforgettable!</p>
-      <div class="footer-links">
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/help" class="footer-link">Help Center</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/about" class="footer-link">About Us</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/blog" class="footer-link">Travel Blog</a>
-      </div>
-      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
-    </div>
-  `;
+  ${renderFooter('🎉', "Thank you for choosing The Travel Place for your travel needs.<br>We're here to make your journey unforgettable!", [
+    { label: 'Help Center', url: feUrl + '/help' },
+    { label: 'Contact Us', url: feUrl + '/contact' },
+    { label: 'About Us', url: feUrl + '/about' },
+    { label: 'Travel Blog', url: feUrl + '/blog' }
+  ])}`;
 
   return getBaseTemplate(content, 'Welcome to The Travel Place!');
 };
 
-/**
- * Password Reset Email - Modern Design
- */
+/* ─────────────────────────────────────────────────────────────────────────────
+   PASSWORD RESET EMAIL
+───────────────────────────────────────────────────────────────────────────── */
+
 const getPasswordResetEmail = (data) => {
   const { firstName, resetUrl, expiryMinutes = 30 } = data;
 
+  const feUrl = process.env.FRONTEND_URL || 'https://test.ttp.ng';
+
   const content = `
-    <div class="header">
-      <div class="header-content">
-        <div class="brand">
-          <div class="brand-icon">
-            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">lock_reset</span>
-          </div>
-          <div class="brand-text">
-            <p class="brand-name">THE TRAVEL PLACE</p>
-            <p class="brand-tagline">Password Reset</p>
-          </div>
-        </div>
-      </div>
-    </div>
+  ${renderHeader('🔒', 'Password Reset')}
 
-    <div class="content">
-      <h1 class="greeting">Reset your password</h1>
-      <p class="subtext">Hi ${firstName || 'there'}, we received a request to reset your password. Click the button below to create a new password.</p>
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+    <tr>
+      <td style="background-color:#ffffff; padding:32px;">
+        <h1 style="font-size:24px; font-weight:600; color:#111827; margin:0 0 12px 0; line-height:1.3; font-family:Arial,Helvetica,sans-serif;">Reset your password</h1>
+        <p style="font-size:14px; color:#4b5563; line-height:1.6; margin:0 0 40px 0; font-family:Arial,Helvetica,sans-serif;">Hi ${firstName || 'there'}, we received a request to reset your password. Click the button below to create a new password.</p>
 
-      <div style="text-align: center; margin: 40px 0;">
-        <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, ${BRAND_COLORS.red} 0%, ${BRAND_COLORS.redDark} 100%); color: ${BRAND_COLORS.white}; text-decoration: none; padding: 16px 48px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
-          Reset Password
-        </a>
-      </div>
+        <!-- CTA Button -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="margin:0 0 40px 0;">
+          <tr>
+            <td style="text-align:center; padding:0;">
+              <table border="0" cellpadding="0" cellspacing="0" align="center" role="presentation" style="margin:0 auto;">
+                <tr>
+                  <td style="background-color:#dc2626; border-radius:12px; text-align:center; padding:0;">
+                    <a href="${resetUrl}" style="display:block; padding:16px 48px; font-size:16px; font-weight:600; color:#ffffff; text-decoration:none; font-family:Arial,Helvetica,sans-serif; border-radius:12px;">Reset Password</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
 
-      <div class="info-card">
-        <div class="info-card-header">
-          <span class="material-icons-outlined info-card-icon">schedule</span>
-          <h3 class="info-card-title">Link Expiration</h3>
-        </div>
-        <div style="padding: 12px 0;">
-          <p style="font-size: 13px; color: ${BRAND_COLORS.gray700}; line-height: 1.6; margin: 0;">
-            This password reset link will expire in <strong>${expiryMinutes} minutes</strong> for security reasons. If you need a new link, you can request another password reset from the login page.
-          </p>
-        </div>
-      </div>
+        ${renderInfoCard('⏱', 'Link Expiration', `
+          <tr>
+            <td colspan="2" style="padding:12px 0;">
+              <p style="font-size:13px; color:#374151; line-height:1.6; margin:0; font-family:Arial,Helvetica,sans-serif;">
+                This password reset link will expire in <strong>${expiryMinutes} minutes</strong> for security reasons. If you need a new link, you can request another password reset from the login page.
+              </p>
+            </td>
+          </tr>
+        `)}
 
-      <div class="alert-box">
-        <p class="alert-title">
-          <span class="material-icons-outlined" style="font-size: 18px;">security</span>
-          Security Notice
-        </p>
-        <ul class="alert-list">
-          <li>Never share your password with anyone</li>
-          <li>Use a strong, unique password</li>
-          <li>If you didn't request this reset, please ignore this email</li>
-          <li>Your current password will remain active until you set a new one</li>
-        </ul>
-      </div>
+        ${renderAlertBox('🔒', 'Security Notice', `
+          <ul style="margin:0; padding:0 0 0 18px;">
+            <li style="margin:4px 0;">Never share your password with anyone</li>
+            <li style="margin:4px 0;">Use a strong, unique password</li>
+            <li style="margin:4px 0;">If you didn't request this reset, please ignore this email</li>
+            <li style="margin:4px 0;">Your current password will remain active until you set a new one</li>
+          </ul>
+        `)}
 
-      <div style="background-color: ${BRAND_COLORS.gray100}; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
-        <p style="font-size: 12px; color: ${BRAND_COLORS.gray600}; margin: 0 0 8px 0;">If the button doesn't work, copy and paste this link:</p>
-        <p style="font-size: 11px; color: ${BRAND_COLORS.gray500}; word-break: break-all; margin: 0;">${resetUrl}</p>
-      </div>
-    </div>
+        <!-- Fallback link box -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="margin:24px 0 0 0;">
+          <tr>
+            <td style="background-color:#f3f4f6; border-radius:12px; padding:20px; text-align:center;">
+              <p style="font-size:12px; color:#4b5563; margin:0 0 8px 0; font-family:Arial,Helvetica,sans-serif;">If the button doesn't work, copy and paste this link:</p>
+              <p style="font-size:11px; color:#6b7280; word-break:break-all; margin:0; font-family:Arial,Helvetica,sans-serif;">${resetUrl}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 
-    <div class="footer">
-      <div class="footer-brand">
-        <span class="material-icons-outlined footer-brand-icon">lock_reset</span>
-        <span class="footer-brand-name">THE TRAVEL PLACE</span>
-      </div>
-      <p class="footer-text">This is an automated security email for password reset.<br>If you didn't request this, please contact our support team immediately.</p>
-      <div class="footer-links">
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/help" class="footer-link">Help Center</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/privacy" class="footer-link">Security</a>
-      </div>
-      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
-    </div>
-  `;
+  ${renderFooter('🔒', "This is an automated security email for password reset.<br>If you didn't request this, please contact our support team immediately.", [
+    { label: 'Help Center', url: feUrl + '/help' },
+    { label: 'Contact Us', url: feUrl + '/contact' },
+    { label: 'Security', url: feUrl + '/privacy' }
+  ])}`;
 
   return getBaseTemplate(content, 'Reset Your Password - The Travel Place');
 };
 
-/**
- * Account Verification Success Email - Modern Design
- */
+/* ─────────────────────────────────────────────────────────────────────────────
+   ACCOUNT VERIFIED EMAIL
+───────────────────────────────────────────────────────────────────────────── */
+
 const getAccountVerifiedEmail = (data) => {
   const { firstName, email } = data;
 
+  const feUrl = process.env.FRONTEND_URL || 'https://test.ttp.ng';
+
   const content = `
-    <div class="header">
-      <div class="header-content">
-        <div class="brand">
-          <div class="brand-icon">
-            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">check_circle</span>
-          </div>
-          <div class="brand-text">
-            <p class="brand-name">THE TRAVEL PLACE</p>
-            <p class="brand-tagline">Account Verified</p>
-          </div>
-        </div>
-      </div>
-    </div>
+  ${renderHeader('✅', 'Account Verified')}
 
-    <div class="content">
-      <h1 class="greeting">Your account is verified! ✓</h1>
-      <p class="subtext">Congratulations ${firstName || 'Traveler'}! Your email has been successfully verified and your account is now fully active.</p>
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+    <tr>
+      <td style="background-color:#ffffff; padding:32px;">
+        <h1 style="font-size:24px; font-weight:600; color:#111827; margin:0 0 12px 0; line-height:1.3; font-family:Arial,Helvetica,sans-serif;">Your account is verified! &#10003;</h1>
+        <p style="font-size:14px; color:#4b5563; line-height:1.6; margin:0 0 32px 0; font-family:Arial,Helvetica,sans-serif;">Congratulations ${firstName || 'Traveler'}! Your email has been successfully verified and your account is now fully active.</p>
 
-      <div style="background: linear-gradient(135deg, ${BRAND_COLORS.green} 0%, #059669 100%); border-radius: 16px; padding: 40px; text-align: center; margin: 32px 0;">
-        <span class="material-icons-outlined" style="font-size: 80px; color: ${BRAND_COLORS.white}; margin-bottom: 16px;">verified</span>
-        <p style="font-size: 20px; font-weight: 600; color: ${BRAND_COLORS.white}; margin: 0 0 8px 0;">Account Successfully Verified</p>
-        <p style="font-size: 14px; color: rgba(255, 255, 255, 0.9); margin: 0;">You can now access all features of The Travel Place</p>
-      </div>
+        <!-- Green verification banner -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="margin:0 0 32px 0;">
+          <tr>
+            <td style="background-color:#10b981; border-radius:16px; padding:40px; text-align:center;">
+              <p style="font-size:64px; margin:0 0 16px 0; line-height:1;">&#9989;</p>
+              <p style="font-size:20px; font-weight:600; color:#ffffff; margin:0 0 8px 0; font-family:Arial,Helvetica,sans-serif;">Account Successfully Verified</p>
+              <p style="font-size:14px; color:rgba(255,255,255,0.9); margin:0; font-family:Arial,Helvetica,sans-serif;">You can now access all features of The Travel Place</p>
+            </td>
+          </tr>
+        </table>
 
-      <div style="margin: 32px 0;">
-        <h3 style="font-size: 14px; font-weight: 600; color: ${BRAND_COLORS.gray900}; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">Start exploring</h3>
-        <div class="action-cards">
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">dashboard</span>
-            <p class="action-title">Your Dashboard</p>
-            <p class="action-desc">Manage bookings and preferences</p>
-            <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/dashboard" class="action-link">Go to Dashboard</a>
-          </div>
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">explore</span>
-            <p class="action-title">Browse Services</p>
-            <p class="action-desc">Discover travel options</p>
-            <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/services" class="action-link">Explore Now</a>
-          </div>
-          <div class="action-card">
-            <span class="material-icons-outlined action-icon">person</span>
-            <p class="action-title">Complete Profile</p>
-            <p class="action-desc">Add more details for faster booking</p>
-            <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/profile" class="action-link">Update Profile</a>
-          </div>
-        </div>
-      </div>
+        ${renderActionCards('Start exploring', [
+          { icon: '📊', title: 'Your Dashboard', desc: 'Manage bookings and preferences', linkText: 'Go to Dashboard', linkUrl: feUrl + '/dashboard' },
+          { icon: '🧭', title: 'Browse Services', desc: 'Discover travel options', linkText: 'Explore Now', linkUrl: feUrl + '/services' },
+          { icon: '👤', title: 'Complete Profile', desc: 'Add more details for faster booking', linkText: 'Update Profile', linkUrl: feUrl + '/profile' }
+        ])}
 
-      <div class="info-card">
-        <div class="info-card-header">
-          <span class="material-icons-outlined info-card-icon">verified_user</span>
-          <h3 class="info-card-title">Verified Account Benefits</h3>
-        </div>
-        <div style="padding: 12px 0;">
-          <p style="font-size: 13px; color: ${BRAND_COLORS.gray700}; line-height: 1.6; margin: 0;">
-            ✓ Book flights, hotels, and car rentals<br>
-            ✓ Access exclusive deals and offers<br>
-            ✓ Manage all your bookings in one place<br>
-            ✓ Get personalized travel recommendations<br>
-            ✓ 24/7 customer support
-          </p>
-        </div>
-      </div>
-    </div>
+        ${renderInfoCard('✅', 'Verified Account Benefits', `
+          <tr>
+            <td colspan="2" style="padding:12px 0;">
+              <p style="font-size:13px; color:#374151; line-height:1.7; margin:0; font-family:Arial,Helvetica,sans-serif;">
+                &#10003;&nbsp; Book flights, hotels, and car rentals<br>
+                &#10003;&nbsp; Access exclusive deals and offers<br>
+                &#10003;&nbsp; Manage all your bookings in one place<br>
+                &#10003;&nbsp; Get personalized travel recommendations<br>
+                &#10003;&nbsp; 24/7 customer support
+              </p>
+            </td>
+          </tr>
+        `)}
+      </td>
+    </tr>
+  </table>
 
-    <div class="footer">
-      <div class="footer-brand">
-        <span class="material-icons-outlined footer-brand-icon">check_circle</span>
-        <span class="footer-brand-name">THE TRAVEL PLACE</span>
-      </div>
-      <p class="footer-text">Your account is now fully activated and ready to use.<br>Happy travels!</p>
-      <div class="footer-links">
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/help" class="footer-link">Help Center</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/about" class="footer-link">About Us</a>
-      </div>
-      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
-    </div>
-  `;
+  ${renderFooter('✅', 'Your account is now fully activated and ready to use.<br>Happy travels!', [
+    { label: 'Help Center', url: feUrl + '/help' },
+    { label: 'Contact Us', url: feUrl + '/contact' },
+    { label: 'About Us', url: feUrl + '/about' }
+  ])}`;
 
   return getBaseTemplate(content, 'Account Verified - The Travel Place');
 };
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   GENERATE EMAIL FROM DATABASE TEMPLATE
+───────────────────────────────────────────────────────────────────────────── */
+
 /**
- * Generate email HTML from database template
+ * Generate email HTML from database template.
  * @param {Object} template - Email template from database
- * @param {Object} data - Data to populate template variables
- * @returns {string} - Generated HTML email
+ * @param {Object} data     - Data to populate template variables
+ * @returns {string}        - Generated HTML email
  */
 const generateEmailFromTemplate = (template, data) => {
-  // Replace variables in content
   let content = template.mainContent;
   let greeting = template.greeting;
   let subject = template.subject;
-  
+
+  // Icon map for database-driven templates (icon name → emoji)
+  const iconMap = {
+    flight: '✈',
+    hotel: '🏨',
+    directions_car: '🚗',
+    shield: '🛡',
+    verified_user: '🛡',
+    verified: '✅',
+    check_circle: '✅',
+    calendar_today: '📅',
+    date_range: '📅',
+    event: '📅',
+    schedule: '⏱',
+    location_on: '📍',
+    phone: '📞',
+    download: '⬇',
+    description: '📄',
+    support_agent: '🎧',
+    info: 'ℹ',
+    info_outline: 'ℹ',
+    luggage: '🧳',
+    fact_check: '✔',
+    confirmation_number: '🎫',
+    badge: '🪪',
+    room_service: '🛎',
+    nights_stay: '🌙',
+    lock_reset: '🔒',
+    security: '🔒',
+    celebration: '🎉',
+    dashboard: '📊',
+    explore: '🧭',
+    person: '👤',
+    account_circle: '👤',
+    tips_and_updates: '💡',
+    help_outline: '❓',
+    apartment: '🏢',
+    mail: '✉'
+  };
+
+  const headerIcon = iconMap[template.headerIcon] || iconMap['mail'];
+
   // Replace all {{variable}} placeholders
   const replaceVariables = (text) => {
     return text.replace(/\{\{(\w+)\}\}/g, (match, variable) => {
-      return data[variable] || match;
+      return data[variable] !== undefined ? data[variable] : match;
     });
   };
 
@@ -1575,45 +1096,34 @@ const generateEmailFromTemplate = (template, data) => {
   greeting = replaceVariables(greeting);
   subject = replaceVariables(subject);
 
+  const feUrl = process.env.FRONTEND_URL || 'https://test.ttp.ng';
+
   const emailContent = `
-    <div class="header">
-      <div class="header-content">
-        <div class="brand">
-          <div class="brand-icon">
-            <span class="material-icons-outlined" style="color: ${BRAND_COLORS.red}; font-size: 24px;">${template.headerIcon || 'mail'}</span>
-          </div>
-          <div class="brand-text">
-            <p class="brand-name">${template.headerTitle || 'THE TRAVEL PLACE'}</p>
-            ${template.headerSubtitle ? `<p class="brand-tagline">${template.headerSubtitle}</p>` : ''}
-          </div>
+  ${renderHeader(headerIcon, template.headerSubtitle || '')}
+
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+    <tr>
+      <td style="background-color:#ffffff; padding:32px;">
+        <h1 style="font-size:24px; font-weight:600; color:#111827; margin:0 0 12px 0; line-height:1.3; font-family:Arial,Helvetica,sans-serif;">${greeting}</h1>
+        <div style="font-size:14px; color:#4b5563; line-height:1.6; font-family:Arial,Helvetica,sans-serif;">
+          ${content}
         </div>
-      </div>
-    </div>
+      </td>
+    </tr>
+  </table>
 
-    <div class="content">
-      <h1 class="greeting">${greeting}</h1>
-      <div class="subtext">
-        ${content}
-      </div>
-    </div>
-
-    <div class="footer">
-      <div class="footer-brand">
-        <span class="material-icons-outlined footer-brand-icon">${template.headerIcon || 'mail'}</span>
-        <span class="footer-brand-name">THE TRAVEL PLACE</span>
-      </div>
-      <p class="footer-text">${template.footerText || 'Thank you for choosing The Travel Place.'}</p>
-      <div class="footer-links">
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/help" class="footer-link">Help Center</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/contact" class="footer-link">Contact Us</a>
-        <a href="${process.env.FRONTEND_URL || 'https://test.ttp.ng'}/about" class="footer-link">About Us</a>
-      </div>
-      <p class="footer-copyright">© ${new Date().getFullYear()} The Travel Place. All rights reserved.</p>
-    </div>
-  `;
+  ${renderFooter(headerIcon, template.footerText || 'Thank you for choosing The Travel Place.', [
+    { label: 'Help Center', url: feUrl + '/help' },
+    { label: 'Contact Us', url: feUrl + '/contact' },
+    { label: 'About Us', url: feUrl + '/about' }
+  ])}`;
 
   return getBaseTemplate(emailContent, subject);
 };
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   EXPORTS
+───────────────────────────────────────────────────────────────────────────── */
 
 module.exports = {
   getTravelInsuranceConfirmationEmail,

@@ -11,7 +11,6 @@ const Ledger = require('../models/ledgerModel');
 const paystackService = require('../services/paystackService');
 const ratehawkService = require('../services/ratehawkService');
 const allianzService = require('../services/allianzService');
-const Queue = require('bull');
 const mongoose = require('mongoose');
 const fs = require('fs');
 
@@ -34,43 +33,15 @@ const validateEnvironmentVariables = () => {
   return true;
 };
 
-// Initialize notification queues with error handling
-let emailQueue, smsQueue, whatsappQueue;
+// Bull queues removed — caused Redis reconnection loop OOM crashes.
+// All notifications are sent directly instead.
+const { sendEmail } = require('../utils/emailService');
+const { sendSMS } = require('../utils/smsService');
 
-if (validateEnvironmentVariables() && process.env.REDIS_URL) {
-  try {
-    emailQueue = new Queue('emailQueue', process.env.REDIS_URL);
-    smsQueue = new Queue('smsQueue', process.env.REDIS_URL);
-    whatsappQueue = new Queue('whatsappQueue', process.env.REDIS_URL);
-    
-    // Add error handlers for queues
-    [emailQueue, smsQueue, whatsappQueue].forEach(queue => {
-      queue.on('error', (error) => {
-        logger.error(`Queue error for ${queue.name}:`, error.message);
-      });
-      
-      queue.on('failed', (job, err) => {
-        logger.error(`Queue job failed for ${queue.name}:`, err.message);
-      });
-    });
-    
-    logger.info('Notification queues initialized successfully');
-    
-  } catch (error) {
-    logger.error('Failed to initialize notification queues:', error.message);
-    logger.warn('Notification queues will be disabled. Messages will be sent directly.');
-    
-    // Set queues to null to indicate they're not available
-    emailQueue = null;
-    smsQueue = null;
-    whatsappQueue = null;
-  }
-} else {
-  logger.warn('Redis URL not configured. Notification queues will be disabled.');
-  emailQueue = null;
-  smsQueue = null;
-  whatsappQueue = null;
-}
+// Stub helpers so queue.add() call sites gracefully no-op
+const emailQueue = null;
+const smsQueue = null;
+const whatsappQueue = null;
 
 // --- Service Charge Management (Admin Only) ---
 
